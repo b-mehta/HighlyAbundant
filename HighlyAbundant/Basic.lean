@@ -1,0 +1,110 @@
+/-
+Copyright (c) 2025 Bhavik Mehta. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Bhavik Mehta
+-/
+
+import Mathlib
+
+/-!
+# Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
+-/
+open Nat
+
+notation "σ₁" => ArithmeticFunction.sigma 1
+
+/-- Definition of highly abundant number -/
+def IsHighlyAbundant (N : ℕ) : Prop :=
+  ∀ m > 0, m < N → σ₁ m < σ₁ N
+
+/-- Definition of lcm of the range {1..n} -/
+def lcmRange (n : ℕ) : ℕ := (Finset.Icc 1 n).lcm id
+
+/- a few small examples of lcmRange -/
+example : lcmRange 1 = 1 := rfl
+example : lcmRange 2 = 2 := rfl
+example : lcmRange 6 = 60 := rfl
+
+open ArithmeticFunction
+
+-- some helper lemmas
+lemma sigma_one_apply_prime {p : ℕ} (hp : p.Prime) : σ₁ p = p + 1 := by
+  have : σ₁ p = σ₁ (p ^ 1) := by simp
+  rw [this, sigma_one_apply_prime_pow hp]
+  simp
+
+lemma sigma_one_apply_prime_pow' {p k : ℕ} (hp : p.Prime) :
+    σ₁ (p ^ k) = (p ^ (k + 1) - 1) / (p - 1) := by
+  rw [sigma_one_apply_prime_pow hp, Nat.geomSum_eq hp.two_le]
+
+lemma factorization_eq {n p k : ℕ} (h₁ : p ^ k ∣ n) (h₂ : ¬ p ^ (k + 1) ∣ n)
+    (hp : p.Prime) :
+    n.factorization p = k := by
+  have hn : n ≠ 0 := by
+    contrapose! h₂
+    simp [h₂]
+  suffices k ≤ Nat.factorization n p ∧ ¬ (k + 1 ≤ Nat.factorization n p) by cutsat
+  simp [← hp.pow_dvd_iff_le_factorization hn, *]
+
+lemma Nat.factorization_finsetLcm {α : Type*} {p : ℕ} {s : Finset α} {f : α → ℕ}
+    (h : ∀ x ∈ s, f x ≠ 0) :
+    (s.lcm f).factorization p = s.sup (fun i ↦ (f i).factorization p) := by
+  classical
+  induction s using Finset.induction with
+  | empty => simp
+  | insert a s has ih =>
+    simp only [Finset.mem_insert, ne_eq, forall_eq_or_imp] at h
+    rw [Finset.lcm_insert, lcm_eq_nat_lcm, Nat.factorization_lcm h.1 (by simpa using h.2)]
+    simp only [Finset.sup_insert, Finsupp.sup_apply, ih h.2]
+
+@[simp, grind] lemma lcmRange_ne_zero {n : ℕ} : lcmRange n ≠ 0 := by simp [lcmRange]
+@[simp, grind] lemma lcmRange_pos {n : ℕ} : 0 < lcmRange n := lcmRange_ne_zero.bot_lt
+
+lemma dvd_lcmRange_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmRange n := by
+  apply Finset.dvd_lcm
+  grind [Finset.mem_Icc]
+
+lemma factorization_lcmRange {p n : ℕ} :
+    (lcmRange n).factorization p = Finset.sup (Finset.Icc 1 n) (fun i ↦ i.factorization p) := by
+  apply Nat.factorization_finsetLcm
+  grind [Finset.mem_Icc]
+
+lemma factorization_lcmRange_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
+    (lcmRange n).factorization p ≤ k := by
+  simp only [factorization_lcmRange, Finset.sup_le_iff, Finset.mem_Icc, and_imp]
+  intro i hi hin
+  suffices ¬ (k + 1 ≤ i.factorization p) by cutsat
+  rw [← hp.pow_dvd_iff_le_factorization (by cutsat)]
+  intro h
+  have := Nat.le_of_dvd (by cutsat) h
+  cutsat
+
+lemma factorization_lcmRange_eq {n p k : ℕ} (h : p ^ k ≤ n) (h' : n < p ^ (k + 1)) (hp : p.Prime) :
+    (lcmRange n).factorization p = k := by
+  apply le_antisymm
+  · apply factorization_lcmRange_le h' hp
+  · rw [← hp.pow_dvd_iff_le_factorization (by simp)]
+    apply dvd_lcmRange_of_le (pow_ne_zero _ hp.ne_zero) h
+
+lemma factorization_lcmRange_le_one {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) :
+    (lcmRange n).factorization p ≤ 1 :=
+  factorization_lcmRange_le hnp hp
+
+lemma not_dvd_of_lt {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
+    ¬ p ^ (k + 1) ∣ lcmRange n := by
+  rw [hp.pow_dvd_iff_le_factorization (by grind)]
+  have := factorization_lcmRange_le h' hp
+  cutsat
+
+lemma factorization_lcmRange_eq_one {p n : ℕ} (hp : p.Prime) (hpn : p ≤ n) (hnp : n < p ^ 2) :
+    (lcmRange n).factorization p = 1 := by
+  apply le_antisymm
+  · apply factorization_lcmRange_le_one hp hnp
+  · rw [← hp.dvd_iff_one_le_factorization]
+    · exact dvd_lcmRange_of_le (by grind) hpn
+    simp
+
+lemma sq_not_dvd {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) : ¬ p ^ 2 ∣ lcmRange n := by
+  rw [hp.pow_dvd_iff_le_factorization lcmRange_ne_zero, not_le]
+  have := factorization_lcmRange_le_one hp hnp
+  cutsat
