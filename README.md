@@ -15,7 +15,7 @@ Currently, we formally verify:
 Work in progress are formal verifications of the following:
 - `L_n` is not highly abundant for `173 ≤ n ≤ 10^10`.
 - `L_n` is highly abundant for `n` in these intervals `{1, ..., 70}, {81, ..., 96}, {125, ..., 148}, {169, ..., 172}`.
-- Assuming a version of the prime number theorem, `L_n` is highly abundant only finitely often.
+- Assuming the prime number theorem, `L_n` is highly abundant only finitely often.
 - Assuming [an effective version of the prime number theorem by Dusart](https://piyanit.nl/wp-content/uploads/2020/10/art_10.1007_s11139-016-9839-4.pdf), `L_n` is not highly abundant for `n ≥ 9 * 10^9`.
 
 
