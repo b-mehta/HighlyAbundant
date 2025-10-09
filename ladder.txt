@@ -1,399 +1,3 @@
-/-
-Copyright (c) 2025 Bhavik Mehta. All rights reserved.
-Released under Apache 2.0 license as described in the file LICENSE.
-Authors: Bhavik Mehta
--/
-
-import HighlyAbundant.Basic
-
-/-!
-# Proofs of non-high-abundance of lcm(1..n) for the n where it is true, for n ≤ 100000
-
-This file will soon be made obsolete by later files, which give these proofs in a faster and more
-efficient way.
--/
-
-open ArithmeticFunction
-
-section
-
-local instance {α : Type*} : IsStrictWeakOrder (ℕ × α) (fun a b ↦ a.1 < b.1) where
-  incomp_trans := by grind
-  trans := by grind
-  irrefl := by grind
-
--- lemma not_HA_block_571 : ∀ i ∈ Finset.Icc 571 624, ¬ IsHighlyAbundant (lcmRange i) :=
---   prove_not_HA'
---     [(3, 5), (5, 3), (29, 1), (563, 1), (571, 1)]
---     [(3, 6), (5, 4), (29, 2), (739, 1)]
-
--- lemma not_HA_block_571' : ∀ i ∈ Finset.Icc 625 728, ¬ IsHighlyAbundant (lcmRange i) :=
---   prove_not_HA'
---     [(3, 5), (5, 4), (29, 1), (563, 1), (571, 1)]
---     [(3, 6), (5, 5), (29, 2), (739, 1)]
-
-def checkMerge : List ℕ → List ℕ → Bool
-  | _, [] => true
-  | [], _ => true
-  | x :: xs, y :: ys =>
-    if x < y then checkMerge xs (y :: ys)
-    else if y < x then checkMerge (x :: xs) ys
-    else false
-
-lemma checkMerge_iff {l₁ l₂ : List ℕ} (hl₁ : l₁.IsChain (· < ·)) (hl₂ : l₂.IsChain (· < ·)) :
-    checkMerge l₁ l₂ ↔ l₁.Disjoint l₂ := by
-  fun_induction checkMerge with
-  | case1 => simp
-  | case2 => simp
-  | case3 x xs y ys hxy ih =>
-    rw [ih hl₁.tail hl₂, List.disjoint_cons_left, iff_and_self]
-    intro h₁ h₂
-    have : List.IsChain (· < ·) (x :: y :: ys) := by simp [hxy, hl₂]
-    have := this.pairwise.nodup
-    grind
-  | case4 x xs y ys hyx hxy ih =>
-    rw [ih hl₁ hl₂.tail, List.disjoint_cons_right, iff_and_self]
-    intro h₁ h₂
-    have : List.IsChain (· < ·) (y :: x :: xs) := by simp [hxy, hl₁]
-    have := this.pairwise.nodup
-    grind
-  | case5 x xs y ys hyx hxy => grind [List.disjoint_cons_left, List.disjoint_cons_right]
-
-structure ProofData where
-  lo : ℕ
-  hi : ℕ
-  muls : List (ℕ × ℕ × ℕ)
-  divs : List ℕ
-  h_muls : ∀ pk ∈ muls, pk.1.Prime := by norm_num
-  h_divs : ∀ p ∈ divs, p.Prime := by norm_num
-  h_muls_chain : muls.IsChain (·.1 < ·.1) := by decide
-  h_divs_chain : divs.IsChain (· < ·) := by decide
-  h_disjoint' : ∀ pki ∈ muls, pki.1 ∉ divs := by decide
-  h_divs_lo : ∀ p ∈ divs, p ≤ lo := by decide
-  h_divs_hi : ∀ p ∈ divs, hi < p ^ 2 := by decide
-  h_muls_hi : ∀ pki ∈ muls, pki.1 ^ pki.2.2 ≤ hi ∧ hi < pki.1 ^ (pki.2.2 + 1) := by decide
-  h_sigma_prod :
-    (muls.map (fun pk ↦ (pk.1 ^ (pk.2.2 + 1) - 1))).prod * (divs.map (· + 1)).prod ≤
-    (muls.map (fun pk ↦ (pk.1 ^ (pk.2.2 + pk.2.1 + 1) - 1))).prod := by decide
-  h_prod : (muls.map (fun pk ↦ pk.1 ^ pk.2.1)).prod < divs.prod := by decide
-
-namespace ProofData
-
-variable (d : ProofData)
-
-lemma h_muls_sorted : d.muls.Sorted (·.1 < ·.1) := d.h_muls_chain.pairwise
-lemma h_muls_pairwise : d.muls.Pairwise (·.1 ≠ ·.1) := d.h_muls_sorted.imp ne_of_lt
-lemma h_divs_sorted : d.divs.Sorted (· < ·) := d.h_divs_chain.pairwise
-lemma h_muls_nodup : d.muls.Nodup := d.h_muls_sorted.nodup
-lemma h_divs_nodup : d.divs.Nodup := d.h_divs_sorted.nodup
-
-lemma h_muls_setPairwise : {x | x ∈ d.muls}.Pairwise (·.1 ≠ ·.1) :=
-  d.h_muls_pairwise.set_pairwise (by grind [Symmetric])
-
-lemma h_disjoint : ∀ pki ∈ d.muls, pki.1 ∉ d.divs := d.h_disjoint'
-
-def mul : ℕ := (d.muls.map (fun pk ↦ pk.1 ^ pk.2.1)).prod
-def div : ℕ := d.divs.prod
-
-lemma h_muls_hi' : ∀ pki ∈ d.muls, (lcmRange d.hi).factorization pki.1 = pki.2.2 := by
-  intro pki hpki
-  exact factorization_lcmRange_eq (d.h_muls_hi _ hpki).1 (d.h_muls_hi _ hpki).2 (d.h_muls _ hpki)
-
-lemma h_muls_i {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
-    ∀ pki ∈ d.muls, (lcmRange i).factorization pki.1 ≤ pki.2.2 := by
-  simp only [Finset.mem_Icc] at hi
-  intro pki hpki
-  exact factorization_lcmRange_le (hi.2.trans_lt (d.h_muls_hi _ hpki).2) (d.h_muls _ hpki)
-
-lemma h_divs_i {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
-    ∀ p ∈ d.divs, (lcmRange i).factorization p = 1 := by
-  simp only [Finset.mem_Icc] at hi
-  intro p hp
-  exact factorization_lcmRange_eq_one (d.h_divs _ hp)
-    (by have := d.h_divs_lo; grind) (by have := d.h_divs_hi; grind)
-
-lemma mul_eq : d.mul = (∏ pk ∈ d.muls.toFinset, pk.1 ^ pk.2.1) := by
-  rw [mul, List.prod_toFinset _ d.h_muls_nodup]
-
-lemma div_eq : d.div = (∏ i ∈ d.divs.toFinset, i) := by
-  rw [div, List.prod_toFinset _ d.h_divs_nodup, List.map_id']
-
-def K (i : ℕ) : ℕ :=
-  (∏ p ∈ (lcmRange i).primeFactors with p ∉ d.muls.map (·.1), p ^ (lcmRange i).factorization p)
-
-def M (i : ℕ) : ℕ := (lcmRange i) / d.div * d.mul
-
-lemma mem_of_dvd {p i : ℕ} (hp : p.Prime) (h : p ∣ d.K i) :
-    p ∉ d.muls.map (·.1) := by
-  obtain ⟨q, hq₁, hq₂⟩ := Prime.exists_mem_finset_dvd hp.prime h
-  simp only [Finset.mem_filter, Nat.mem_primeFactors, ne_eq] at hq₁
-  cases Nat.prime_eq_prime_of_dvd_pow hp hq₁.1.1 hq₂
-  exact hq₁.2
-
-lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := by
-  rw [div_eq]
-  apply Finset.prod_dvd_of_isRelPrime
-  · simp only [Set.Pairwise, Function.onFun, List.coe_toFinset, Set.mem_setOf_eq, ne_eq,
-      ← Nat.coprime_iff_isRelPrime]
-    intro p₁ hp₁ p₂ hp₂ h
-    rwa [Nat.coprime_primes (d.h_divs _ hp₁) (d.h_divs _ hp₂)]
-  simp only [List.mem_toFinset]
-  intro p hp
-  have hpl : p ∈ (lcmRange i).primeFactors := by
-    rw [Nat.mem_primeFactors_of_ne_zero lcmRange_ne_zero]
-    refine ⟨d.h_divs _ hp, ?_⟩
-    exact dvd_lcmRange_of_le (d.h_divs p hp).ne_zero
-      (by have := d.h_divs_lo; grind [Finset.mem_Icc])
-  have : p ∉ d.muls.map (·.1) := by have := d.h_disjoint; grind
-  convert_to p ^ (lcmRange i).factorization p ∣ d.K i
-  · rw [d.h_divs_i hi _ hp, Nat.pow_one]
-  exact Finset.dvd_prod_of_mem _ (by simp [hpl, this])
-
-lemma L_eq {i : ℕ} :
-    lcmRange i = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * d.K i := by
-  conv_lhs =>
-    rw [← Nat.factorization_prod_pow_eq_self (n := lcmRange i) lcmRange_ne_zero, Finsupp.prod,
-      Nat.support_factorization]
-  rw [← Finset.prod_filter_mul_prod_filter_not (lcmRange i).primeFactors (· ∈ d.muls.map (·.1)) _]
-  change _ * d.K i = _
-  suffices
-      ∏ x ∈ (lcmRange i).primeFactors with x ∈ d.muls.map (·.1),
-            x ^ (lcmRange i).factorization x =
-      (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) by
-    rw [this]
-  apply (Finset.prod_bij_ne_one (fun pki _ _ ↦ pki.1) _ _ _ (by simp)).symm
-  · rintro ⟨p, k, i⟩ hpki h₂
-    dsimp at h₂ ⊢
-    simp only [List.mem_toFinset] at hpki
-    simp only [List.mem_map, Prod.exists, exists_and_right, exists_eq_right, Finset.mem_filter,
-      Nat.mem_primeFactors, ne_eq]
-    refine ⟨⟨(d.h_muls _ hpki), ?_, lcmRange_ne_zero⟩, _, _, hpki⟩
-    exact Nat.dvd_of_factorization_pos (by intro h; simp [h] at h₂)
-  · simp only [List.mem_toFinset, ne_eq, Nat.pow_eq_one, not_or, and_imp, Prod.forall]
-    rintro p₁ k₁ i₁ hpki₁ hp₁ hLp₁ p₂ k₂ i₂ hpki₂ hp₂ hLp₂ rfl
-    by_contra! h
-    exact (d.h_muls_sorted.imp ne_of_lt).set_pairwise (by grind [Symmetric]) hpki₁ hpki₂ h rfl
-  · simp +contextual
-
-lemma K_div_L {i : ℕ} : d.K i ∣ lcmRange i := by
-  rw [d.L_eq]
-  simp
-
-lemma div_dvd_L {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ lcmRange i :=
-  (d.h_div_K hi).trans (d.K_div_L)
-
-lemma M_lt_L {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.M i < lcmRange i := by
-  rw [M]
-  have : d.div ∣ lcmRange i := (d.h_div_K hi).trans (d.K_div_L)
-  rw [Nat.div_mul_right_comm this]
-  apply Nat.div_lt_of_lt_mul
-  have := lcmRange_pos (n := i)
-  rw [mul_comm]
-  apply Nat.mul_lt_mul_of_pos_right _ this
-  exact d.h_prod
-
-lemma div_coprime {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div.Coprime (d.K i / d.div) := by
-  apply Nat.coprime_of_dvd
-  intro p hp hdiv h'
-  rw [Nat.dvd_div_iff_mul_dvd (d.h_div_K hi)] at h'
-  have hpK : p * p ∣ d.K i := (Nat.mul_dvd_mul_right hdiv _).trans h'
-  rw [← pow_two] at hpK
-  have : p ∈ d.divs := by
-    rw [div_eq] at hdiv
-    obtain ⟨q, hq, hpq⟩ := hp.prime.exists_mem_finset_dvd hdiv
-    simp only [List.mem_toFinset] at hq
-    cases (Nat.prime_dvd_prime_iff_eq hp (d.h_divs _ hq)).1 hpq
-    assumption
-  simp only [Finset.mem_Icc] at hi
-  exact sq_not_dvd hp ((d.h_divs_hi _ this).trans_le' hi.2) (hpK.trans d.K_div_L)
-
-lemma M_eq {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
-    d.M i =
-      (∏ pki ∈ d.muls.toFinset, pki.1 ^ ((lcmRange i).factorization pki.1 + pki.2.1)) *
-      (d.K i / d.div) := by
-  simp only [ProofData.M]
-  conv_lhs => rw [d.L_eq]
-  rw [Nat.mul_div_assoc _ (d.h_div_K hi), mul_right_comm, d.mul_eq, ← Finset.prod_mul_distrib]
-  simp_rw [Nat.pow_add]
-
-lemma div_ne_zero : d.div ≠ 0 := by
-  apply List.prod_ne_zero
-  intro hp
-  exact (d.h_divs _ hp).ne_zero rfl
-
-lemma K_ne_zero {i : ℕ} : d.K i ≠ 0 := by
-  rintro hK
-  have := d.L_eq (i := i)
-  rw [hK, mul_zero] at this
-  exact lcmRange_ne_zero this
-
-lemma sigma_K_ne_zero {i : ℕ} : σ₁ (d.K i) ≠ 0 := by simp [d.K_ne_zero]
-
-lemma prod_coprime_K {f : ℕ × ℕ × ℕ → ℕ} {i : ℕ} :
-    (∏ p ∈ d.muls.toFinset, p.1 ^ f p).Coprime (d.K i) := by
-  apply Nat.coprime_of_dvd
-  intro p hp hp' hpK
-  obtain ⟨q, hq, hpq⟩ := hp.prime.exists_mem_finset_dvd hp'
-  simp only [List.mem_toFinset] at hq
-  cases Nat.prime_eq_prime_of_dvd_pow hp (d.h_muls _ hq) hpq
-  have := d.mem_of_dvd hp hpK
-  grind
-
-lemma M_pos {i} (hi : i ∈ Finset.Icc d.lo d.hi) : 0 < d.M i := by
-  rw [M]
-  apply Nat.mul_pos (Nat.div_pos (Nat.le_of_dvd (lcmRange_pos) (d.div_dvd_L hi)) _) _
-  · rw [div_eq]
-    simp only [CanonicallyOrderedAdd.prod_pos, List.mem_toFinset]
-    intro i hi
-    exact (d.h_divs _ hi).pos
-  · simp only [mul_eq, CanonicallyOrderedAdd.prod_pos, List.mem_toFinset]
-    intro i hi
-    exact Nat.pow_pos (d.h_muls _ hi).pos
-
-lemma sig_eq {i} (hi : i ∈ Finset.Icc d.lo d.hi) : σ₁ (d.M i) / σ₁ (lcmRange i) =
-        (∏ pki ∈ d.muls.toFinset,
-          (pki.1 ^ ((lcmRange i).factorization pki.1 + pki.2.1 + 1) - 1 : ℕ) /
-          (pki.1 ^ ((lcmRange i).factorization pki.1 + 1) - 1 : ℕ) : ℚ) /
-        (∏ p ∈ d.divs.toFinset, (p + 1)) := by
-  have h₁ : (σ₁ (d.K i / d.div) : ℚ) = (σ₁ (d.K i)) / (σ₁ d.div) :=
-      (isMultiplicative_sigma (k := 1)).natCast.map_div_of_coprime (R := ℚ) (d.h_div_K hi)
-      (d.div_coprime hi).symm (by simp [sigma_eq_zero, d.div_ne_zero])
-  have h₂ : σ₁ (lcmRange i) =
-      σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * σ₁ (d.K i) := by
-    rw [← isMultiplicative_sigma.map_mul_of_coprime, ← L_eq]
-    apply d.prod_coprime_K
-  rw [d.M_eq hi, isMultiplicative_sigma.map_mul_of_coprime, Nat.cast_mul, h₁, h₂, Nat.cast_mul]
-  swap
-  · apply Nat.Coprime.coprime_div_right d.prod_coprime_K _
-    exact d.h_div_K hi
-  have : σ₁ (d.K i) ≠ 0 := by simp [sigma_eq_zero, d.K_ne_zero]
-  conv_lhs =>
-  { equals
-      ((σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ ((lcmRange i).factorization pki.1 + pki.2.1)) : ℚ) /
-      (σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1))) /
-      (σ₁ d.div) =>
-    field_simp [this] }
-  rw [d.div_eq, isMultiplicative_sigma.map_prod, isMultiplicative_sigma.map_prod,
-    isMultiplicative_sigma.map_prod, Nat.cast_prod, Nat.cast_prod, ← Finset.prod_div_distrib]
-  swap
-  · simp only [Set.Pairwise, List.coe_toFinset, Set.mem_setOf_eq, ne_eq, Function.onFun]
-    intro p hp q hq hpq
-    rwa [Nat.coprime_primes (d.h_divs _ hp) (d.h_divs _ hq)]
-  swap
-  · simp only [Set.Pairwise, List.coe_toFinset, Set.mem_setOf_eq, ne_eq, Function.onFun]
-    intro pki hpk qkj hqk hpq
-    apply Nat.coprime_pow_primes _ _ (d.h_muls _ hpk) (d.h_muls _ hqk)
-    exact d.h_muls_setPairwise hpk hqk hpq
-  swap
-  · simp only [Set.Pairwise, List.coe_toFinset, Set.mem_setOf_eq, ne_eq, Function.onFun]
-    intro pki hpk qkj hqk hpq
-    apply Nat.coprime_pow_primes _ _ (d.h_muls _ hpk) (d.h_muls _ hqk)
-    exact d.h_muls_setPairwise hpk hqk hpq
-  congr! 2 with pki hpki
-  · have : pki.1.Prime := d.h_muls _ (by simpa using hpki)
-    rw [cast_sigma_one_apply_prime_pow_aux' this, cast_sigma_one_apply_prime_pow_aux' this]
-    rw [div_div_div_cancel_right₀]
-    rw [Nat.cast_ne_zero]
-    have := this.two_le
-    omega
-  congr! 1 with p hp
-  rw [sigma_one_apply_prime]
-  simp only [List.mem_toFinset] at hp
-  exact d.h_divs _ hp
-
-lemma test {p a b c : ℕ} (hp : 1 ≤ p) :
-    (p ^ (a + b + c) - 1) * (p ^ a - 1) ≤ (p ^ (a + b) - 1) * (p ^ (a + c) - 1) := by
-  zify
-  have (n : ℕ) : 1 ≤ p ^ n := Nat.one_le_pow _ _ hp
-  simp only [Nat.cast_sub (this _), Nat.cast_one]
-  simp only [pow_add, Nat.cast_mul, Nat.cast_pow]
-  have (n : ℕ) : (1 : ℤ) ≤ p ^ n := mod_cast (this n)
-  have : (0 : ℤ) ≤ (p ^ b - 1) * (p ^ c - 1) := mul_nonneg (by grind) (by grind)
-  linear_combination p ^ a * this
-
-lemma inequality {p a a' b : ℕ} (ha : a' ≤ a) (hp : 2 ≤ p) :
-    ((p ^ (a + b + 1) - 1 : ℕ) / (p ^ (a + 1) - 1 : ℕ) : ℚ) ≤
-      (p ^ (a' + b + 1) - 1 : ℕ) / (p ^ (a' + 1) - 1 : ℕ) := by
-  have : ∀ n, p ^ (n + 1) - 1 ≠ 0 := by
-    intro n
-    have : 2 ≤ p ^ (n + 1) := hp.trans (Nat.le_pow (by simp))
-    cutsat
-  rw [div_le_div_iff₀ (by have := this a; positivity) (by have := this a'; positivity)]
-  norm_cast
-  obtain ⟨c, rfl⟩ := ha.dest
-  have := test (p := p) (a := a' + 1) (b := b) (c := c)
-  grind
-
-theorem not_HA' : ∀ i ∈ Finset.Icc d.lo d.hi, ¬ IsHighlyAbundant (lcmRange i) := by
-  intro i hi
-  have h_muls_sorted : d.muls.Sorted (·.1 < ·.1) := d.h_muls_chain.pairwise
-  have h_muls_pairwise : d.muls.Pairwise (·.1 ≠ ·.1) := h_muls_sorted.imp ne_of_lt
-  have h_divs_sorted : d.divs.Sorted (· < ·) := d.h_divs_chain.pairwise
-  let mul := (d.muls.map (fun pk ↦ pk.1 ^ pk.2.1)).prod
-  let div := d.divs.prod
-  set L := lcmRange i with hL
-  let K := (∏ p ∈ L.primeFactors with p ∉ d.muls.map (·.1), p ^ L.factorization p)
-  have h_div_K : div ∣ K := d.h_div_K hi
-  have L_eq : L = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * K := d.L_eq
-  have hKL : K ∣ L := d.K_div_L
-  have div_coprime : div.Coprime (K / div) := d.div_coprime hi
-  have h_div_ne_zero : div ≠ 0 := by
-    apply List.prod_ne_zero
-    intro hp
-    exact (d.h_divs _ hp).ne_zero rfl
-  have hK : K ≠ 0 := by
-    rintro hK
-    rw [hK, mul_zero] at L_eq
-    exact lcmRange_ne_zero L_eq
-  have hsig_eq :
-      σ₁ (d.M i) / σ₁ L =
-        (∏ pki ∈ d.muls.toFinset,
-          (pki.1 ^ (L.factorization pki.1 + pki.2.1 + 1) - 1 : ℕ) /
-          (pki.1 ^ (L.factorization pki.1 + 1) - 1 : ℕ) : ℚ) /
-        (∏ p ∈ d.divs.toFinset, (p + 1)) := d.sig_eq hi
-  have hsig_ge :
-      (∏ pki ∈ d.muls.toFinset,
-        (pki.1 ^ (pki.2.2 + pki.2.1 + 1) - 1 : ℕ) /
-        (pki.1 ^ (pki.2.2 + 1) - 1 : ℕ) : ℚ) /
-      (∏ p ∈ d.divs.toFinset, (p + 1)) ≤ σ₁ (d.M i) / σ₁ L := by
-    rw [d.sig_eq hi]
-    gcongr 2 with pki hpki
-    exact inequality (d.h_muls_i hi _ (by simpa using hpki))
-      (d.h_muls _ (by simpa using hpki)).two_le
-  have : σ₁ L ≤ σ₁ (d.M i) := by
-    have := d.h_sigma_prod
-    rw [Finset.prod_div_distrib, ← Nat.cast_prod, ← Nat.cast_prod,
-      List.prod_toFinset _ d.h_muls_nodup, List.prod_toFinset _ d.h_muls_nodup,
-      List.prod_toFinset _ d.h_divs_nodup] at hsig_ge
-    grw [← this, Nat.cast_mul, div_div, div_self, one_le_div] at hsig_ge
-    · exact mod_cast hsig_ge
-    · simp [L]
-    · rw [← Nat.cast_mul, Nat.cast_ne_zero]
-      simp only [ne_eq, mul_eq_zero, List.prod_eq_zero_iff, List.mem_map, Prod.exists,
-        Nat.add_eq_zero, one_ne_zero, and_false, exists_const, or_false, not_exists, not_and]
-      intro p k i hpki
-      have : p.Prime := d.h_muls _ hpki
-      have : 2 ≤ p ^ (i + 1) := this.two_le.trans (Nat.le_pow (by simp))
-      omega
-  intro h
-  have := h (d.M i) (d.M_pos hi) (d.M_lt_L hi)
-  cutsat
-
-end ProofData
-
--- [571, 728];{3: 1, 5: 1, 29: 1, 739: 1};{563: 1, 571: 1}
--- [727, 786];{2: 1, 11: 1, 29: 1, 787: 1};{691: 1, 727: 1}
--- [743, 840];{2: 1, 11: 1, 29: 1, 853: 1};{733: 1, 743: 1}
--- [811, 1023];{2: 1, 3: 1, 7: 1, 11: 1, 1399: 1};{797: 1, 811: 1}
--- [1019, 1030];{7: 1, 11: 1, 13: 1, 1031: 1};{1013: 1, 1019: 1}
--- [1031, 1116];{5: 1, 11: 1, 17: 1, 1117: 1};{1013: 1, 1031: 1}
--- [1051, 1330];{5: 1, 11: 1, 13: 1, 1489: 1};{1013: 1, 1051: 1}
--- [1291, 2047];{2: 1, 3: 1, 7: 1, 13: 1, 2953: 1};{1249: 1, 1291: 1}
--- [1621, 2196];{5: 1, 13: 1, 17: 1, 2287: 1};{1559: 1, 1621: 1}
--- [2131, 2296];{2: 1, 3: 1, 17: 1, 19: 1, 2297: 1};{2089: 1, 2131: 1}
--- [2239, 2970];{5: 1, 17: 1, 19: 1, 2971: 1};{2143: 1, 2239: 1}
--- [2339, 3124];{5: 1, 17: 1, 19: 1, 3347: 1};{2311: 1, 2339: 1}
-
 def data_173 : ProofData where
   lo := 173
   hi := 242
@@ -402,7 +6,7 @@ def data_173 : ProofData where
 
 theorem not_HA_block_173 :
   ∀ i ∈ Finset.Icc 173 242, ¬ IsHighlyAbundant (lcmRange i) := data_173.not_HA'
-
+        
 def data_227 : ProofData where
   lo := 227
   hi := 255
@@ -411,7 +15,7 @@ def data_227 : ProofData where
 
 theorem not_HA_block_227 :
   ∀ i ∈ Finset.Icc 227 255, ¬ IsHighlyAbundant (lcmRange i) := data_227.not_HA'
-
+        
 def data_257 : ProofData where
   lo := 257
   hi := 306
@@ -420,7 +24,7 @@ def data_257 : ProofData where
 
 theorem not_HA_block_257 :
   ∀ i ∈ Finset.Icc 257 306, ¬ IsHighlyAbundant (lcmRange i) := data_257.not_HA'
-
+        
 def data_277 : ProofData where
   lo := 277
   hi := 330
@@ -429,7 +33,7 @@ def data_277 : ProofData where
 
 theorem not_HA_block_277 :
   ∀ i ∈ Finset.Icc 277 330, ¬ IsHighlyAbundant (lcmRange i) := data_277.not_HA'
-
+        
 def data_313 : ProofData where
   lo := 313
   hi := 360
@@ -438,7 +42,7 @@ def data_313 : ProofData where
 
 theorem not_HA_block_313 :
   ∀ i ∈ Finset.Icc 313 360, ¬ IsHighlyAbundant (lcmRange i) := data_313.not_HA'
-
+        
 def data_359 : ProofData where
   lo := 359
   hi := 382
@@ -447,7 +51,7 @@ def data_359 : ProofData where
 
 theorem not_HA_block_359 :
   ∀ i ∈ Finset.Icc 359 382, ¬ IsHighlyAbundant (lcmRange i) := data_359.not_HA'
-
+        
 def data_383 : ProofData where
   lo := 383
   hi := 511
@@ -456,7 +60,7 @@ def data_383 : ProofData where
 
 theorem not_HA_block_383 :
   ∀ i ∈ Finset.Icc 383 511, ¬ IsHighlyAbundant (lcmRange i) := data_383.not_HA'
-
+        
 def data_449 : ProofData where
   lo := 449
   hi := 528
@@ -465,7 +69,7 @@ def data_449 : ProofData where
 
 theorem not_HA_block_449 :
   ∀ i ∈ Finset.Icc 449 528, ¬ IsHighlyAbundant (lcmRange i) := data_449.not_HA'
-
+        
 def data_521 : ProofData where
   lo := 521
   hi := 624
@@ -474,7 +78,7 @@ def data_521 : ProofData where
 
 theorem not_HA_block_521 :
   ∀ i ∈ Finset.Icc 521 624, ¬ IsHighlyAbundant (lcmRange i) := data_521.not_HA'
-
+        
 def data_571 : ProofData where
   lo := 571
   hi := 728
@@ -483,7 +87,7 @@ def data_571 : ProofData where
 
 theorem not_HA_block_571 :
   ∀ i ∈ Finset.Icc 571 728, ¬ IsHighlyAbundant (lcmRange i) := data_571.not_HA'
-
+        
 def data_727 : ProofData where
   lo := 727
   hi := 786
@@ -492,7 +96,7 @@ def data_727 : ProofData where
 
 theorem not_HA_block_727 :
   ∀ i ∈ Finset.Icc 727 786, ¬ IsHighlyAbundant (lcmRange i) := data_727.not_HA'
-
+        
 def data_743 : ProofData where
   lo := 743
   hi := 840
@@ -501,7 +105,7 @@ def data_743 : ProofData where
 
 theorem not_HA_block_743 :
   ∀ i ∈ Finset.Icc 743 840, ¬ IsHighlyAbundant (lcmRange i) := data_743.not_HA'
-
+        
 def data_811 : ProofData where
   lo := 811
   hi := 1023
@@ -510,7 +114,7 @@ def data_811 : ProofData where
 
 theorem not_HA_block_811 :
   ∀ i ∈ Finset.Icc 811 1023, ¬ IsHighlyAbundant (lcmRange i) := data_811.not_HA'
-
+        
 def data_1019 : ProofData where
   lo := 1019
   hi := 1030
@@ -519,7 +123,7 @@ def data_1019 : ProofData where
 
 theorem not_HA_block_1019 :
   ∀ i ∈ Finset.Icc 1019 1030, ¬ IsHighlyAbundant (lcmRange i) := data_1019.not_HA'
-
+        
 def data_1031 : ProofData where
   lo := 1031
   hi := 1116
@@ -528,7 +132,7 @@ def data_1031 : ProofData where
 
 theorem not_HA_block_1031 :
   ∀ i ∈ Finset.Icc 1031 1116, ¬ IsHighlyAbundant (lcmRange i) := data_1031.not_HA'
-
+        
 def data_1051 : ProofData where
   lo := 1051
   hi := 1330
@@ -537,7 +141,7 @@ def data_1051 : ProofData where
 
 theorem not_HA_block_1051 :
   ∀ i ∈ Finset.Icc 1051 1330, ¬ IsHighlyAbundant (lcmRange i) := data_1051.not_HA'
-
+        
 def data_1291 : ProofData where
   lo := 1291
   hi := 2047
@@ -546,7 +150,7 @@ def data_1291 : ProofData where
 
 theorem not_HA_block_1291 :
   ∀ i ∈ Finset.Icc 1291 2047, ¬ IsHighlyAbundant (lcmRange i) := data_1291.not_HA'
-
+        
 def data_1621 : ProofData where
   lo := 1621
   hi := 2196
@@ -555,7 +159,7 @@ def data_1621 : ProofData where
 
 theorem not_HA_block_1621 :
   ∀ i ∈ Finset.Icc 1621 2196, ¬ IsHighlyAbundant (lcmRange i) := data_1621.not_HA'
-
+        
 def data_2131 : ProofData where
   lo := 2131
   hi := 2296
@@ -564,7 +168,7 @@ def data_2131 : ProofData where
 
 theorem not_HA_block_2131 :
   ∀ i ∈ Finset.Icc 2131 2296, ¬ IsHighlyAbundant (lcmRange i) := data_2131.not_HA'
-
+        
 def data_2239 : ProofData where
   lo := 2239
   hi := 2970
@@ -573,7 +177,7 @@ def data_2239 : ProofData where
 
 theorem not_HA_block_2239 :
   ∀ i ∈ Finset.Icc 2239 2970, ¬ IsHighlyAbundant (lcmRange i) := data_2239.not_HA'
-
+        
 def data_2339 : ProofData where
   lo := 2339
   hi := 3124
@@ -582,7 +186,7 @@ def data_2339 : ProofData where
 
 theorem not_HA_block_2339 :
   ∀ i ∈ Finset.Icc 2339 3124, ¬ IsHighlyAbundant (lcmRange i) := data_2339.not_HA'
-
+        
 def data_3049 : ProofData where
   lo := 3049
   hi := 4095
@@ -591,7 +195,7 @@ def data_3049 : ProofData where
 
 theorem not_HA_block_3049 :
   ∀ i ∈ Finset.Icc 3049 4095, ¬ IsHighlyAbundant (lcmRange i) := data_3049.not_HA'
-
+        
 def data_3169 : ProofData where
   lo := 3169
   hi := 4912
@@ -600,7 +204,7 @@ def data_3169 : ProofData where
 
 theorem not_HA_block_3169 :
   ∀ i ∈ Finset.Icc 3169 4912, ¬ IsHighlyAbundant (lcmRange i) := data_3169.not_HA'
-
+        
 def data_4799 : ProofData where
   lo := 4799
   hi := 6560
@@ -609,7 +213,7 @@ def data_4799 : ProofData where
 
 theorem not_HA_block_4799 :
   ∀ i ∈ Finset.Icc 4799 6560, ¬ IsHighlyAbundant (lcmRange i) := data_4799.not_HA'
-
+        
 def data_5581 : ProofData where
   lo := 5581
   hi := 6858
@@ -618,7 +222,7 @@ def data_5581 : ProofData where
 
 theorem not_HA_block_5581 :
   ∀ i ∈ Finset.Icc 5581 6858, ¬ IsHighlyAbundant (lcmRange i) := data_5581.not_HA'
-
+        
 def data_6793 : ProofData where
   lo := 6793
   hi := 8191
@@ -627,7 +231,7 @@ def data_6793 : ProofData where
 
 theorem not_HA_block_6793 :
   ∀ i ∈ Finset.Icc 6793 8191, ¬ IsHighlyAbundant (lcmRange i) := data_6793.not_HA'
-
+        
 def data_8081 : ProofData where
   lo := 8081
   hi := 8886
@@ -636,7 +240,7 @@ def data_8081 : ProofData where
 
 theorem not_HA_block_8081 :
   ∀ i ∈ Finset.Icc 8081 8886, ¬ IsHighlyAbundant (lcmRange i) := data_8081.not_HA'
-
+        
 def data_8821 : ProofData where
   lo := 8821
   hi := 10558
@@ -645,7 +249,7 @@ def data_8821 : ProofData where
 
 theorem not_HA_block_8821 :
   ∀ i ∈ Finset.Icc 8821 10558, ¬ IsHighlyAbundant (lcmRange i) := data_8821.not_HA'
-
+        
 def data_10457 : ProofData where
   lo := 10457
   hi := 12166
@@ -654,7 +258,7 @@ def data_10457 : ProofData where
 
 theorem not_HA_block_10457 :
   ∀ i ∈ Finset.Icc 10457 12166, ¬ IsHighlyAbundant (lcmRange i) := data_10457.not_HA'
-
+        
 def data_12161 : ProofData where
   lo := 12161
   hi := 15624
@@ -663,7 +267,7 @@ def data_12161 : ProofData where
 
 theorem not_HA_block_12161 :
   ∀ i ∈ Finset.Icc 12161 15624, ¬ IsHighlyAbundant (lcmRange i) := data_12161.not_HA'
-
+        
 def data_13903 : ProofData where
   lo := 13903
   hi := 16806
@@ -672,7 +276,7 @@ def data_13903 : ProofData where
 
 theorem not_HA_block_13903 :
   ∀ i ∈ Finset.Icc 13903 16806, ¬ IsHighlyAbundant (lcmRange i) := data_13903.not_HA'
-
+        
 def data_16703 : ProofData where
   lo := 16703
   hi := 23856
@@ -681,7 +285,7 @@ def data_16703 : ProofData where
 
 theorem not_HA_block_16703 :
   ∀ i ∈ Finset.Icc 16703 23856, ¬ IsHighlyAbundant (lcmRange i) := data_16703.not_HA'
-
+        
 def data_23827 : ProofData where
   lo := 23827
   hi := 26568
@@ -690,7 +294,7 @@ def data_23827 : ProofData where
 
 theorem not_HA_block_23827 :
   ∀ i ∈ Finset.Icc 23827 26568, ¬ IsHighlyAbundant (lcmRange i) := data_23827.not_HA'
-
+        
 def data_26387 : ProofData where
   lo := 26387
   hi := 29928
@@ -699,7 +303,7 @@ def data_26387 : ProofData where
 
 theorem not_HA_block_26387 :
   ∀ i ∈ Finset.Icc 26387 29928, ¬ IsHighlyAbundant (lcmRange i) := data_26387.not_HA'
-
+        
 def data_29399 : ProofData where
   lo := 29399
   hi := 32760
@@ -708,7 +312,7 @@ def data_29399 : ProofData where
 
 theorem not_HA_block_29399 :
   ∀ i ∈ Finset.Icc 29399 32760, ¬ IsHighlyAbundant (lcmRange i) := data_29399.not_HA'
-
+        
 def data_30757 : ProofData where
   lo := 30757
   hi := 36480
@@ -717,7 +321,7 @@ def data_30757 : ProofData where
 
 theorem not_HA_block_30757 :
   ∀ i ∈ Finset.Icc 30757 36480, ¬ IsHighlyAbundant (lcmRange i) := data_30757.not_HA'
-
+        
 def data_34361 : ProofData where
   lo := 34361
   hi := 38808
@@ -726,7 +330,7 @@ def data_34361 : ProofData where
 
 theorem not_HA_block_34361 :
   ∀ i ∈ Finset.Icc 34361 38808, ¬ IsHighlyAbundant (lcmRange i) := data_34361.not_HA'
-
+        
 def data_36541 : ProofData where
   lo := 36541
   hi := 44520
@@ -735,7 +339,7 @@ def data_36541 : ProofData where
 
 theorem not_HA_block_36541 :
   ∀ i ∈ Finset.Icc 36541 44520, ¬ IsHighlyAbundant (lcmRange i) := data_36541.not_HA'
-
+        
 def data_44501 : ProofData where
   lo := 44501
   hi := 49728
@@ -744,7 +348,7 @@ def data_44501 : ProofData where
 
 theorem not_HA_block_44501 :
   ∀ i ∈ Finset.Icc 44501 49728, ¬ IsHighlyAbundant (lcmRange i) := data_44501.not_HA'
-
+        
 def data_45181 : ProofData where
   lo := 45181
   hi := 52440
@@ -753,7 +357,7 @@ def data_45181 : ProofData where
 
 theorem not_HA_block_45181 :
   ∀ i ∈ Finset.Icc 45181 52440, ¬ IsHighlyAbundant (lcmRange i) := data_45181.not_HA'
-
+        
 def data_50411 : ProofData where
   lo := 50411
   hi := 57120
@@ -762,7 +366,7 @@ def data_50411 : ProofData where
 
 theorem not_HA_block_50411 :
   ∀ i ∈ Finset.Icc 50411 57120, ¬ IsHighlyAbundant (lcmRange i) := data_50411.not_HA'
-
+        
 def data_55717 : ProofData where
   lo := 55717
   hi := 63000
@@ -771,7 +375,7 @@ def data_55717 : ProofData where
 
 theorem not_HA_block_55717 :
   ∀ i ∈ Finset.Icc 55717 63000, ¬ IsHighlyAbundant (lcmRange i) := data_55717.not_HA'
-
+        
 def data_59273 : ProofData where
   lo := 59273
   hi := 66048
@@ -780,7 +384,7 @@ def data_59273 : ProofData where
 
 theorem not_HA_block_59273 :
   ∀ i ∈ Finset.Icc 59273 66048, ¬ IsHighlyAbundant (lcmRange i) := data_59273.not_HA'
-
+        
 def data_64937 : ProofData where
   lo := 64937
   hi := 72360
@@ -789,7 +393,7 @@ def data_64937 : ProofData where
 
 theorem not_HA_block_64937 :
   ∀ i ∈ Finset.Icc 64937 72360, ¬ IsHighlyAbundant (lcmRange i) := data_64937.not_HA'
-
+        
 def data_70639 : ProofData where
   lo := 70639
   hi := 78960
@@ -798,7 +402,7 @@ def data_70639 : ProofData where
 
 theorem not_HA_block_70639 :
   ∀ i ∈ Finset.Icc 70639 78960, ¬ IsHighlyAbundant (lcmRange i) := data_70639.not_HA'
-
+        
 def data_77069 : ProofData where
   lo := 77069
   hi := 85848
@@ -807,7 +411,7 @@ def data_77069 : ProofData where
 
 theorem not_HA_block_77069 :
   ∀ i ∈ Finset.Icc 77069 85848, ¬ IsHighlyAbundant (lcmRange i) := data_77069.not_HA'
-
+        
 def data_81077 : ProofData where
   lo := 81077
   hi := 94248
@@ -816,7 +420,7 @@ def data_81077 : ProofData where
 
 theorem not_HA_block_81077 :
   ∀ i ∈ Finset.Icc 81077 94248, ¬ IsHighlyAbundant (lcmRange i) := data_81077.not_HA'
-
+        
 def data_86263 : ProofData where
   lo := 86263
   hi := 100488
@@ -825,7 +429,7 @@ def data_86263 : ProofData where
 
 theorem not_HA_block_86263 :
   ∀ i ∈ Finset.Icc 86263 100488, ¬ IsHighlyAbundant (lcmRange i) := data_86263.not_HA'
-
+        
 def data_97367 : ProofData where
   lo := 97367
   hi := 120408
@@ -834,7 +438,7 @@ def data_97367 : ProofData where
 
 theorem not_HA_block_97367 :
   ∀ i ∈ Finset.Icc 97367 120408, ¬ IsHighlyAbundant (lcmRange i) := data_97367.not_HA'
-
+        
 def data_119027 : ProofData where
   lo := 119027
   hi := 134688
@@ -843,7 +447,7 @@ def data_119027 : ProofData where
 
 theorem not_HA_block_119027 :
   ∀ i ∈ Finset.Icc 119027 134688, ¬ IsHighlyAbundant (lcmRange i) := data_119027.not_HA'
-
+        
 def data_129023 : ProofData where
   lo := 129023
   hi := 157608
@@ -852,7 +456,7 @@ def data_129023 : ProofData where
 
 theorem not_HA_block_129023 :
   ∀ i ∈ Finset.Icc 129023 157608, ¬ IsHighlyAbundant (lcmRange i) := data_129023.not_HA'
-
+        
 def data_154487 : ProofData where
   lo := 154487
   hi := 177240
@@ -861,7 +465,7 @@ def data_154487 : ProofData where
 
 theorem not_HA_block_154487 :
   ∀ i ∈ Finset.Icc 154487 177240, ¬ IsHighlyAbundant (lcmRange i) := data_154487.not_HA'
-
+        
 def data_175303 : ProofData where
   lo := 175303
   hi := 208848
@@ -870,7 +474,7 @@ def data_175303 : ProofData where
 
 theorem not_HA_block_175303 :
   ∀ i ∈ Finset.Icc 175303 208848, ¬ IsHighlyAbundant (lcmRange i) := data_175303.not_HA'
-
+        
 def data_192463 : ProofData where
   lo := 192463
   hi := 262143
@@ -879,7 +483,7 @@ def data_192463 : ProofData where
 
 theorem not_HA_block_192463 :
   ∀ i ∈ Finset.Icc 192463 262143, ¬ IsHighlyAbundant (lcmRange i) := data_192463.not_HA'
-
+        
 def data_261467 : ProofData where
   lo := 261467
   hi := 292680
@@ -888,7 +492,7 @@ def data_261467 : ProofData where
 
 theorem not_HA_block_261467 :
   ∀ i ∈ Finset.Icc 261467 292680, ¬ IsHighlyAbundant (lcmRange i) := data_261467.not_HA'
-
+        
 def data_290839 : ProofData where
   lo := 290839
   hi := 389016
@@ -897,7 +501,7 @@ def data_290839 : ProofData where
 
 theorem not_HA_block_290839 :
   ∀ i ∈ Finset.Icc 290839 389016, ¬ IsHighlyAbundant (lcmRange i) := data_290839.not_HA'
-
+        
 def data_385859 : ProofData where
   lo := 385859
   hi := 413448
@@ -906,7 +510,7 @@ def data_385859 : ProofData where
 
 theorem not_HA_block_385859 :
   ∀ i ∈ Finset.Icc 385859 413448, ¬ IsHighlyAbundant (lcmRange i) := data_385859.not_HA'
-
+        
 def data_413033 : ProofData where
   lo := 413033
   hi := 493038
@@ -915,7 +519,7 @@ def data_413033 : ProofData where
 
 theorem not_HA_block_413033 :
   ∀ i ∈ Finset.Icc 413033 493038, ¬ IsHighlyAbundant (lcmRange i) := data_413033.not_HA'
-
+        
 def data_491429 : ProofData where
   lo := 491429
   hi := 528528
@@ -924,7 +528,7 @@ def data_491429 : ProofData where
 
 theorem not_HA_block_491429 :
   ∀ i ∈ Finset.Icc 491429 528528, ¬ IsHighlyAbundant (lcmRange i) := data_491429.not_HA'
-
+        
 def data_517739 : ProofData where
   lo := 517739
   hi := 546120
@@ -933,7 +537,7 @@ def data_517739 : ProofData where
 
 theorem not_HA_block_517739 :
   ∀ i ∈ Finset.Icc 517739 546120, ¬ IsHighlyAbundant (lcmRange i) := data_517739.not_HA'
-
+        
 def data_540871 : ProofData where
   lo := 540871
   hi := 687240
@@ -942,7 +546,7 @@ def data_540871 : ProofData where
 
 theorem not_HA_block_540871 :
   ∀ i ∈ Finset.Icc 540871 687240, ¬ IsHighlyAbundant (lcmRange i) := data_540871.not_HA'
-
+        
 def data_626191 : ProofData where
   lo := 626191
   hi := 823542
@@ -951,7 +555,7 @@ def data_626191 : ProofData where
 
 theorem not_HA_block_626191 :
   ∀ i ∈ Finset.Icc 626191 823542, ¬ IsHighlyAbundant (lcmRange i) := data_626191.not_HA'
-
+        
 def data_821519 : ProofData where
   lo := 821519
   hi := 1048575
@@ -960,7 +564,7 @@ def data_821519 : ProofData where
 
 theorem not_HA_block_821519 :
   ∀ i ∈ Finset.Icc 821519 1048575, ¬ IsHighlyAbundant (lcmRange i) := data_821519.not_HA'
-
+        
 def data_1010143 : ProofData where
   lo := 1010143
   hi := 1295028
@@ -969,7 +573,7 @@ def data_1010143 : ProofData where
 
 theorem not_HA_block_1010143 :
   ∀ i ∈ Finset.Icc 1010143 1295028, ¬ IsHighlyAbundant (lcmRange i) := data_1010143.not_HA'
-
+        
 def data_1221083 : ProofData where
   lo := 1221083
   hi := 1771560
@@ -978,7 +582,7 @@ def data_1221083 : ProofData where
 
 theorem not_HA_block_1221083 :
   ∀ i ∈ Finset.Icc 1221083 1771560, ¬ IsHighlyAbundant (lcmRange i) := data_1221083.not_HA'
-
+        
 def data_1661899 : ProofData where
   lo := 1661899
   hi := 2036328
@@ -987,7 +591,7 @@ def data_1661899 : ProofData where
 
 theorem not_HA_block_1661899 :
   ∀ i ∈ Finset.Icc 1661899 2036328, ¬ IsHighlyAbundant (lcmRange i) := data_1661899.not_HA'
-
+        
 def data_1978981 : ProofData where
   lo := 1978981
   hi := 2476098
@@ -996,7 +600,7 @@ def data_1978981 : ProofData where
 
 theorem not_HA_block_1978981 :
   ∀ i ∈ Finset.Icc 1978981 2476098, ¬ IsHighlyAbundant (lcmRange i) := data_1978981.not_HA'
-
+        
 def data_2382119 : ProofData where
   lo := 2382119
   hi := 3418800
@@ -1005,7 +609,7 @@ def data_2382119 : ProofData where
 
 theorem not_HA_block_2382119 :
   ∀ i ∈ Finset.Icc 2382119 3418800, ¬ IsHighlyAbundant (lcmRange i) := data_2382119.not_HA'
-
+        
 def data_2774557 : ProofData where
   lo := 2774557
   hi := 4194303
@@ -1014,7 +618,7 @@ def data_2774557 : ProofData where
 
 theorem not_HA_block_2774557 :
   ∀ i ∈ Finset.Icc 2774557 4194303, ¬ IsHighlyAbundant (lcmRange i) := data_2774557.not_HA'
-
+        
 def data_4181759 : ProofData where
   lo := 4181759
   hi := 4879680
@@ -1023,7 +627,7 @@ def data_4181759 : ProofData where
 
 theorem not_HA_block_4181759 :
   ∀ i ∈ Finset.Icc 4181759 4879680, ¬ IsHighlyAbundant (lcmRange i) := data_4181759.not_HA'
-
+        
 def data_4786409 : ProofData where
   lo := 4786409
   hi := 5764800
@@ -1032,7 +636,7 @@ def data_4786409 : ProofData where
 
 theorem not_HA_block_4786409 :
   ∀ i ∈ Finset.Icc 4786409 5764800, ¬ IsHighlyAbundant (lcmRange i) := data_4786409.not_HA'
-
+        
 def data_5454793 : ProofData where
   lo := 5454793
   hi := 6967870
@@ -1041,7 +645,7 @@ def data_5454793 : ProofData where
 
 theorem not_HA_block_5454793 :
   ∀ i ∈ Finset.Icc 5454793 6967870, ¬ IsHighlyAbundant (lcmRange i) := data_5454793.not_HA'
-
+        
 def data_6947221 : ProofData where
   lo := 6947221
   hi := 7890480
@@ -1050,7 +654,7 @@ def data_6947221 : ProofData where
 
 theorem not_HA_block_6947221 :
   ∀ i ∈ Finset.Icc 6947221 7890480, ¬ IsHighlyAbundant (lcmRange i) := data_6947221.not_HA'
-
+        
 def data_7430831 : ProofData where
   lo := 7430831
   hi := 9765624
@@ -1059,7 +663,7 @@ def data_7430831 : ProofData where
 
 theorem not_HA_block_7430831 :
   ∀ i ∈ Finset.Icc 7430831 9765624, ¬ IsHighlyAbundant (lcmRange i) := data_7430831.not_HA'
-
+        
 def data_9693037 : ProofData where
   lo := 9693037
   hi := 14348906
@@ -1068,7 +672,7 @@ def data_9693037 : ProofData where
 
 theorem not_HA_block_9693037 :
   ∀ i ∈ Finset.Icc 9693037 14348906, ¬ IsHighlyAbundant (lcmRange i) := data_9693037.not_HA'
-
+        
 def data_14017981 : ProofData where
   lo := 14017981
   hi := 20511148
@@ -1077,7 +681,7 @@ def data_14017981 : ProofData where
 
 theorem not_HA_block_14017981 :
   ∀ i ∈ Finset.Icc 14017981 20511148, ¬ IsHighlyAbundant (lcmRange i) := data_14017981.not_HA'
-
+        
 def data_20163529 : ProofData where
   lo := 20163529
   hi := 28398240
@@ -1086,7 +690,7 @@ def data_20163529 : ProofData where
 
 theorem not_HA_block_20163529 :
   ∀ i ∈ Finset.Icc 20163529 28398240, ¬ IsHighlyAbundant (lcmRange i) := data_20163529.not_HA'
-
+        
 def data_24667793 : ProofData where
   lo := 24667793
   hi := 40353606
@@ -1095,7 +699,7 @@ def data_24667793 : ProofData where
 
 theorem not_HA_block_24667793 :
   ∀ i ∈ Finset.Icc 24667793 40353606, ¬ IsHighlyAbundant (lcmRange i) := data_24667793.not_HA'
-
+        
 def data_35213039 : ProofData where
   lo := 35213039
   hi := 48828124
@@ -1104,7 +708,7 @@ def data_35213039 : ProofData where
 
 theorem not_HA_block_35213039 :
   ∀ i ∈ Finset.Icc 35213039 48828124, ¬ IsHighlyAbundant (lcmRange i) := data_35213039.not_HA'
-
+        
 def data_48626731 : ProofData where
   lo := 48626731
   hi := 64481200
@@ -1113,7 +717,7 @@ def data_48626731 : ProofData where
 
 theorem not_HA_block_48626731 :
   ∀ i ∈ Finset.Icc 48626731 64481200, ¬ IsHighlyAbundant (lcmRange i) := data_48626731.not_HA'
-
+        
 def data_62538989 : ProofData where
   lo := 62538989
   hi := 75290328
@@ -1122,7 +726,7 @@ def data_62538989 : ProofData where
 
 theorem not_HA_block_62538989 :
   ∀ i ∈ Finset.Icc 62538989 75290328, ¬ IsHighlyAbundant (lcmRange i) := data_62538989.not_HA'
-
+        
 def data_68685961 : ProofData where
   lo := 68685961
   hi := 97972180
@@ -1131,7 +735,7 @@ def data_68685961 : ProofData where
 
 theorem not_HA_block_68685961 :
   ∀ i ∈ Finset.Icc 68685961 97972180, ¬ IsHighlyAbundant (lcmRange i) := data_68685961.not_HA'
-
+        
 def data_80020223 : ProofData where
   lo := 80020223
   hi := 112550880
@@ -1140,7 +744,7 @@ def data_80020223 : ProofData where
 
 theorem not_HA_block_80020223 :
   ∀ i ∈ Finset.Icc 80020223 112550880, ¬ IsHighlyAbundant (lcmRange i) := data_80020223.not_HA'
-
+        
 def data_107485789 : ProofData where
   lo := 107485789
   hi := 134217727
@@ -1149,7 +753,7 @@ def data_107485789 : ProofData where
 
 theorem not_HA_block_107485789 :
   ∀ i ∈ Finset.Icc 107485789 134217727, ¬ IsHighlyAbundant (lcmRange i) := data_107485789.not_HA'
-
+        
 def data_129018209 : ProofData where
   lo := 129018209
   hi := 167003928
@@ -1158,7 +762,7 @@ def data_129018209 : ProofData where
 
 theorem not_HA_block_129018209 :
   ∀ i ∈ Finset.Icc 129018209 167003928, ¬ IsHighlyAbundant (lcmRange i) := data_129018209.not_HA'
-
+        
 def data_141796063 : ProofData where
   lo := 141796063
   hi := 229345006
@@ -1167,7 +771,7 @@ def data_141796063 : ProofData where
 
 theorem not_HA_block_141796063 :
   ∀ i ∈ Finset.Icc 141796063 229345006, ¬ IsHighlyAbundant (lcmRange i) := data_141796063.not_HA'
-
+        
 def data_216776723 : ProofData where
   lo := 216776723
   hi := 282475248
@@ -1176,7 +780,7 @@ def data_216776723 : ProofData where
 
 theorem not_HA_block_216776723 :
   ∀ i ∈ Finset.Icc 216776723 282475248, ¬ IsHighlyAbundant (lcmRange i) := data_216776723.not_HA'
-
+        
 def data_273953201 : ProofData where
   lo := 273953201
   hi := 387420488
@@ -1185,7 +789,7 @@ def data_273953201 : ProofData where
 
 theorem not_HA_block_273953201 :
   ∀ i ∈ Finset.Icc 273953201 387420488, ¬ IsHighlyAbundant (lcmRange i) := data_273953201.not_HA'
-
+        
 def data_369779941 : ProofData where
   lo := 369779941
   hi := 478778160
@@ -1194,7 +798,7 @@ def data_369779941 : ProofData where
 
 theorem not_HA_block_369779941 :
   ∀ i ∈ Finset.Icc 369779941 478778160, ¬ IsHighlyAbundant (lcmRange i) := data_369779941.not_HA'
-
+        
 def data_423486937 : ProofData where
   lo := 423486937
   hi := 536870911
@@ -1203,7 +807,7 @@ def data_423486937 : ProofData where
 
 theorem not_HA_block_423486937 :
   ∀ i ∈ Finset.Icc 423486937 536870911, ¬ IsHighlyAbundant (lcmRange i) := data_423486937.not_HA'
-
+        
 def data_535583159 : ProofData where
   lo := 535583159
   hi := 815730720
@@ -1212,7 +816,7 @@ def data_535583159 : ProofData where
 
 theorem not_HA_block_535583159 :
   ∀ i ∈ Finset.Icc 535583159 815730720, ¬ IsHighlyAbundant (lcmRange i) := data_535583159.not_HA'
-
+        
 def data_761001881 : ProofData where
   lo := 761001881
   hi := 1073741823
@@ -1221,7 +825,7 @@ def data_761001881 : ProofData where
 
 theorem not_HA_block_761001881 :
   ∀ i ∈ Finset.Icc 761001881 1073741823, ¬ IsHighlyAbundant (lcmRange i) := data_761001881.not_HA'
-
+        
 def data_976769987 : ProofData where
   lo := 976769987
   hi := 1298596570
@@ -1230,7 +834,7 @@ def data_976769987 : ProofData where
 
 theorem not_HA_block_976769987 :
   ∀ i ∈ Finset.Icc 976769987 1298596570, ¬ IsHighlyAbundant (lcmRange i) := data_976769987.not_HA'
-
+        
 def data_1210947949 : ProofData where
   lo := 1210947949
   hi := 1568239200
@@ -1239,7 +843,7 @@ def data_1210947949 : ProofData where
 
 theorem not_HA_block_1210947949 :
   ∀ i ∈ Finset.Icc 1210947949 1568239200, ¬ IsHighlyAbundant (lcmRange i) := data_1210947949.not_HA'
-
+        
 def data_1512899867 : ProofData where
   lo := 1512899867
   hi := 2073071592
@@ -1248,7 +852,7 @@ def data_1512899867 : ProofData where
 
 theorem not_HA_block_1512899867 :
   ∀ i ∈ Finset.Icc 1512899867 2073071592, ¬ IsHighlyAbundant (lcmRange i) := data_1512899867.not_HA'
-
+        
 def data_1818635431 : ProofData where
   lo := 1818635431
   hi := 2939483088
@@ -1257,48 +861,49 @@ def data_1818635431 : ProofData where
 
 theorem not_HA_block_1818635431 :
   ∀ i ∈ Finset.Icc 1818635431 2939483088, ¬ IsHighlyAbundant (lcmRange i) := data_1818635431.not_HA'
+        
+def data_2839494929 : ProofData where
+  lo := 2839494929
+  hi := 4294967295
+  muls := [(2, 2, 31), (3, 1, 20), (5, 1, 13), (7, 2, 11), (11, 1, 9), (17, 1, 7), (29, 1, 6), (41, 1, 5), (271, 1, 3), (853, 1, 3), (53299, 1, 2), (53309, 1, 2), (53323, 1, 2)]
+  divs := [2839494901, 2839494913, 2839494929]
 
--- def data_2839494929 : ProofData where
---   lo := 2839494929
---   hi := 4294967295
---   muls := [(2, 2, 31), (3, 1, 20), (5, 1, 13), (7, 2, 11), (11, 1, 9), (17, 1, 7), (29, 1, 6), (41, 1, 5), (271, 1, 3), (853, 1, 3), (53299, 1, 2), (53309, 1, 2), (53323, 1, 2)]
---   divs := [2839494901, 2839494913, 2839494929]
+theorem not_HA_block_2839494929 :
+  ∀ i ∈ Finset.Icc 2839494929 4294967295, ¬ IsHighlyAbundant (lcmRange i) := data_2839494929.not_HA'
+        
+def data_3223503523 : ProofData where
+  lo := 3223503523
+  hi := 5331859722
+  muls := [(2, 2, 32), (3, 1, 20), (5, 1, 13), (13, 1, 8), (17, 1, 7), (107, 1, 4), (1747, 1, 2), (56779, 1, 2), (56783, 1, 2), (56807, 1, 2), (73783, 1, 1)]
+  divs := [3223503509, 3223503511, 3223503523]
 
--- theorem not_HA_block_2839494929 :
---   ∀ i ∈ Finset.Icc 2839494929 4294967295, ¬ IsHighlyAbundant (lcmRange i) := data_2839494929.not_HA'
+theorem not_HA_block_3223503523 :
+  ∀ i ∈ Finset.Icc 3223503523 5331859722, ¬ IsHighlyAbundant (lcmRange i) := data_3223503523.not_HA'
+        
+def data_4688951723 : ProofData where
+  lo := 4688951723
+  hi := 6975757440
+  muls := [(2, 5, 32), (3, 2, 20), (17, 1, 7), (19, 1, 7), (103, 1, 4), (307, 1, 3), (68477, 1, 2), (68483, 1, 2), (68489, 1, 2), (109121, 1, 1)]
+  divs := [4688951653, 4688951699, 4688951723]
 
--- def data_3223503523 : ProofData where
---   lo := 3223503523
---   hi := 5331859722
---   muls := [(2, 2, 32), (3, 1, 20), (5, 1, 13), (13, 1, 8), (17, 1, 7), (107, 1, 4), (1747, 1, 2), (56779, 1, 2), (56783, 1, 2), (56807, 1, 2), (73783, 1, 1)]
---   divs := [3223503509, 3223503511, 3223503523]
+theorem not_HA_block_4688951723 :
+  ∀ i ∈ Finset.Icc 4688951723 6975757440, ¬ IsHighlyAbundant (lcmRange i) := data_4688951723.not_HA'
+        
+def data_6602975069 : ProofData where
+  lo := 6602975069
+  hi := 9354951840
+  muls := [(2, 4, 33), (3, 2, 20), (11, 1, 9), (13, 2, 8), (41, 1, 6), (311, 1, 3), (373, 1, 3), (421, 1, 3), (81281, 1, 2), (81283, 1, 2), (81293, 1, 2)]
+  divs := [6602975023, 6602975053, 6602975069]
 
--- theorem not_HA_block_3223503523 :
---   ∀ i ∈ Finset.Icc 3223503523 5331859722, ¬ IsHighlyAbundant (lcmRange i) := data_3223503523.not_HA'
+theorem not_HA_block_6602975069 :
+  ∀ i ∈ Finset.Icc 6602975069 9354951840, ¬ IsHighlyAbundant (lcmRange i) := data_6602975069.not_HA'
+        
+def data_8840292047 : ProofData where
+  lo := 8840292047
+  hi := 11681631108
+  muls := [(2, 2, 33), (3, 1, 21), (5, 2, 14), (11, 1, 9), (19, 1, 7), (53, 1, 5), (59, 1, 5), (1867, 1, 3), (2269, 1, 2), (94033, 1, 2), (94049, 1, 2), (94057, 1, 2)]
+  divs := [8840291989, 8840292001, 8840292047]
 
--- def data_4688951723 : ProofData where
---   lo := 4688951723
---   hi := 6975757440
---   muls := [(2, 5, 32), (3, 2, 20), (17, 1, 7), (19, 1, 7), (103, 1, 4), (307, 1, 3), (68477, 1, 2), (68483, 1, 2), (68489, 1, 2), (109121, 1, 1)]
---   divs := [4688951653, 4688951699, 4688951723]
-
--- theorem not_HA_block_4688951723 :
---   ∀ i ∈ Finset.Icc 4688951723 6975757440, ¬ IsHighlyAbundant (lcmRange i) := data_4688951723.not_HA'
-
--- def data_6602975069 : ProofData where
---   lo := 6602975069
---   hi := 9354951840
---   muls := [(2, 4, 33), (3, 2, 20), (11, 1, 9), (13, 2, 8), (41, 1, 6), (311, 1, 3), (373, 1, 3), (421, 1, 3), (81281, 1, 2), (81283, 1, 2), (81293, 1, 2)]
---   divs := [6602975023, 6602975053, 6602975069]
-
--- theorem not_HA_block_6602975069 :
---   ∀ i ∈ Finset.Icc 6602975069 9354951840, ¬ IsHighlyAbundant (lcmRange i) := data_6602975069.not_HA'
-
--- def data_8840292047 : ProofData where
---   lo := 8840292047
---   hi := 11681631108
---   muls := [(2, 2, 33), (3, 1, 21), (5, 2, 14), (11, 1, 9), (19, 1, 7), (53, 1, 5), (59, 1, 5), (1867, 1, 3), (2269, 1, 2), (94033, 1, 2), (94049, 1, 2), (94057, 1, 2)]
---   divs := [8840291989, 8840292001, 8840292047]
-
--- theorem not_HA_block_8840292047 :
---   ∀ i ∈ Finset.Icc 8840292047 11681631108, ¬ IsHighlyAbundant (lcmRange i) := data_8840292047.not_HA'
+theorem not_HA_block_8840292047 :
+  ∀ i ∈ Finset.Icc 8840292047 11681631108, ¬ IsHighlyAbundant (lcmRange i) := data_8840292047.not_HA'
+        

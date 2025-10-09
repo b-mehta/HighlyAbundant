@@ -37,6 +37,21 @@ lemma sigma_one_apply_prime_pow' {p k : ℕ} (hp : p.Prime) :
     σ₁ (p ^ k) = (p ^ (k + 1) - 1) / (p - 1) := by
   rw [sigma_one_apply_prime_pow hp, Nat.geomSum_eq hp.two_le]
 
+lemma cast_sigma_one_apply_prime_pow_aux' {α : Type*} [Field α] [CharZero α] {p k : ℕ}
+    (hp : p.Prime) :
+    (σ₁ (p ^ k) : α) = (p ^ (k + 1) - 1 : ℕ) / (p - 1 : ℕ) := by
+  have : 1 ≤ p := hp.one_le
+  rw [sigma_one_apply_prime_pow' hp, Nat.cast_div (Nat.sub_one_dvd_pow_sub_one p (k + 1))]
+  simp only [ne_eq, cast_eq_zero]
+  have := hp.two_le
+  cutsat
+
+lemma cast_sigma_one_apply_prime_pow' {α : Type*} [Field α] [CharZero α] {p k : ℕ} (hp : p.Prime) :
+    (σ₁ (p ^ k) : α) = (p ^ (k + 1) - 1) / (p - 1) := by
+  have : 1 ≤ p := hp.one_le
+  rw [cast_sigma_one_apply_prime_pow_aux' hp, Nat.cast_sub (one_le_pow _ _ hp.pos),
+    Nat.cast_sub this, Nat.cast_one, Nat.cast_pow]
+
 lemma factorization_eq {n p k : ℕ} (h₁ : p ^ k ∣ n) (h₂ : ¬ p ^ (k + 1) ∣ n)
     (hp : p.Prime) :
     n.factorization p = k := by

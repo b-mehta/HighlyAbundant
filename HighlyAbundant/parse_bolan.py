@@ -15,40 +15,36 @@ with open("HighlyAbundant/bolanLadder.txt", "r") as file:
         a, b, c = i.split(";")
         [l, u] = eval(a)
 
-        if l <= 257:
+        if l == 256:
             continue
 
-        adds = Counter(eval(b))
-        subs = Counter(eval(c))
+        muls = eval(b)
+        divs = eval(c)
 
-        ladder.append((l, u, subs, adds))
+        mulsl = []
+        for (p, k) in sorted(muls.items()):
+            i = floor_log(u, p)
+            mulsl.append((p, k, i))
+        divsl = sorted([i for i,j in divs.items()])
 
-for (i, (l, u, subs, adds)) in enumerate(ladder[:100]):
-    bad = []
-    for (p, k) in adds.items():
-        if p > u: continue
-        inc = floor_log(l, p)
-        inc2 = floor_log(u, p)
-        if inc != inc2:
-            if ladder[i+1][0] <= p ** inc2 + 1:
-                pass
-            else:
-                bad.append(p)
-        # adds[p] += inc
-        # subs[p] += inc
+        ladder.append((l, u, muls, divs))
 
-    print(l, u)
-    if len(bad) > 1:
-        print(bad)
-    adds = sorted(adds.items())
-    subs = sorted(subs.items())
+        print(f"""\
+def data_{l} : ProofData where
+  lo := {l}
+  hi := {u}
+  muls := {mulsl}
+  divs := {divsl}
 
-#     print(f"""\
-# lemma not_HA_block_{l} : ∀ i ∈ Finset.Icc {l} {u}, ¬ IsHighlyAbundant (lcmRange i) :=
-#   prove_not_HA'
-#     {subs}
-#     {adds}
-# """)
+theorem not_HA_block_{l} :
+  ∀ i ∈ Finset.Icc {l} {u}, ¬ IsHighlyAbundant (lcmRange i) := data_{l}.not_HA'
+        """)
 
 
 
+
+# def data_727 : ProofData where
+#   lo := 727
+#   hi := 786
+#   muls := [(2, 1, 9), (11, 1, 2), (29, 1, 1), (787, 1, 0)]
+#   divs := [691, 727]
