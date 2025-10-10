@@ -13,13 +13,13 @@ theorem chunk3 : ∀ i, 149 ≤ i → i ≤ 168 → ¬ IsHighlyAbundant (lcmRang
 [149, 156];{2: 1, 5: 1, 13: 1, 157: 1};{137: 1, 149: 1},
 [151, 168];{2: 1, 5: 1, 13: 1, 173: 1};{149: 1, 151: 1}
 
-theorem chunk4 : ∀ i, 173 ≤ i → i ≤ 255 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk4a : ∀ i, 173 ≤ i → i ≤ 255 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
 [173, 242];{2: 2, 3: 1, 7: 1, 17: 1, 19: 1};{157: 1, 173: 1},
 [227, 255];{2: 1, 5: 1, 17: 1, 263: 1};{197: 1, 227: 1}
 
-theorem chunk5 : ∀ i, 256 ≤ i → i ≤ 256 → ¬ IsHighlyAbundant (lcmRange i) := by grind
+theorem chunk4b : ∀ i, 256 ≤ i → i ≤ 256 → ¬ IsHighlyAbundant (lcmRange i) := by grind
 
-theorem chunk6 : ∀ i, 257 ≤ i → i ≤ 11681631108 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk4c : ∀ i, 257 ≤ i → i ≤ 11681631108 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
 [257, 306];{2: 1, 3: 1, 5: 1, 7: 1, 307: 1};{251: 1, 257: 1},
 [277, 330];{2: 1, 3: 1, 5: 1, 7: 1, 331: 1};{251: 1, 277: 1},
 [313, 360];{2: 1, 5: 1, 19: 1, 397: 1};{241: 1, 313: 1},
@@ -119,3 +119,6 @@ theorem chunk6 : ∀ i, 257 ≤ i → i ≤ 11681631108 → ¬ IsHighlyAbundant 
 [4688951723, 6975757440];{2: 5, 3: 2, 17: 1, 19: 1, 103: 1, 307: 1, 109121: 1, 68483: 1, 68489: 1, 68477: 1};{4688951723: 1, 4688951699: 1, 4688951653: 1},
 [6602975069, 9354951840];{2: 4, 3: 2, 11: 1, 13: 2, 41: 1, 311: 1, 373: 1, 421: 1, 81281: 1, 81283: 1, 81293: 1};{6602975069: 1, 6602975053: 1, 6602975023: 1},
 [8840292047, 11681631108];{2: 2, 3: 1, 5: 2, 11: 1, 19: 1, 53: 1, 59: 1, 1867: 1, 2269: 1, 94033: 1, 94049: 1, 94057: 1};{8840292047: 1, 8840292001: 1, 8840291989: 1},
+
+theorem chunk4 : ∀ i, 173 ≤ i → i ≤ 11681631108 → ¬ IsHighlyAbundant (lcmRange i) := by
+  grind [chunk4a, chunk4b, chunk4c]

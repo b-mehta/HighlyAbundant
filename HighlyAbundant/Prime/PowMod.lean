@@ -56,7 +56,7 @@ namespace Tactic.powMod
 open Lean Meta Elab Tactic
 
 /-- Given `a, b, c, n : ℕ`, return `(m, ⊢ ℕ, ⊢ powModAux a b c n = m)`. -/
-def mkPowModAuxEq (a b c n : ℕ) (aE bE cE nE : Expr) : MetaM (ℕ × Expr × Expr) :=
+partial def mkPowModAuxEq (a b c n : ℕ) (aE bE cE nE : Expr) : MetaM (ℕ × Expr × Expr) :=
   if b = 0 then do
     let m : ℕ := c % n
     let mE : Expr := mkNatLit m
