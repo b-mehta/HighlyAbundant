@@ -136,22 +136,3 @@ def prove_pow_mod_tac (g : MVarId) : MetaM Unit := do
 elab "prove_pow_mod" : tactic => liftMetaFinishingTactic prove_pow_mod_tac
 
 end Tactic.powMod
-
-example :
-    powMod 2
-      2112421871326486211461011031931945323874719289347729538762174157135451276986
-      2112421871326486211461011031931945323874719289347729538762174157135451276987 =
-      1 := by
-  prove_pow_mod
-
-example : powMod 2304821 1 2308 = 1437 := by
-  prove_pow_mod
-
-example : powMod 2 23408 2307 = 778 := by
-  prove_pow_mod
-
-example : powMod 2 23408 2307 ≠ 1 := by
-  prove_pow_mod
-
-example : powMod 2 385273928 1000000007 = 3 := by
-  prove_pow_mod
