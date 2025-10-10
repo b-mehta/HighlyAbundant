@@ -5,6 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
+import Mathlib
 
 /-!
 # Using six primes to show certain numbers are not highly abundant
