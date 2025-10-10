@@ -18,6 +18,13 @@ Work in progress are formal verifications of the following:
 - Assuming the prime number theorem, `L_n` is highly abundant only finitely often.
 - Assuming [an effective version of the prime number theorem by Dusart](https://piyanit.nl/wp-content/uploads/2020/10/art_10.1007_s11139-016-9839-4.pdf), `L_n` is not highly abundant for `n ≥ 9 * 10^9`.
 
+## Verifying the formalisation
+This proof has been formalised in the Lean theorem prover. To confirm the correctness and completeness yourself, follow these steps.
+
+1. Make sure you have [installed Lean](https://lean-lang.org/install/).
+2. Download the repository using `git clone https://github.com/b-mehta/HighlyAbundant.git`.
+3. Open the directory where you downloaded the repository (but not any further sub-directory). Open a terminal in this directory and run lake exe cache get! to download built dependencies.
+4. In the terminal from step 3, run `lake build` to build this repository. When the process is complete, there will be no output. This shows the proof is correct. Had the build failed or the output included sorryAx, this would have indicated an error or an incomplete proof.
 
 
 <!-- ## GitHub configuration
