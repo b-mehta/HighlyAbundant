@@ -4,7 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import Mathlib
+import Mathlib.Algebra.GCDMonoid.Finset
+import Mathlib.Algebra.GCDMonoid.Nat
+import Mathlib.Algebra.Order.Star.Basic
+import Mathlib.Data.Nat.Cast.Field
+import Mathlib.NumberTheory.ArithmeticFunction
 
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
