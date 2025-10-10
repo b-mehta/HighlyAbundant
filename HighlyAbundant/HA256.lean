@@ -5,6 +5,8 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
+import HighlyAbundant.Basic
+import Mathlib.Tactic.NormNum.Prime
 
 /-!
 # Proof of non-high-abundance of lcm(1..256)

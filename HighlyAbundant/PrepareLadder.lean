@@ -6,6 +6,12 @@ Authors: Bhavik Mehta
 
 import HighlyAbundant.Basic
 import HighlyAbundant.Prime.Prime
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Analysis.Normed.Field.Lemmas
+import Mathlib.Data.Int.Star
+import Mathlib.Data.Rat.Star
+import Mathlib.Tactic.LinearCombination
+import Mathlib.Tactic.Ring.Compare
 
 /-!
 # Helpers for formalising ladders
