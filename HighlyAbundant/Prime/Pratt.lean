@@ -62,17 +62,20 @@ lemma pratt_rule_2' (a : ℕ) {p : ℕ} (hp : p ≠ 0)
 
 lemma prove_prime_step (p a q o t r k : ℕ) (ho : ((p.sub 1).div q).beq o) (hq : q.Prime)
     (ht : (r.mul (q.pow k)).beq t)
-    (hpow : powMod a o p ≠ 1)
+    (hpow : (powModTR a o p).beq 1 = false)
     (h : pratt_predicate p a r) :
     pratt_predicate p a t := by
   simp only [sub_eq, div_eq_div, beq_eq, pow_eq, mul_eq] at ho ht
+  replace hpow := Nat.ne_of_beq_eq_false hpow
+  simp only [powModTR_eq] at hpow
   subst ho ht
   induction k with
   | zero => rwa [pow_zero, mul_one]
   | succ n ih => exact pratt_rule_1' q _ hq (by ring) hpow ih
 
-lemma prove_prime_end {p : ℕ} (p' a : ℕ) (hp : p'.succ.beq p) (hpow : powMod a p' p = 1)
+lemma prove_prime_end {p : ℕ} (p' a : ℕ) (hp : p'.succ.beq p) (hpow : (powModTR a p' p).beq 1)
     (h : pratt_predicate p a p') : p.Prime := by
+  simp only [beq_eq, powModTR_eq] at hpow
   simp only [succ_eq_add_one, beq_eq] at hp
   cases hp
   exact pratt_rule_2' a (by omega) hpow h
