@@ -22,10 +22,6 @@ theorem chunk4a : ∀ i, 173 ≤ i → i ≤ 255 → ¬ IsHighlyAbundant (lcmRan
 [227, 255];{2: 1, 5: 1, 17: 1, 263: 1};{197: 1, 227: 1},
 theorem chunk4b : ∀ i, 256 ≤ i → i ≤ 256 → ¬ IsHighlyAbundant (lcmRange i) := by grind
 
-set_option profiler true
-set_option trace.Elab.definition.body true
-set_option pp.exprSizes true
-
 theorem chunk4c : ∀ i, 257 ≤ i → i ≤ 10029542461709537120579603199949529595648 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
 [257, 306];{2: 1, 3: 1, 5: 1, 7: 1, 307: 1};{251: 1, 257: 1},
 [277, 330];{2: 1, 3: 1, 5: 1, 7: 1, 331: 1};{251: 1, 277: 1},
