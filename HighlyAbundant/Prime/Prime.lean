@@ -40,6 +40,55 @@ def reformat : MPrattCertificate → PrattCertificate := Std.TreeMap.values ∘ 
 
 section
 
+open Lean Elab
+
+declare_syntax_cat pratt_certificate
+declare_syntax_cat bpratt_certificate
+declare_syntax_cat bpratt_entry
+
+syntax bpratt_certificate : pratt_certificate
+syntax "[" bpratt_entry,* "]" : bpratt_certificate
+syntax num : bpratt_entry
+syntax "(" num "," ppSpace num "," ppSpace "[" num,* "]" ")" : bpratt_entry
+
+partial def PrattEntry.ofSyntax : TSyntax `bpratt_entry → MetaM PrattEntry
+  | `(bpratt_entry| $n:num) => return .small n.getNat
+  | `(bpratt_entry| ( $n:num, $root:num, [ $[$nums],* ] )) => do
+      let n := n.getNat
+      let root := root.getNat
+      let nums := nums.map (·.getNat)
+      return .big n root nums.toList
+  | e => throwError "Invalid builder Pratt entry syntax {e}"
+
+partial def PrattCertificate.ofSyntaxAux : TSyntax `bpratt_certificate → MetaM PrattCertificate
+  | `(bpratt_certificate| [ $[$entries],* ] ) => do
+    let entries ← entries.mapM PrattEntry.ofSyntax
+    return entries.toList
+  | e => throwError "Invalid builder Pratt certificate syntax {e}"
+
+partial def PrattCertificate.ofSyntax : TSyntax `pratt_certificate → MetaM PrattCertificate
+  | `(pratt_certificate| $n:bpratt_certificate) => PrattCertificate.ofSyntaxAux n
+  | e => throwError "Invalid Pratt certificate syntax {e}"
+
+partial def PrattEntry.toSyntax : PrattEntry → MetaM (TSyntax `bpratt_entry)
+  | .small n => do
+      let n := Lean.Syntax.mkNatLit n
+      `(bpratt_entry| $n:num)
+  | .big n root factors => do
+      let n := Lean.Syntax.mkNatLit n
+      let root := Lean.Syntax.mkNatLit root
+      let factors := factors.toArray.map Lean.Syntax.mkNatLit
+      `(bpratt_entry| ($n:num, $root:num, [ $[$factors],* ]))
+
+partial def PrattCertificate.toSyntax (i : PrattCertificate) :
+    MetaM (TSyntax `bpratt_certificate) := do
+  let j ← i.toArray.mapM (·.toSyntax)
+  `(bpratt_certificate| [ $[$j],* ] )
+
+end
+
+section
+
 open Lean Elab Meta Tactic Qq
 
 def extractFactor.acc (p q i : ℕ) (hq : 1 < q) : ℕ × ℕ :=
@@ -143,6 +192,16 @@ def prove_prime (cert : PrattCertificate) (n : ℕ) : MetaM Expr := do
     entq.metaVar.mvarId! |>.assign entq.pf
     return pf
 
+elab "pratt" ppSpace certificate:pratt_certificate : tactic => liftMetaFinishingTactic fun goal ↦ do
+  match certificate with
+  | `(pratt_certificate| $cert:pratt_certificate) =>
+    let cert ← PrattCertificate.ofSyntax cert
+    let t := (← goal.getType'').consumeMData
+    let some nE := t.app1? ``Nat.Prime | throwError "goal for `pratt` not a primality test"
+    let some n := nE.nat? | throwError "not a numeral"
+    let pf ← prove_prime cert n
+    goal.assign pf
+
 def powMod (a b n : ℕ) : ℕ :=
   powModAux (a % n) b 1 where
   powModAux (a b c : ℕ) : ℕ :=
@@ -185,6 +244,14 @@ def mkPrimalityProof (n : ℕ) : MetaM Expr := do
   let cert ← makeCertificate n
   prove_prime cert n
 
+def mkCachedPrimalityProof (n : ℕ) : TacticM Expr := do
+  let e ← getEnv
+  let nm := toName n
+  bif e.constants.contains nm then
+    return mkConst nm
+  else
+    throwError s!"cached proof for {n} not found"
+
 elab_rules : tactic
   | `(tactic| prime) => do
     liftMetaFinishingTactic fun goal ↦ do
@@ -208,6 +275,3 @@ example : Nat.Prime 6602975069 := by prime
 example : Nat.Prime 8840291989 := by prime
 example : Nat.Prime 8840292001 := by prime
 example : Nat.Prime 8840292047 := by prime
-
---   divs := [6602975023, 6602975053, 6602975069]
---   divs := [8840291989, 8840292001, 8840292047]
