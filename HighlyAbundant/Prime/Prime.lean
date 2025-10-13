@@ -87,6 +87,25 @@ partial def PrattCertificate.toSyntax (i : PrattCertificate) :
 
 end
 
+
+section
+
+open Lean Elab Command
+
+syntax "mk_tiny_primes" num : command
+elab_rules : command
+  | `(mk_tiny_primes $j) => do
+    let j := j.getNat
+    for i in [2:j+1] do
+      if Nat.Prime i then
+        let nm := mkIdent (.mkStr2 "Nat" (s!"prime_{i}"))
+        let cmd ← `(command| def $nm : Nat.Prime $(Syntax.mkNatLit i) := by norm_num)
+        elabCommand cmd
+
+mk_tiny_primes 1000
+
+end
+
 section
 
 open Lean Elab Meta Tactic Qq
@@ -116,7 +135,7 @@ def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' root : ℕ) (pE 
   let mut t : ℕ := 1
   let mut res : ℕ := p'
   -- cur * res = p'
-  let mut pf ← mkAppM ``pratt_axiom #[pE, rootE]
+  let mut pf := mkApp2 (mkConst ``pratt_axiom) pE rootE
   -- pf will be a proof of `pratt_predicate p root t`
   let mut uses : Std.TreeSet ℕ := ∅
   for q in factors do
@@ -130,29 +149,11 @@ def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' root : ℕ) (pE 
     let o : ℕ := (p - 1) / q
     let oE : Expr := mkNatLit o
     let some entry := m.get? q | throwError s!"purported prime {q} not in certificate"
-    let hpow ← Tactic.powMod.provePowModNe root o p 1 rootE oE pE (mkNatLit 1)
+    let hpow ← Tactic.powMod.provePowModNe' root o p 1 rootE oE pE (mkNatLit 1)
     pf ← mkAppM ``prove_prime_step #[pE, rootE, qE, oE, tE, mkNatLit r, mkNatLit k,
-      ← mkEqRefl oE, entry.metaVar, ← mkEqRefl tE, hpow, pf]
+      eagerReflBoolTrue, entry.metaVar, eagerReflBoolTrue, hpow, pf]
     uses := insert q (uses.insertMany entry.uses)
   return (t, uses, pf)
-
-section
-
-open Command
-
-syntax "mk_tiny_primes" num : command
-elab_rules : command
-  | `(mk_tiny_primes $j) => do
-    let j := j.getNat
-    for i in [2:j+1] do
-      if Nat.Prime i then
-        let nm := mkIdent (.mkStr2 "Nat" (s!"prime_{i}"))
-        let cmd ← `(command| def $nm : Nat.Prime $(Syntax.mkNatLit i) := by norm_num)
-        elabCommand cmd
-
-mk_tiny_primes 1000
-
-end
 
 def toName (n : ℕ) : Name := .mkStr4 "Tactic" "Prime" "Nat" (s!"prime_{n}")
 
@@ -177,8 +178,8 @@ def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
     let (last, uses, pf) ← processEntryAux m p (p - 1) root pE rootE factors
     unless last = p - 1 do
       throwError "bad factorization {factors} of {p - 1} (missing {(p - 1) / last})"
-    let hpow ← Tactic.powMod.provePowModEq root p' p 1 rootE p'E pE
-    let pf ← mkAppM ``prove_prime_end #[p'E, rootE, ← mkEqRefl pE, hpow, pf]
+    let hpow ← Tactic.powMod.provePowModEq' root p' p 1 rootE p'E pE
+    let pf := mkApp6 (mkConst ``prove_prime_end) pE p'E rootE eagerReflBoolTrue hpow pf
     let i ← mkFreshExprMVar
       (some (← mkAppM ``Nat.Prime #[pE]))
       (userName := .mkSimple s!"prime_{p}")
@@ -275,3 +276,12 @@ example : Nat.Prime 6602975069 := by prime
 example : Nat.Prime 8840291989 := by prime
 example : Nat.Prime 8840292001 := by prime
 example : Nat.Prime 8840292047 := by prime
+
+set_option trace.Elab.definition.body true
+set_option pp.exprSizes true
+
+example : Nat.Prime 7484205022627358832362038205823524567570018795761675368007 := by pratt
+  [2, 3, 5, 7, 11, 13, 17, 23, 31, 37, 101, 227, 463, 557, 641, 797, 947, (1259, 2, [2, 17, 37]), (2393, 3, [2, 13, 23]), (3847, 5, [2, 3, 641]), (4787, 2, [2, 2393]), (5557, 2, [2, 3, 463]), (10949, 2, [2, 7, 17, 23]), (183871, 7, [2, 3, 5, 227]), (382589, 2, [2, 101, 947]), (722411, 2, [2, 5, 13, 5557]), (1444823, 5, [2, 722411]), (203421667, 3, [2, 3, 7, 1259, 3847]), (627053183, 5, [2, 7, 31, 1444823]), (64477539101, 2, [2, 5, 13, 797, 4787]), (120272246927083, 2, [2, 3, 10949, 203421667]), (249657031399073, 3, [2, 11, 64477539101]), (481088987708333, 2, [2, 120272246927083]), (1439421901384723, 2, [2, 3, 382589, 627053183]), (13073870015348242727214147396923554289, 3, [2, 37, 183871, 249657031399073, 481088987708333]), (7484205022627358832362038205823524567570018795761675368007, 3, [2, 3, 7, 17, 557, 1439421901384723, 13073870015348242727214147396923554289])]
+
+
+-- #eval 131715931587485903133664770501783872901180735752961173191222502260846184802138117218820246495979164495762424017769215925882581565859513559697500346853208717730048481311930278737221764046227216650748207028546755348290341925152606053939920784122173626831732721956717186562885471376983969828398653806057 - 1
