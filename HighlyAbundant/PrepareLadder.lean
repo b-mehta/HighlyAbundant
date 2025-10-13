@@ -447,34 +447,35 @@ open Lean Elab Tactic Meta
 syntax "rung" ppSpace entry : tactic
 syntax "ladder" ppSpace (entry,+,?) : tactic
 
-def proveAllPrimeMuls : (l : List (ℕ × ℕ × ℕ)) → MetaM Expr
+def proveAllPrimeMuls : (l : List (ℕ × ℕ × ℕ)) → TacticM Expr
   | [] => return mkConst `List.allPrimeMuls_nil
   | (p, k) :: xs => do
-    let h₁ ← Prime.mkPrimalityProof p
+    let h₁ ← Prime.mkCachedPrimalityProof p
     let h₂ ← proveAllPrimeMuls xs
     return mkApp5 (mkConst ``List.allPrimeMuls_cons) (mkNatLit p) (toExpr k) (toExpr xs) h₁ h₂
 
-def proveAllPrime : (l : List ℕ) → MetaM Expr
+def proveAllPrime : (l : List ℕ) → TacticM Expr
   | [] => return mkConst `List.allPrime_nil
   | p :: xs => do
-    let h₁ ← Prime.mkPrimalityProof p
+    let h₁ ← Prime.mkCachedPrimalityProof p
     let h₂ ← proveAllPrime xs
     return mkApp4 (mkConst ``List.allPrime_cons) (mkNatLit p) (toExpr xs) h₁ h₂
 
-def proveRung (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ) : MetaM Expr := do
+def proveRung (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ) : TacticM Expr := do
   let pf1 ← proveAllPrimeMuls muls
   let pf2 ← proveAllPrime divs
   mkAppM `not_HA #[mkNatLit lo, mkNatLit hi, toExpr muls, toExpr divs,
     eagerReflBoolTrue, eagerReflBoolTrue, eagerReflBoolTrue, eagerReflBoolTrue, eagerReflBoolTrue,
     eagerReflBoolTrue, eagerReflBoolTrue, pf1, pf2]
 
-elab_rules : tactic
-  | `(tactic| rung $e) => liftMetaFinishingTactic fun goal ↦ do
-    let (lo, hi, muls, divs) ← parseEntry e
-    let pf ← proveRung lo hi muls divs
-    goal.assign pf
+-- elab_rules : tactic
+--   | `(tactic| rung $e) =>
+    -- liftMetaFinishingTactic fun goal ↦ do
+    -- let (lo, hi, muls, divs) ← parseEntry e
+    -- let pf ← proveRung lo hi muls divs
+    -- goal.assign pf
 
-def proveLadder : (l : List (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)) → MetaM ((ℕ × ℕ) × Expr)
+def proveLadder : (l : List (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)) → TacticM ((ℕ × ℕ) × Expr)
   | [] => throwError "empty ladder"
   | [(lo, hi, muls, divs)] => do
     let pf1 ← proveRung lo hi muls divs
@@ -486,10 +487,13 @@ def proveLadder : (l : List (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)
       (mkNatLit hi') reflBoolTrue pf1 pf2)
 
 elab_rules : tactic
-  | `(tactic| ladder $[$es],*) => liftMetaFinishingTactic fun goal ↦ do
-    let r ← es.mapM parseEntry
-    let (_, pf) ← proveLadder r.toList
-    goal.assign pf
+  | `(tactic| ladder $[$es],*) => do
+    let r := Array.toList (← es.mapM (fun e ↦ parseEntry e))
+    withMainContext do
+      let g ← getMainGoal
+      let (_, pf) ← proveLadder r
+      g.assign pf
+      replaceMainGoal []
 
 end
 
