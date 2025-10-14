@@ -150,7 +150,7 @@ def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' : ℕ) (pE rootE
     let oE : Expr := mkNatLit o
     let some entry := m.get? q | throwError s!"purported prime {q} not in certificate"
     let pf1 := mkApp7 (mkConst ``prove_prime_step) pE rootE qE oE tE (mkNatLit r) (mkNatLit k)
-    pf := mkApp5 pf1 eagerReflBoolTrue entry.metaVar eagerReflBoolTrue eagerReflBoolFalse pf
+    pf := mkApp5 pf1 reflBoolTrue entry.metaVar reflBoolTrue eagerReflBoolFalse pf
     uses := insert q (uses.insertMany entry.uses)
   return (t, uses, pf)
 
@@ -177,7 +177,7 @@ def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
     let (last, uses, pf) ← processEntryAux m p (p - 1) pE rootE factors
     unless last = p - 1 do
       throwError "bad factorization {factors} of {p - 1} (missing {(p - 1) / last})"
-    let pf := mkApp6 (mkConst ``prove_prime_end) pE p'E rootE eagerReflBoolTrue eagerReflBoolTrue pf
+    let pf := mkApp6 (mkConst ``prove_prime_end) pE p'E rootE reflBoolTrue eagerReflBoolTrue pf
     let i ← mkFreshExprMVar
       (some (mkApp (mkConst ``Nat.Prime) (mkNatLit p)))
       (userName := .mkSimple s!"prime_{p}")
