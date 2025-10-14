@@ -149,8 +149,8 @@ def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' : ℕ) (pE rootE
     let o : ℕ := (p - 1) / q
     let oE : Expr := mkNatLit o
     let some entry := m.get? q | throwError s!"purported prime {q} not in certificate"
-    pf ← mkAppM ``prove_prime_step #[pE, rootE, qE, oE, tE, mkNatLit r, mkNatLit k,
-      eagerReflBoolTrue, entry.metaVar, eagerReflBoolTrue, eagerReflBoolFalse, pf]
+    let pf1 := mkApp7 (mkConst ``prove_prime_step) pE rootE qE oE tE (mkNatLit r) (mkNatLit k)
+    pf := mkApp5 pf1 eagerReflBoolTrue entry.metaVar eagerReflBoolTrue eagerReflBoolFalse pf
     uses := insert q (uses.insertMany entry.uses)
   return (t, uses, pf)
 
@@ -163,7 +163,7 @@ def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
       throwError "{p} is not a recognised small prime"
     let nm := toName p
     let mv ← mkFreshExprMVar
-      (some (← mkAppM ``Nat.Prime #[mkNatLit p]))
+      (some (mkApp (mkConst ``Nat.Prime) (mkNatLit p)))
       (userName := .mkSimple s!"prime_{p}")
     let pf := mkConst nm
     return insert (p, ⟨mv, ∅, pf⟩) m
@@ -179,7 +179,7 @@ def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
       throwError "bad factorization {factors} of {p - 1} (missing {(p - 1) / last})"
     let pf := mkApp6 (mkConst ``prove_prime_end) pE p'E rootE eagerReflBoolTrue eagerReflBoolTrue pf
     let i ← mkFreshExprMVar
-      (some (← mkAppM ``Nat.Prime #[pE]))
+      (some (mkApp (mkConst ``Nat.Prime) (mkNatLit p)))
       (userName := .mkSimple s!"prime_{p}")
     return insert (p, ⟨i, uses, pf⟩) m
 
