@@ -5,7 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
-import HighlyAbundant.Prime.Prime
+import HighlyAbundant.SetupPrimes
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Analysis.Normed.Field.Lemmas
 import Mathlib.Data.Int.Star
@@ -332,6 +332,20 @@ def BChain (r : α → α → Bool) : List α → Bool
   | [_] => true
   | a :: b :: xs => r a b && BChain r (b :: xs)
 
+def BChain' (r : α → α → Bool) : List α → Bool :=
+  List.rec true fun a bxs t ↦ List.rec true (fun b _ _ ↦ (r a b).and t) bxs
+
+lemma bChain_eq_bChain' (r : α → α → Bool) (l : List α) :
+    l.BChain r = l.BChain' r := by
+  fun_induction List.BChain with
+  | case1 => rfl
+  | case2 => rfl
+  | case3 _ _ _ ih =>
+    rw [BChain']
+    dsimp
+    rw [ih]
+    rfl
+
 @[simp] lemma bChain_iff_isChain (r : α → α → Bool) (l : List α) :
     l.BChain r ↔ l.IsChain (r · ·) := by fun_induction List.BChain with simp [*]
 
@@ -464,9 +478,9 @@ def proveAllPrime : (l : List ℕ) → TacticM Expr
 def proveRung (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ) : TacticM Expr := do
   let pf1 ← proveAllPrimeMuls muls
   let pf2 ← proveAllPrime divs
-  mkAppM `not_HA #[mkNatLit lo, mkNatLit hi, toExpr muls, toExpr divs,
-    eagerReflBoolTrue, eagerReflBoolTrue, eagerReflBoolTrue, eagerReflBoolTrue, eagerReflBoolTrue,
-    eagerReflBoolTrue, eagerReflBoolTrue, pf1, pf2]
+  let pf3 := mkApp4 (mkConst ``not_HA) (mkNatLit lo) (mkNatLit hi) (toExpr muls) (toExpr divs)
+  return mkApp9 pf3 reflBoolTrue reflBoolTrue reflBoolTrue reflBoolTrue reflBoolTrue reflBoolTrue
+    reflBoolTrue pf1 pf2
 
 -- elab_rules : tactic
 --   | `(tactic| rung $e) =>

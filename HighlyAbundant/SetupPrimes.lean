@@ -1,4 +1,3 @@
-import HighlyAbundant.PrepareLadder
 import HighlyAbundant.Prime.Prime
 
 theorem Tactic.Prime.Nat.prime_1009 : Nat.Prime 1009 := by pratt
