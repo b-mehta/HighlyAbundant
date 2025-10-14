@@ -29,11 +29,9 @@ where
     Nat.rec (fun _ _ _ => 0)
       (fun _ r a b c =>
         (b.beq 0).rec
-          ((b.beq 1).rec
-            (((b.mod 2).beq 0).rec
-                (r ((a.mul a).mod n) (b.div 2) ((a.mul c).mod n))
-                (r ((a.mul a).mod n) (b.div 2) c))
-            ((a.mul c).mod n))
+          (((b.mod 2).beq 0).rec
+            (r ((a.mul a).mod n) (b.div 2) ((a.mul c).mod n))
+            (r ((a.mul a).mod n) (b.div 2) c))
           (c.mod n))
 
 def powModTR' (a b n : ℕ) : ℕ :=
@@ -60,16 +58,14 @@ lemma Bool.rec_eq_ite {α : Type*} {b : Bool} {t f : α} : b.rec f t = if b then
 lemma powModTR_aux_succ_eq {n a b c fuel : ℕ} :
     powModTR.aux n (fuel + 1) a b c =
       (b.beq 0).rec (true := c % n)
-      ((b.beq 1).rec (true := (a * c) % n)
       (((b % 2).beq 0).rec
-          (powModTR.aux n fuel (a * a % n) (b / 2) (a * c % n))
-          (powModTR.aux n fuel (a * a % n) (b / 2) c))) := by
+        (powModTR.aux n fuel (a * a % n) (b / 2) (a * c % n))
+        (powModTR.aux n fuel (a * a % n) (b / 2) c)) := by
   rfl
 
 lemma powModTR_aux_succ_eq' {n a b c fuel : ℕ} :
     powModTR.aux n (fuel + 1) a b c =
       if b = 0 then c % n else
-      if b = 1 then a * c % n else
       if b % 2 = 0 then powModTR.aux n fuel (a * a % n) (b / 2) c
       else powModTR.aux n fuel (a * a % n) (b / 2) (a * c % n) := by
   simp only [powModTR_aux_succ_eq, Bool.rec_eq_ite, beq_eq]
@@ -82,8 +78,6 @@ lemma powModTR_aux_eq (n a b c fuel) (hfuel : b < fuel) :
     rw [powModTR_aux_succ_eq']
     split
     case isTrue hb0 => rw [hb0, powModAux, pow_zero, one_mul]
-    split
-    case isTrue hb1 => rw [hb1, powModAux, pow_one]
     split
     case isTrue hb0 hbe =>
       rw [ih _ _ _ (by omega)]
