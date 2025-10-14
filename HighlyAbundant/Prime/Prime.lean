@@ -188,6 +188,8 @@ def prove_prime (cert : PrattCertificate) (n : ℕ) : MetaM Expr := do
   let some ent := data.get? n | throwError "the certificate doesn't prove {n} is prime"
   ent.uses.foldrM (init := ent.pf) fun q pf => do
     let some entq := data.get? q | throwError "internal error 1"
+    -- let e ← mkLetFVars #[entq.metaVar] pf (binderInfoForMVars := .default)
+    -- return mkApp e entq.pf
     entq.metaVar.mvarId! |>.assign entq.pf
     return pf
 
