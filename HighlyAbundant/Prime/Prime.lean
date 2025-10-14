@@ -177,7 +177,7 @@ def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
     let (last, uses, pf) ← processEntryAux m p (p - 1) pE rootE factors
     unless last = p - 1 do
       throwError "bad factorization {factors} of {p - 1} (missing {(p - 1) / last})"
-    let pf := mkApp6 (mkConst ``prove_prime_end) pE p'E rootE reflBoolTrue eagerReflBoolTrue pf
+    let pf := mkApp6 (mkConst ``prove_prime_end) pE p'E rootE reflBoolTrue pf eagerReflBoolTrue
     let i ← mkFreshExprMVar
       (some (mkApp (mkConst ``Nat.Prime) (mkNatLit p)))
       (userName := .mkSimple s!"prime_{p}")

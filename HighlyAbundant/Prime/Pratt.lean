@@ -73,8 +73,8 @@ lemma prove_prime_step (p a q o t r k : ℕ) (ho : ((p.sub 1).div q).beq o) (hq 
   | zero => rwa [pow_zero, mul_one]
   | succ n ih => exact pratt_rule_1' q _ hq (by ring) hpow ih
 
-lemma prove_prime_end {p : ℕ} (p' a : ℕ) (hp : p'.succ.beq p) (hpow : (powModTR a p' p).beq 1)
-    (h : pratt_predicate p a p') : p.Prime := by
+lemma prove_prime_end {p : ℕ} (p' a : ℕ) (hp : p'.succ.beq p) (h : pratt_predicate p a p')
+    (hpow : (powModTR a p' p).beq 1) : p.Prime := by
   simp only [beq_eq, powModTR_eq] at hpow
   simp only [succ_eq_add_one, beq_eq] at hp
   cases hp
