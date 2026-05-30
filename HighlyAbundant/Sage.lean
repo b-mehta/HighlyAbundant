@@ -147,10 +147,14 @@ partial def search (B target num minp : Nat) : Bool :=
     num < B            -- σ(num) already ≥ σ(L); a witness iff it lies below B
   else
     let m := B / num
-    -- Shortcut: the prime `q ≥ max(minp, target-1)` has `σ(q) = q+1 ≥ target`,
-    -- so `num · q` is a witness as soon as it is below `B`.
-    let q := if target - 1 > minp then nextPrimeGE (target - 1) else minp
-    if num * q < B then true
+    -- Shortcut (guarded exactly as in the Sage source by `target - 1 < m`): when
+    -- there is room, the prime `q ≥ max(minp, target-1)` satisfies
+    -- `σ(q) = q + 1 ≥ target`, so `num · q` is an immediate witness once it is
+    -- below `B`. The guard also avoids hunting for a prime near `σ(L)` at the root.
+    if target - 1 < m then
+      let q := if target - 1 > minp then nextPrimeGE (target - 1) else minp
+      if num * q < B then true
+      else loop B target num m [minp] minp (minp - 1) minp
     else loop B target num m [minp] minp (minp - 1) minp
 
 end
