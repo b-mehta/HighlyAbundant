@@ -15,3 +15,7 @@ scope = "leanprover-community"
 
 [[lean_lib]]
 name = "HighlyAbundant"
+
+[[lean_exe]]
+name = "sage"
+root = "HighlyAbundant.Sage"
