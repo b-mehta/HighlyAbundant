@@ -21,28 +21,28 @@ cannot scan all `m < L_n`. Instead we port Alekseyev's search, which only ever
 builds candidate witnesses as products of prime powers over an increasing run of
 primes, pruning with the bound `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`.
 
-`search B target num minIdx` asks: starting from the partial product `num` (built
-from primes of index below `minIdx`), is there a factor `t` using only primes of
-index `≥ minIdx`, with `num·t < B`, such that `σ(num·t) ≥ σ(L)`? Since `σ` is
-multiplicative and `target = ⌈σ(L)/σ(num)⌉` is the remaining `σ` we still need,
-this is exactly `σ(t) ≥ target`. Hence `L_n` is highly abundant iff `search`
-finds **no** witness.
+`search pr B target num minIdx` asks: starting from the partial product `num`
+(built from primes of index below `minIdx`), is there a factor `t` using only
+primes of index `≥ minIdx`, with `num·t < B`, such that `σ(num·t) ≥ σ(L)`? Since
+`σ` is multiplicative and `target = ⌈σ(L)/σ(num)⌉` is the remaining `σ` we still
+need, this is exactly `σ(t) ≥ target`. Hence `L_n` is highly abundant iff
+`search` finds **no** witness.
 
 To stay rational-free we track the wheel's ratio `∏ p / ∏ (p-1)` as the pair
 `(prodP, prodDen)` of naturals and test `∏ p/(p-1) ≥ target/m` by
 cross-multiplication, `prodP * m ≥ target * prodDen`.
 
-## Only small primes are needed
+## Only the first few primes are needed
 
 A highly abundant number — and hence any competitor of `L_n` — has largest prime
-factor `O(log N · (log log N)^3)` (Alaoglu–Erdős, 1944); empirically it stays
-below `1.2 n` (e.g. `179` at `n = 148`). So we sieve the small primes once and
-drive the wheel by *indices* into that table. Because every prime the search
-touches is tiny, there is no need for a general primality test at all: the
-original Sage code's `next_prime(σ_L - 2)` shortcut is only relevant when a single
-*large* prime would finish a witness, which provably never happens on a highly
-abundant input (so this variant is specialised to deciding the highly abundant
-case, the only case of interest here).
+factor `O(log N · (log log N)^3)` (Alaoglu–Erdős, 1944); in practice the search
+for `L_n` only ever touches primes below `~1.4 n` (measured: the first 49 primes,
+up to 227, suffice for *every* `n ≤ 172`). So we sieve the primes up to a small
+bound depending on `n` and run the wheel over indices into that array `pr`. No
+general primality test is needed: the original Sage code's `next_prime(σ_L - 2)`
+shortcut only matters when a single *large* prime would finish a witness, which
+never happens on a highly abundant input — this variant is specialised to
+deciding the highly abundant case, the only case of interest here.
 
 Everything uses only the Lean core library, so the program compiles to a fast
 native executable (`lake exe sage`) without depending on Mathlib.
@@ -50,9 +50,7 @@ native executable (`lake exe sage`) without depending on Mathlib.
 
 namespace Sage
 
-/-! ## Precomputed small primes -/
-
-/-- Sieve of Eratosthenes: all primes `≤ N`. -/
+/-- Sieve of Eratosthenes: all primes `≤ N`, in increasing order. -/
 def sieveUpTo (N : Nat) : Array Nat := Id.run do
   let mut comp : Array Bool := Array.replicate (N + 1) false
   let mut res : Array Nat := #[]
@@ -65,65 +63,58 @@ def sieveUpTo (N : Nat) : Array Nat := Id.run do
         j := j + i
   return res
 
-/-- The primes `≤ 5000`. This covers every prime the search can need for `n` well
-into the hundreds (the largest prime factor of a competitor of `L_n` is `O(n)`). -/
-def primes : Array Nat := sieveUpTo 5000
-
-/-- The `i`-th prime (`prime 0 = 2`). -/
-@[inline] def prime (i : Nat) : Nat := primes[i]!
-
 /-! ## The search
 
-The wheel is a window of *consecutive* primes `primes[front..back]`, with
-`prodP = ∏ p` and `prodDen = ∏ (p-1)` over the window. `front > back` denotes the
-empty window (with `prodP = prodDen = 1`). -/
+`pr` is the array of small primes (`pr[0] = 2`). The wheel is a window of
+*consecutive* primes `pr[front..back]`, with `prodP = ∏ p` and `prodDen = ∏ (p-1)`
+over the window. `front > back` denotes the empty window (`prodP = prodDen = 1`). -/
 
 /-- Roll the window rightwards until its ratio `∏ p/(p-1) ≥ target/m`; return
 `none` once the window's prime product would exceed the size budget `m`. -/
-partial def extend (m target front back prodP prodDen : Nat) :
+partial def extend (pr : Array Nat) (m target front back prodP prodDen : Nat) :
     Option (Nat × Nat × Nat × Nat) :=
   if front ≤ back && prodP * m ≥ target * prodDen then
     some (front, back, prodP, prodDen)
   else
     let addIdx := if front ≤ back then back + 1 else front
-    let q := prime addIdx
+    let q := pr[addIdx]!
     let prodP' := prodP * q
     if prodP' > m then none
-    else extend m target front addIdx prodP' (prodDen * (q - 1))
+    else extend pr m target front addIdx prodP' (prodDen * (q - 1))
 
 mutual
 
 /-- For the front prime `p`, try exponents `k = 1, 2, …` (while `p^k ≤ m`),
 recursing on each `num · p^k`; stop once `σ(p^k) ≥ target`. -/
-partial def processExps (B target num p nextMinIdx m k : Nat) : Bool :=
+partial def processExps (pr : Array Nat) (B target num p nextMinIdx m k : Nat) : Bool :=
   let pk := p ^ k
   if pk > m then false
   else
     let spk := (p ^ (k + 1) - 1) / (p - 1)        -- σ(p^k)
     let target' := (target + spk - 1) / spk        -- ⌈target / σ(p^k)⌉
-    if search B target' (num * pk) nextMinIdx then true
+    if search pr B target' (num * pk) nextMinIdx then true
     else if spk ≥ target then false
-    else processExps B target num p nextMinIdx m (k + 1)
+    else processExps pr B target num p nextMinIdx m (k + 1)
 
 /-- Walk the wheel: use each front prime in turn (spawning its prime-power
 children), then drop it and advance to the next. -/
-partial def loop (B target num m front back prodP prodDen : Nat) : Bool :=
-  match extend m target front back prodP prodDen with
+partial def loop (pr : Array Nat) (B target num m front back prodP prodDen : Nat) : Bool :=
+  match extend pr m target front back prodP prodDen with
   | none => false
   | some (f, b, prodP', prodDen') =>
-    let p := prime f
-    if processExps B target num p (f + 1) m 1 then true
-    else loop B target num m (f + 1) b (prodP' / p) (prodDen' / (p - 1))
+    let p := pr[f]!
+    if processExps pr B target num p (f + 1) m 1 then true
+    else loop pr B target num m (f + 1) b (prodP' / p) (prodDen' / (p - 1))
 
 /-- Is there a witness `num · t < B` with `σ(num · t) ≥ σ(L)`, where `t` uses only
 primes of index `≥ minIdx` and `target = ⌈σ(L)/σ(num)⌉`? -/
-partial def search (B target num minIdx : Nat) : Bool :=
+partial def search (pr : Array Nat) (B target num minIdx : Nat) : Bool :=
   if target ≤ 1 then
     num < B            -- σ(num) already ≥ σ(L); a witness iff it lies below B
   else
     let m := B / num
-    let p0 := prime minIdx
-    loop B target num m minIdx minIdx p0 (p0 - 1)
+    let p0 := pr[minIdx]!
+    loop pr B target num m minIdx minIdx p0 (p0 - 1)
 
 end
 
@@ -132,10 +123,6 @@ end
 `L_n = ∏_{p ≤ n} p^{e_p}` with `e_p` the largest exponent with `p^{e_p} ≤ n`, so
 we obtain `L_n` and `σ(L_n)` exactly without factoring a huge number. -/
 
-/-- The primes `≤ n` (read off the precomputed sieve; needs `n ≤ 5000`). -/
-def primesUpTo (n : Nat) : List Nat :=
-  primes.toList.takeWhile (· ≤ n)
-
 /-- The largest exponent `e ≥ 1` with `p ^ e ≤ n` (for `2 ≤ p ≤ n`). -/
 partial def maxExp (p n : Nat) : Nat :=
   let rec go (e pe : Nat) : Nat := if pe * p ≤ n then go (e + 1) (pe * p) else e
@@ -143,7 +130,7 @@ partial def maxExp (p n : Nat) : Nat :=
 
 /-- The factorisation of `L_n = lcm(1..n)` as a list `(p, e_p)`. -/
 def lcmFact (n : Nat) : List (Nat × Nat) :=
-  (primesUpTo n).map (fun p => (p, maxExp p n))
+  (sieveUpTo n).toList.map (fun p => (p, maxExp p n))
 
 /-- `L_n = lcm(1..n)`. -/
 def lcmVal (n : Nat) : Nat :=
@@ -153,10 +140,13 @@ def lcmVal (n : Nat) : Nat :=
 def sigmaLcm (n : Nat) : Nat :=
   (lcmFact n).foldl (fun acc pe => acc * ((pe.1 ^ (pe.2 + 1) - 1) / (pe.1 - 1))) 1
 
-/-- Is `lcm(1..n)` highly abundant? (No witness strictly below it.) -/
+/-- Is `lcm(1..n)` highly abundant? (No witness strictly below it.)
+
+The search only touches primes below `~1.4 n`, so a sieve to `3 n + 50` has ample
+margin (e.g. for `n ≤ 172` it needs primes up to 227, well under the bound). -/
 def isHighlyAbundantLcm (n : Nat) : Bool :=
   let B := lcmVal n
-  if B ≤ 1 then true else !search B (sigmaLcm n) 1 0
+  if B ≤ 1 then true else !search (sieveUpTo (3 * n + 50)) B (sigmaLcm n) 1 0
 
 /-! ## A brute-force cross-check for small inputs
 
