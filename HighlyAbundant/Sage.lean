@@ -27,13 +27,14 @@ and to reason about). The frames are:
 * `node target num minIdx` — a subproblem: look for a witness extending `num`
   using primes of index `≥ minIdx`. If `target ≤ 1` then `σ(num) ≥ σ(L)` already,
   so `num` is a witness iff `num < L`; otherwise expand it into a `wheel`.
-* `wheel … front back lhs rhs` — choosing the next prime factor. We slide a window
-  of consecutive primes `primes[front..back]`; since `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`,
-  a window can only yield a witness once `∏ p/(p-1) ≥ target/m` (`m = L/num`), and
-  is hopeless once its product exceeds `m`. To avoid multiplying huge numbers we
-  carry `lhs = (∏ p)·m` and `rhs = target·(∏ (p-1))`: feasibility is `lhs ≥ rhs`
-  and the budget test is `lhs > m·m`. A feasible window emits an `exps` frame for
-  its front prime and a `wheel` frame for the window with that prime dropped.
+* `wheel … front back lhs rhs` — choosing the next prime factor. The helper
+  `extend` slides a window of consecutive primes `primes[front..back]`; since
+  `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`, a window can only yield a witness once
+  `∏ p/(p-1) ≥ target/m` (`m = L/num`), and is hopeless once its product exceeds
+  `m`. To avoid multiplying huge numbers we carry `lhs = (∏ p)·m` and
+  `rhs = target·(∏ (p-1))`: feasibility is `lhs ≥ rhs` and the budget test is
+  `lhs > m·m`. A feasible window emits an `exps` frame for its front prime and a
+  `wheel` frame for the window with that prime dropped.
 * `exps … p pk` — the exponents of the front prime `p`, with `pk = p^k`. It emits
   the child `node` for `num·p^k` and, unless `σ(p^k) ≥ target`, an `exps` frame for
   `k+1` (carrying `pk·p`, reusing `pk` so no power is recomputed).
@@ -61,6 +62,38 @@ def primes : Array Nat := #[
     419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503,
     509, 521, 523, 541]
 
+/-- The result of growing the wheel's prime window: it ran off the table, or its
+product exceeded the budget (no witness down this branch), or it is feasible
+(`primes[front..back]`, with `lhs = (∏ p)·m`, `rhs = target·(∏ (p-1))`). -/
+inductive Wheel where
+  | exhaustedTable
+  | overBudget
+  | window (back lhs rhs : Nat)
+
+/-- Grow the window's right end until it is feasible (`lhs ≥ rhs`), reporting
+`overBudget` once the product exceeds the budget (`∏ p > m`, tested `lhs > m·m`) or
+`exhaustedTable` past the end of `primes`. `front` is unchanged, so not returned.
+`fuel ≥ primes.size` always suffices (the window cannot exceed the table).
+Structurally recursive on `fuel`, so it is a plain terminating helper, not part of
+the search's recursion. -/
+def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
+  match fuel with
+  | 0 => .exhaustedTable
+  | fuel + 1 =>
+    if front ≤ back then
+      if lhs ≥ rhs then .window back lhs rhs
+      else match primes[back + 1]? with
+        | none => .exhaustedTable
+        | some q =>
+          let lhs' := lhs * q
+          if lhs' > m2 then .overBudget else extend fuel m2 front (back + 1) lhs' (rhs * (q - 1))
+    else  -- empty window (lhs = m, rhs = target): seed it with primes[front]
+      match primes[front]? with
+      | none => .exhaustedTable
+      | some q =>
+        let lhs' := lhs * q
+        if lhs' > m2 then .overBudget else extend fuel m2 front front lhs' (rhs * (q - 1))
+
 /-- A pending task in the depth-first search (see the module docstring). `B = L` is
 fixed throughout, so it is not stored in frames. -/
 inductive Frame where
@@ -83,27 +116,15 @@ def step (B : Nat) : Nat → List Frame → Option Bool
         let m := B / num
         step B fuel (.wheel target num m (m * m) minIdx minIdx (p0 * m) (target * (p0 - 1)) :: rest)
   | fuel + 1, .wheel target num m m2 front back lhs rhs :: rest =>
-    if front ≤ back then
-      if lhs ≥ rhs then  -- feasible window: use front prime, keep sliding from front+1
-        match primes[front]? with
-        | none => none
-        | some p =>
-          step B fuel (.exps target num (front + 1) m p p ::
-            .wheel target num m m2 (front + 1) back (lhs / p) (rhs / (p - 1)) :: rest)
-      else  -- grow the window
-        match primes[back + 1]? with
-        | none => none
-        | some q =>
-          let lhs' := lhs * q
-          if lhs' > m2 then step B fuel rest  -- over budget: this node has no witness
-          else step B fuel (.wheel target num m m2 front (back + 1) lhs' (rhs * (q - 1)) :: rest)
-    else  -- empty window (lhs = m, rhs = target): seed it with primes[front]
+    match extend (primes.size + 1) m2 front back lhs rhs with
+    | .exhaustedTable => none
+    | .overBudget => step B fuel rest  -- no feasible window: this node has no witness
+    | .window b lhs' rhs' =>           -- use the front prime, keep sliding from front+1
       match primes[front]? with
       | none => none
-      | some q =>
-        let lhs' := lhs * q
-        if lhs' > m2 then step B fuel rest
-        else step B fuel (.wheel target num m m2 front front lhs' (rhs * (q - 1)) :: rest)
+      | some p =>
+        step B fuel (.exps target num (front + 1) m p p ::
+          .wheel target num m m2 (front + 1) b (lhs' / p) (rhs' / (p - 1)) :: rest)
   | fuel + 1, .exps target num nextMinIdx m p pk :: rest =>
     if pk > m then step B fuel rest  -- p^k > m: exponents of p exhausted
     else
