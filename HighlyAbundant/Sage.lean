@@ -6,51 +6,50 @@ Authors: Bhavik Mehta
 import Mathlib.Data.Nat.Log
 
 /-!
-# An executable check that `lcm(1..n)` is highly abundant
+# Deciding whether `lcm(1..n)` is highly abundant
 
-This is a Lean port of the Sage program by Max Alekseyev attached to the
-MathOverflow thread <https://mathoverflow.net/q/501066>, which decides whether
-`L_n = lcm(1, …, n)` is highly abundant.
+`N` is *highly abundant* if `σ(m) < σ(N)` for every `0 < m < N`, where `σ` is the
+sum of divisors. So `L = lcm(1..n)` fails to be highly abundant exactly when some
+`m < L` has `σ(m) ≥ σ(L)`; we call such an `m` a *witness*.
 
-A natural number `N` is **highly abundant** when `σ(m) < σ(N)` for every
-`0 < m < N`, where `σ` is the sum-of-divisors function. Equivalently, `N` is
-*not* highly abundant exactly when there is a *witness* `m < N` with
-`σ(m) ≥ σ(N)`.
+`L` is enormous, so we cannot scan `m < L`. Following Alekseyev
+(<https://mathoverflow.net/q/501066>) we hunt for a witness by building candidates
+as products of prime powers over an increasing run of primes. Writing `num` for
+the partial product (using primes below index `minIdx`) and `target = ⌈σ(L)/σ(num)⌉`
+for the sum of divisors still required, a witness extending `num` is a `t` using
+only primes of index `≥ minIdx` with `num·t < L` and `σ(t) ≥ target` (as `σ` is
+multiplicative). `search` looks for one.
 
-`L_n` is astronomically large (`L_67 ≈ 2·10^17`, `L_148 ≈ 10^61`, …), so we
-cannot scan all `m < L_n`. Instead we port Alekseyev's search, which only ever
-builds candidate witnesses as products of prime powers over an increasing run of
-primes, pruning with the bound `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`.
+Two ingredients keep the search finite:
 
-`search B target num minIdx` asks: starting from the partial product `num` (built
-from primes of index below `minIdx`), is there a factor `t` using only primes of
-index `≥ minIdx`, with `num·t < B`, such that `σ(num·t) ≥ σ(L)`? Since `σ` is
-multiplicative and `target = ⌈σ(L)/σ(num)⌉` is the remaining `σ` we still need,
-this is exactly `σ(t) ≥ target`. Hence `L_n` is highly abundant iff `search`
-finds **no** witness.
+* **The wheel.** For the next prime factor we consider a window of consecutive
+  primes `primes[front..back]`. Since `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`, such a window
+  can only produce a witness once `∏ p/(p-1) ≥ target/m` with `m = L/num`; we grow
+  the window until that holds and abandon the branch once the window's own product
+  exceeds `m`. To avoid multiplying huge numbers we carry the scaled products
+  `lhs = (∏ p)·m` and `rhs = target·(∏ (p-1))`, so the feasibility test is just
+  `lhs ≥ rhs` and the budget test is `lhs > m·m`.
 
-To stay rational-free we track the wheel's ratio `∏ p / ∏ (p-1)` as the pair
-`(prodP, prodDen)` of naturals and test `∏ p/(p-1) ≥ target/m` by
-cross-multiplication, `prodP * m ≥ target * prodDen`.
+* **A fixed prime table.** Every prime a witness can use is small (the largest
+  prime factor of a highly abundant number is `O(log N · (log log N)³)`,
+  Alaoglu–Erdős 1944; empirically `< 1.4 n`). We keep the first 100 primes, and
+  rather than *prove* the table always suffices, the search returns `none` the
+  moment it would need a prime beyond it. A result of `some _` is then a
+  self-contained certificate that the table was large enough for that run, so no
+  size bound need be assumed.
 
-## Only the first few primes are needed
+`highlyAbundantLcm? n` returns `some true` (highly abundant), `some false` (a
+witness exists), or `none` (the table was too small — enlarge `primes`).
 
-A highly abundant number — and hence any competitor of `L_n` — has largest prime
-factor `O(log N · (log log N)^3)` (Alaoglu–Erdős, 1944); in practice the search
-for `L_n` only ever touches primes below `~1.4 n` (measured: the first 49 primes,
-up to 227, suffice for *every* `n ≤ 172`). So instead of any primality test we
-just keep a short hard-coded table `primes` of the first 100 primes (up to 541)
-and run the wheel over indices into it. This supports `n` up to roughly `380`,
-covering the whole known highly-abundant range `n ≤ 172` with plenty of room.
-
-Everything uses only the Lean core library, so the program compiles to a fast
-native executable (`lake exe sage`) without depending on Mathlib.
+Every definition is total, so the search can be reasoned about; the intended
+soundness theorem is `highlyAbundantLcm? n = some true → IsHighlyAbundant L`.
+Depends only on `Mathlib.Data.Nat.Log`.
 -/
 
 namespace Sage
 
-/-- The first 100 primes (up to 541). Every prime the search touches for the
-supported range (`n ≲ 380`) lies in this table. -/
+/-- The first 100 primes (up to 541). The search reports `none` if it ever needs a
+prime beyond this table, so its size never has to be assumed correct. -/
 def primes : Array Nat := #[
     2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
     59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131,
@@ -60,178 +59,135 @@ def primes : Array Nat := #[
     419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503,
     509, 521, 523, 541]
 
-/-! ## The search
+/-- The outcome of growing the wheel's prime window. -/
+inductive Wheel where
+  /-- Needed a prime beyond `primes`; the search is inconclusive. -/
+  | exhaustedTable
+  /-- The window's prime product exceeded the budget `m`: this branch has no
+  witness (a sound "no"). -/
+  | overBudget
+  /-- A feasible window `primes[front..back]`, with `lhs = (∏ p)·m`,
+  `rhs = target·(∏ (p-1))`. -/
+  | window (back lhs rhs : Nat)
 
-The wheel is a window of *consecutive* primes `primes[front..back]`. Within one
-search node `m` and `target` are fixed, so rather than recompute the big products
-`prodP·m` and `target·prodDen` on every window step we carry them and update them
-incrementally by small factors:
-
-* `lhs = prodP · m`   (`prodP = ∏ p` over the window),
-* `rhs = target · prodDen`   (`prodDen = ∏ (p-1)`),
-
-with the empty window being `prodP = prodDen = 1`, i.e. `lhs = m`, `rhs = target`.
-The feasibility test `∏ p/(p-1) ≥ target/m` is then just `lhs ≥ rhs`, and the size
-test `prodP > m` is `lhs > m²` (passing `m2 = m·m`). Every per-step update is a
-multiplication by a tiny prime, never a product of two huge numbers. -/
-
-/-- Roll the window rightwards until it is feasible (`lhs ≥ rhs`); return the new
-right end with the updated products `(back, lhs, rhs)`, or `none` once the window
-product would exceed the budget (`lhs > m2`, i.e. `prodP > m`) or the prime table
-is exhausted (which never happens within the supported range). `front` is left
-unchanged, so we do not return it.
-
-Total: each step moves the window's right end strictly rightward, stopping at the
-end of `primes`. -/
-def extend (m2 front back lhs rhs : Nat) : Option (Nat × Nat × Nat) :=
+/-- Grow the window's right end until it is feasible (`lhs ≥ rhs`), reporting
+`overBudget` if the window product first exceeds `m` (tested as `lhs > m·m`, i.e.
+`∏ p > m`), or `exhaustedTable` if it runs off the end of `primes`. `front` is
+unchanged so it is not returned. -/
+def extend (m2 front back lhs rhs : Nat) : Wheel :=
   if h2 : front ≤ back then
-    if lhs ≥ rhs then
-      some (back, lhs, rhs)                          -- feasible window
+    if lhs ≥ rhs then .window back lhs rhs
     else if h : back + 1 < primes.size then
       let q := primes[back + 1]
       let lhs' := lhs * q
-      if lhs' > m2 then none                          -- prodP·m > m² ⟺ prodP > m
-      else extend m2 front (back + 1) lhs' (rhs * (q - 1))
-    else none
-  else                                                -- empty window (lhs = m, rhs = target)
+      if lhs' > m2 then .overBudget else extend m2 front (back + 1) lhs' (rhs * (q - 1))
+    else .exhaustedTable
+  else  -- empty window (lhs = m, rhs = target): seed it with primes[front]
     if h : front < primes.size then
       let q := primes[front]
       let lhs' := lhs * q
-      if lhs' > m2 then none
-      else extend m2 front front lhs' (rhs * (q - 1))
-    else none
+      if lhs' > m2 then .overBudget else extend m2 front front lhs' (rhs * (q - 1))
+    else .exhaustedTable
   termination_by primes.size - back
   decreasing_by all_goals omega
 
-/-! These three functions are mutually recursive and **total**. Termination uses
-the lexicographic measure `(primes.size - frontier, phase, fuel)` where `frontier`
-is the current prime index (`minIdx` / `front` / `nextMinIdx`):
+/-! The three search functions are mutually recursive and total. Each returns
+`Option Bool`: `some true` = a witness exists, `some false` = no witness,
+`none` = the prime table was too small to decide. Termination uses the
+lexicographic measure `(primes.size - primeIndex, phase, fuel)`: the prime index
+strictly advances on the deep recursion, the `phase` tag (`search 1`, `loop 0`,
+`processExps 2`) orders same-index edges, and `fuel = ⌊log_p m⌋ + 1` bounds the
+exponent loop. -/
 
-* `processExps → search` and `loop → loop`/`processExps` strictly advance the
-  prime index, decreasing the first component;
-* `search → loop` (same index) and `processExps → search` (same index) decrease
-  the `phase` tag (`search = 1`, `loop = 0`, `processExps = 2`, ordered so each
-  edge drops);
-* `processExps → processExps` decreases the explicit `fuel`, which bounds the
-  exponent loop (`fuel = ⌊log_p m⌋ + 1 ≥` the number of `k` with `p^k ≤ m`).
-
-Totality matters here: a `partial def` compiles to an opaque constant with no
-usable definitional equations, so nothing can be proven about its result. Keeping
-these total is what will let us state and prove a soundness theorem later. -/
+/-- A uniform bound on the exponent of any prime in any candidate `≤ B`: since
+every prime is `≥ 2`, `p^k ≤ B` forces `k ≤ ⌊log₂ B⌋`. Computing this once (from
+the fixed `B`) lets `processExps` take it as fuel without recomputing a logarithm
+of a huge number on every wheel step. -/
+@[inline] def expBound (B : Nat) : Nat := Nat.log 2 B + 1
 
 mutual
 
-/-- For the front prime `p`, try exponents `k = 1, 2, …` (while `p^k ≤ m`),
-recursing on each `num · p^k`; stop once `σ(p^k) ≥ target`. `fuel` bounds the
-loop for termination and is never exhausted in practice. -/
-def processExps (B target num p nextMinIdx m fuel k : Nat) : Bool :=
-  if fuel = 0 then false
+/-- Try exponents `k = 1, 2, …` of the front prime `p` (while `p^k ≤ m`), recursing
+on each `num · p^k`; stop once `σ(p^k) ≥ target`. `fb = expBound B` is the constant
+fuel that bounds this loop and is forwarded to `search`. -/
+def processExps (B target num p nextMinIdx m fb fuel k : Nat) : Option Bool :=
+  if fuel = 0 then none
   else
     let pk := p ^ k
-    if pk > m then false
+    if pk > m then some false
     else
       let spk := (p ^ (k + 1) - 1) / (p - 1)        -- σ(p^k)
       let target' := (target + spk - 1) / spk        -- ⌈target / σ(p^k)⌉
-      if search B target' (num * pk) nextMinIdx then true
-      else if spk ≥ target then false
-      else processExps B target num p nextMinIdx m (fuel - 1) (k + 1)
+      match search B target' (num * pk) nextMinIdx fb with
+      | none => none
+      | some true => some true
+      | some false =>
+        if spk ≥ target then some false
+        else processExps B target num p nextMinIdx m fb (fuel - 1) (k + 1)
   termination_by (primes.size - nextMinIdx, 2, fuel)
 
-/-- Walk the wheel: use the front prime, then drop it and advance to the next. -/
-def loop (B target num m m2 front back lhs rhs : Nat) : Bool :=
+/-- Use each front prime of the wheel in turn, then drop it and advance. -/
+def loop (B target num m m2 front back lhs rhs fb : Nat) : Option Bool :=
   match extend m2 front back lhs rhs with
-  | none => false
-  | some (b, lhs', rhs') =>
+  | .exhaustedTable => none
+  | .overBudget => some false
+  | .window b lhs' rhs' =>
     if hf : front < primes.size then
       let p := primes[front]
-      if processExps B target num p (front + 1) m (Nat.log p m + 1) 1 then true
-      else loop B target num m m2 (front + 1) b (lhs' / p) (rhs' / (p - 1))
-    else false
+      match processExps B target num p (front + 1) m fb fb 1 with
+      | none => none
+      | some true => some true
+      | some false => loop B target num m m2 (front + 1) b (lhs' / p) (rhs' / (p - 1)) fb
+    else none
   termination_by (primes.size - front, 0, 0)
 
 /-- Is there a witness `num · t < B` with `σ(num · t) ≥ σ(L)`, where `t` uses only
-primes of index `≥ minIdx` and `target = ⌈σ(L)/σ(num)⌉`? -/
-def search (B target num minIdx : Nat) : Bool :=
+primes of index `≥ minIdx` and `target = ⌈σ(L)/σ(num)⌉`? `fb = expBound B`. -/
+def search (B target num minIdx fb : Nat) : Option Bool :=
   if target ≤ 1 then
-    num < B            -- σ(num) already ≥ σ(L); a witness iff it lies below B
+    some (decide (num < B))   -- σ(num) ≥ σ(L) already; `num` is a witness iff `num < B`
   else if h : minIdx < primes.size then
     let m := B / num
     let p0 := primes[minIdx]
-    -- seed the one-prime window {p0}: lhs = p0·m, rhs = target·(p0-1), m2 = m²
-    loop B target num m (m * m) minIdx minIdx (p0 * m) (target * (p0 - 1))
-  else false
+    -- seed the one-prime window {p0}: lhs = p0·m, rhs = target·(p0-1), budget m2 = m²
+    loop B target num m (m * m) minIdx minIdx (p0 * m) (target * (p0 - 1)) fb
+  else none
   termination_by (primes.size - minIdx, 1, 0)
 
 end
 
-/-! ## `lcm(1..n)` and its `σ`, via prime factorisation
-
-`L_n = ∏_{p ≤ n} p^{e_p}` with `e_p = ⌊log_p n⌋` the largest exponent with
-`p^{e_p} ≤ n`, so we get `L_n` and `σ(L_n)` exactly without factoring. -/
-
-/-- `(L_n, σ(L_n))` computed together from the factorisation of `L_n = lcm(1..n)`.
-The exponent of `p` is `Nat.log p n = ⌊log_p n⌋`, the largest `e` with `p^e ≤ n`. -/
+/-- `(L_n, σ(L_n))`, from `L_n = ∏_{p ≤ n} p^{⌊log_p n⌋}`. -/
 def lcmData (n : Nat) : Nat × Nat :=
   (primes.toList.takeWhile (· ≤ n)).foldl
     (fun (acc : Nat × Nat) p =>
       let e := Nat.log p n
       (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
 
-/-- `L_n = lcm(1..n)`. -/
-def lcmVal (n : Nat) : Nat := (lcmData n).1
-
-/-- Is `lcm(1..n)` highly abundant? (No witness strictly below it.) -/
-def isHighlyAbundantLcm (n : Nat) : Bool :=
+/-- Whether `lcm(1..n)` is highly abundant: `some true` (yes), `some false` (no,
+a witness exists), or `none` (the prime table was too small — enlarge `primes`). -/
+def highlyAbundantLcm? (n : Nat) : Option Bool :=
   let (B, sL) := lcmData n
-  if B ≤ 1 then true else !search B sL 1 0
+  if B ≤ 1 then some true else (search B sL 1 0 (expBound B)).map (!·)
 
-/-! ## A brute-force cross-check for small inputs
-
-This is the literal definition of highly abundant. It is `O(N^2)`, so only usable
-for tiny `n`, but it lets us confirm the fast search against the definition. -/
-
-/-- `σ(n)` by directly summing divisors. -/
-def sigmaBrute (n : Nat) : Nat :=
-  (List.range (n + 1)).foldl (fun s d => if d != 0 && n % d == 0 then s + d else s) 0
-
-/-- `N` is highly abundant, checked directly against the definition. -/
-def isHighlyAbundantBrute (N : Nat) : Bool :=
-  let sN := sigmaBrute N
-  (List.range N).all (fun m => m == 0 || sigmaBrute m < sN)
-
-/-! ## Build-time sanity checks (kept tiny so they run instantly) -/
-
--- `L_n` is highly abundant for every `n ≤ 6`, and the fast search agrees with
--- the brute-force definition there.
-#eval (List.range 7).all isHighlyAbundantLcm
-#eval (List.range 7).all (fun n => isHighlyAbundantLcm n == isHighlyAbundantBrute (lcmVal n))
-
-/-! ## Executable entry point
-
-`lake exe sage [N]` verifies that `L_n` is highly abundant for every known
-highly-abundant index `n ≤ N` (default `N = 50`), and cross-checks the fast
-search against the brute-force definition for very small `n`. -/
-
-/-- The indices `n ≤ 172` for which `L_n` is known to be highly abundant. -/
+/-- Indices `n ≤ 172` for which `L_n` is known to be highly abundant. -/
 def knownHA (n : Nat) : Bool :=
   (1 ≤ n && n ≤ 70) || (81 ≤ n && n ≤ 96) || (125 ≤ n && n ≤ 148) || (169 ≤ n && n ≤ 172)
+
+-- Sanity: `L_n` is highly abundant for every `n ≤ 12`.
+#eval (List.range 13).all (highlyAbundantLcm? · == some true)
 
 end Sage
 
 open Sage in
+/-- `lake exe sage n₁ n₂ …` reports `highlyAbundantLcm?` (with timing) for each
+given `n`; with no arguments it checks every known highly-abundant `n ≤ 50`. -/
 def main (args : List String) : IO Unit := do
   let out ← IO.getStdout
-  let nMax := (args.head?.bind (·.toNat?)).getD 50
-  out.putStrLn s!"Verifying lcm(1..n) is highly abundant for known-HA n ≤ {nMax} ..."
-  let t0 ← IO.monoMsNow
-  let mut allOK := true
-  for n in [1:nMax+1] do
-    if knownHA n then
-      let ok := isHighlyAbundantLcm n
-      if !ok then allOK := false
-      out.putStrLn s!"  n={n}  L_n={lcmVal n}  highly abundant: {ok}"
-      out.flush
-  let t1 ← IO.monoMsNow
-  out.putStrLn s!"All known-HA L_n with n ≤ {nMax} verified highly abundant: {allOK}   ({t1 - t0} ms)"
-  let bruteOK := (List.range 9).all (fun n => isHighlyAbundantLcm n == isHighlyAbundantBrute (lcmVal n))
-  out.putStrLn s!"Fast search agrees with the brute-force definition for n ≤ 8: {bruteOK}"
+  let ns := if args.isEmpty then (List.range 51).filter knownHA else args.filterMap (·.toNat?)
+  for n in ns do
+    let t0 ← IO.monoMsNow
+    let r := highlyAbundantLcm? n
+    out.putStr s!"  n={n}  highly abundant: {r}"   -- forces `r` before reading the clock
+    out.flush
+    let t1 ← IO.monoMsNow
+    out.putStrLn s!"   ({t1 - t0} ms)"
