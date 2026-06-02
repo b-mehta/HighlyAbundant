@@ -3,6 +3,7 @@ Copyright (c) 2025 Bhavik Mehta. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
+import Mathlib.Data.Nat.Log
 
 /-!
 # An executable check that `lcm(1..n)` is highly abundant
@@ -74,23 +75,25 @@ The feasibility test `∏ p/(p-1) ≥ target/m` is then just `lhs ≥ rhs`, and 
 test `prodP > m` is `lhs > m²` (passing `m2 = m·m`). Every per-step update is a
 multiplication by a tiny prime, never a product of two huge numbers. -/
 
-/-- Roll the window rightwards until it is feasible (`lhs ≥ rhs`); return `none`
-once the window's prime product would exceed the budget (`lhs > m2`, i.e.
-`prodP > m`) or the prime table is exhausted (never, within the supported range).
+/-- Roll the window rightwards until it is feasible (`lhs ≥ rhs`); return the new
+right end with the updated products `(back, lhs, rhs)`, or `none` once the window
+product would exceed the budget (`lhs > m2`, i.e. `prodP > m`) or the prime table
+is exhausted (which never happens within the supported range). `front` is left
+unchanged, so we do not return it.
 
 Total: each step moves the window's right end strictly rightward, stopping at the
 end of `primes`. -/
-def extend (m2 front back lhs rhs : Nat) : Option (Nat × Nat × Nat × Nat) :=
+def extend (m2 front back lhs rhs : Nat) : Option (Nat × Nat × Nat) :=
   if h2 : front ≤ back then
     if lhs ≥ rhs then
-      some (front, back, lhs, rhs)                 -- feasible window
+      some (back, lhs, rhs)                          -- feasible window
     else if h : back + 1 < primes.size then
       let q := primes[back + 1]
       let lhs' := lhs * q
-      if lhs' > m2 then none                        -- prodP·m > m² ⟺ prodP > m
+      if lhs' > m2 then none                          -- prodP·m > m² ⟺ prodP > m
       else extend m2 front (back + 1) lhs' (rhs * (q - 1))
     else none
-  else                                              -- empty window (lhs = m, rhs = target)
+  else                                                -- empty window (lhs = m, rhs = target)
     if h : front < primes.size then
       let q := primes[front]
       let lhs' := lhs * q
@@ -100,44 +103,64 @@ def extend (m2 front back lhs rhs : Nat) : Option (Nat × Nat × Nat × Nat) :=
   termination_by primes.size - back
   decreasing_by all_goals omega
 
+/-! These three functions are mutually recursive and **total**. Termination uses
+the lexicographic measure `(primes.size - frontier, phase, fuel)` where `frontier`
+is the current prime index (`minIdx` / `front` / `nextMinIdx`):
+
+* `processExps → search` and `loop → loop`/`processExps` strictly advance the
+  prime index, decreasing the first component;
+* `search → loop` (same index) and `processExps → search` (same index) decrease
+  the `phase` tag (`search = 1`, `loop = 0`, `processExps = 2`, ordered so each
+  edge drops);
+* `processExps → processExps` decreases the explicit `fuel`, which bounds the
+  exponent loop (`fuel = ⌊log_p m⌋ + 1 ≥` the number of `k` with `p^k ≤ m`).
+
+Totality matters here: a `partial def` compiles to an opaque constant with no
+usable definitional equations, so nothing can be proven about its result. Keeping
+these total is what will let us state and prove a soundness theorem later. -/
+
 mutual
 
 /-- For the front prime `p`, try exponents `k = 1, 2, …` (while `p^k ≤ m`),
-recursing on each `num · p^k`; stop once `σ(p^k) ≥ target`.
-
-`partial`: termination is the genuine content of the search (the remaining
-`target` strictly drops on each recursive `search`), which is not structural, so
-we do not prove it here — this is an executable check, not a verified lemma. -/
-partial def processExps (B target num p nextMinIdx m k : Nat) : Bool :=
-  let pk := p ^ k
-  if pk > m then false
+recursing on each `num · p^k`; stop once `σ(p^k) ≥ target`. `fuel` bounds the
+loop for termination and is never exhausted in practice. -/
+def processExps (B target num p nextMinIdx m fuel k : Nat) : Bool :=
+  if fuel = 0 then false
   else
-    let spk := (p ^ (k + 1) - 1) / (p - 1)        -- σ(p^k)
-    let target' := (target + spk - 1) / spk        -- ⌈target / σ(p^k)⌉
-    if search B target' (num * pk) nextMinIdx then true
-    else if spk ≥ target then false
-    else processExps B target num p nextMinIdx m (k + 1)
+    let pk := p ^ k
+    if pk > m then false
+    else
+      let spk := (p ^ (k + 1) - 1) / (p - 1)        -- σ(p^k)
+      let target' := (target + spk - 1) / spk        -- ⌈target / σ(p^k)⌉
+      if search B target' (num * pk) nextMinIdx then true
+      else if spk ≥ target then false
+      else processExps B target num p nextMinIdx m (fuel - 1) (k + 1)
+  termination_by (primes.size - nextMinIdx, 2, fuel)
 
-/-- Walk the wheel: use each front prime in turn (spawning its prime-power
-children), then drop it and advance to the next. -/
-partial def loop (B target num m m2 front back lhs rhs : Nat) : Bool :=
+/-- Walk the wheel: use the front prime, then drop it and advance to the next. -/
+def loop (B target num m m2 front back lhs rhs : Nat) : Bool :=
   match extend m2 front back lhs rhs with
   | none => false
-  | some (f, b, lhs', rhs') =>
-    let p := primes[f]!
-    if processExps B target num p (f + 1) m 1 then true
-    else loop B target num m m2 (f + 1) b (lhs' / p) (rhs' / (p - 1))
+  | some (b, lhs', rhs') =>
+    if hf : front < primes.size then
+      let p := primes[front]
+      if processExps B target num p (front + 1) m (Nat.log p m + 1) 1 then true
+      else loop B target num m m2 (front + 1) b (lhs' / p) (rhs' / (p - 1))
+    else false
+  termination_by (primes.size - front, 0, 0)
 
 /-- Is there a witness `num · t < B` with `σ(num · t) ≥ σ(L)`, where `t` uses only
 primes of index `≥ minIdx` and `target = ⌈σ(L)/σ(num)⌉`? -/
-partial def search (B target num minIdx : Nat) : Bool :=
+def search (B target num minIdx : Nat) : Bool :=
   if target ≤ 1 then
     num < B            -- σ(num) already ≥ σ(L); a witness iff it lies below B
-  else
+  else if h : minIdx < primes.size then
     let m := B / num
-    let p0 := primes[minIdx]!
+    let p0 := primes[minIdx]
     -- seed the one-prime window {p0}: lhs = p0·m, rhs = target·(p0-1), m2 = m²
     loop B target num m (m * m) minIdx minIdx (p0 * m) (target * (p0 - 1))
+  else false
+  termination_by (primes.size - minIdx, 1, 0)
 
 end
 
@@ -146,20 +169,12 @@ end
 `L_n = ∏_{p ≤ n} p^{e_p}` with `e_p = ⌊log_p n⌋` the largest exponent with
 `p^{e_p} ≤ n`, so we get `L_n` and `σ(L_n)` exactly without factoring. -/
 
-/-- The largest exponent `e` with `p ^ e ≤ n` (i.e. `⌊log_p n⌋`), for `2 ≤ p`. -/
-def maxExp (p n : Nat) : Nat := Id.run do
-  let mut e := 0
-  let mut pe := 1
-  while pe * p ≤ n do
-    pe := pe * p
-    e := e + 1
-  return e
-
-/-- `(L_n, σ(L_n))` computed together from the factorisation of `L_n = lcm(1..n)`. -/
+/-- `(L_n, σ(L_n))` computed together from the factorisation of `L_n = lcm(1..n)`.
+The exponent of `p` is `Nat.log p n = ⌊log_p n⌋`, the largest `e` with `p^e ≤ n`. -/
 def lcmData (n : Nat) : Nat × Nat :=
   (primes.toList.takeWhile (· ≤ n)).foldl
     (fun (acc : Nat × Nat) p =>
-      let e := maxExp p n
+      let e := Nat.log p n
       (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
 
 /-- `L_n = lcm(1..n)`. -/
