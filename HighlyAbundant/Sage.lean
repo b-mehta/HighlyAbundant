@@ -21,83 +21,34 @@ cannot scan all `m < L_n`. Instead we port Alekseyev's search, which only ever
 builds candidate witnesses as products of prime powers over an increasing run of
 primes, pruning with the bound `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`.
 
-`search B target numIdxs num minIdx` asks: starting from the partial product
-`num` (built from primes below index `minIdx`), is there a factor `t` using only
-primes of index `≥ minIdx`, with `num·t < B`, such that `σ(num·t) ≥ σ(L)`? Since
-`σ` is multiplicative and `target = ⌈σ(L)/σ(num)⌉` is the remaining `σ` we still
-need, this is exactly `σ(t) ≥ target`. Hence `L_n` is highly abundant iff
-`search` finds **no** witness.
-
-The single shortcut Alekseyev describes is included (guarded by `target - 1 < m`
-exactly as in the source): a prime `q ≥ target - 1` satisfies `σ(q) = q+1 ≥
-target`, so `num·q` is an immediate witness once it is `< B`. This is the
-`just_any = True` variant, which stops at the first witness.
+`search B target num minIdx` asks: starting from the partial product `num` (built
+from primes of index below `minIdx`), is there a factor `t` using only primes of
+index `≥ minIdx`, with `num·t < B`, such that `σ(num·t) ≥ σ(L)`? Since `σ` is
+multiplicative and `target = ⌈σ(L)/σ(num)⌉` is the remaining `σ` we still need,
+this is exactly `σ(t) ≥ target`. Hence `L_n` is highly abundant iff `search`
+finds **no** witness.
 
 To stay rational-free we track the wheel's ratio `∏ p / ∏ (p-1)` as the pair
 `(prodP, prodDen)` of naturals and test `∏ p/(p-1) ≥ target/m` by
 cross-multiplication, `prodP * m ≥ target * prodDen`.
 
-## Precomputed primes
+## Only small primes are needed
 
-Every prime the wheel touches is small: a highly abundant number — and hence any
-competitor of `L_n` — has largest prime factor `O(log N · (log log N)^3)`
-(Alaoglu–Erdős, 1944); empirically it stays below `1.2 n` (e.g. `179` at
-`n = 148`). So we sieve the small primes once and drive the wheel by *indices*
-into that table, instead of recomputing primes on the fly — this removes the
-overwhelming majority of the work (≈140 million primality tests at `n = 148`).
-Miller–Rabin is kept only for the shortcut's `nextPrimeGE`, which is never even
-reached on a highly abundant input.
+A highly abundant number — and hence any competitor of `L_n` — has largest prime
+factor `O(log N · (log log N)^3)` (Alaoglu–Erdős, 1944); empirically it stays
+below `1.2 n` (e.g. `179` at `n = 148`). So we sieve the small primes once and
+drive the wheel by *indices* into that table. Because every prime the search
+touches is tiny, there is no need for a general primality test at all: the
+original Sage code's `next_prime(σ_L - 2)` shortcut is only relevant when a single
+*large* prime would finish a witness, which provably never happens on a highly
+abundant input (so this variant is specialised to deciding the highly abundant
+case, the only case of interest here).
 
 Everything uses only the Lean core library, so the program compiles to a fast
 native executable (`lake exe sage`) without depending on Mathlib.
 -/
 
 namespace Sage
-
-/-! ## Miller–Rabin primality
-
-Only used by the shortcut's `nextPrimeGE` on large inputs (never reached for a
-highly abundant `L_n`). The bases below make it deterministic for `n < 3.3·10^24`. -/
-
-/-- `a ^ b mod n`. -/
-partial def powMod (a b n : Nat) : Nat :=
-  if b == 0 then 1 % n
-  else
-    let h := powMod (a * a % n) (b / 2) n
-    if b % 2 == 1 then h * a % n else h
-
-/-- Write `m = d · 2^r` with `d` odd, returning `(d, r)`. -/
-partial def factor2 (m r : Nat) : Nat × Nat :=
-  if m % 2 == 0 then factor2 (m / 2) (r + 1) else (m, r)
-
-/-- The square-and-check half of one Miller–Rabin round. -/
-partial def mrSquare (n x i : Nat) : Bool :=
-  if i == 0 then false
-  else
-    let x2 := x * x % n
-    if x2 == n - 1 then true else mrSquare n x2 (i - 1)
-
-/-- One Miller–Rabin round for base `a`, where `n - 1 = d · 2^r` with `d` odd. -/
-def mrPass (n d r a : Nat) : Bool :=
-  let x := powMod a d n
-  if x == 1 || x == n - 1 then true else mrSquare n x (r - 1)
-
-/-- Deterministic Miller–Rabin (correct for `n < 3.3·10^24`). -/
-def isPrime (n : Nat) : Bool :=
-  if n < 2 then false
-  else if n == 2 || n == 3 then true
-  else if n % 2 == 0 then false
-  else
-    let (d, r) := factor2 (n - 1) 0
-    [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37].all (fun a => a % n == 0 || mrPass n d r a)
-
-/-- The smallest prime strictly greater than `n`. -/
-partial def nextPrime (n : Nat) : Nat :=
-  if isPrime (n + 1) then n + 1 else nextPrime (n + 1)
-
-/-- The smallest prime `≥ n`. -/
-def nextPrimeGE (n : Nat) : Nat :=
-  if n ≤ 2 then 2 else if isPrime n then n else nextPrime n
 
 /-! ## Precomputed small primes -/
 
@@ -114,11 +65,11 @@ def sieveUpTo (N : Nat) : Array Nat := Id.run do
         j := j + i
   return res
 
-/-- The primes `≤ 5000`. This covers every prime the wheel can need for `n` well
+/-- The primes `≤ 5000`. This covers every prime the search can need for `n` well
 into the hundreds (the largest prime factor of a competitor of `L_n` is `O(n)`). -/
 def primes : Array Nat := sieveUpTo 5000
 
-/-- The `i`-th prime (`primes[0] = 2`). -/
+/-- The `i`-th prime (`prime 0 = 2`). -/
 @[inline] def prime (i : Nat) : Nat := primes[i]!
 
 /-! ## The search
@@ -172,13 +123,7 @@ partial def search (B target num minIdx : Nat) : Bool :=
   else
     let m := B / num
     let p0 := prime minIdx
-    -- Shortcut (guarded by `target - 1 < m`, as in the Sage source): when there is
-    -- room, the prime `q ≥ max(p0, target-1)` gives the immediate witness `num·q`.
-    if target - 1 < m then
-      let q := if target - 1 > p0 then nextPrimeGE (target - 1) else p0
-      if num * q < B then true
-      else loop B target num m minIdx minIdx p0 (p0 - 1)
-    else loop B target num m minIdx minIdx p0 (p0 - 1)
+    loop B target num m minIdx minIdx p0 (p0 - 1)
 
 end
 
@@ -187,9 +132,9 @@ end
 `L_n = ∏_{p ≤ n} p^{e_p}` with `e_p` the largest exponent with `p^{e_p} ≤ n`, so
 we obtain `L_n` and `σ(L_n)` exactly without factoring a huge number. -/
 
-/-- The primes `≤ n`. -/
+/-- The primes `≤ n` (read off the precomputed sieve; needs `n ≤ 5000`). -/
 def primesUpTo (n : Nat) : List Nat :=
-  (List.range (n + 1)).filter isPrime
+  primes.toList.takeWhile (· ≤ n)
 
 /-- The largest exponent `e ≥ 1` with `p ^ e ≤ n` (for `2 ≤ p ≤ n`). -/
 partial def maxExp (p n : Nat) : Nat :=
