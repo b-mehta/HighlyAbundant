@@ -51,16 +51,17 @@ witness exists), or `none` (enlarge `primes` or `fuel`).
 
 namespace Sage
 
-/-- The first 100 primes (up to 541). The search reads this only via `primes[i]?`,
-returning `none` past the end, so its size never has to be assumed correct. -/
+/-- The first 49 primes (up to 227). This is the shortest table for which every
+known highly-abundant `L_n` (`n ≤ 172`) is decided: the search reads it only via
+`primes[i]?` (returning `none` past the end), so it reports `none` rather than a
+wrong answer if it would ever need more, and the table size never has to be
+assumed correct. Enlarge it (e.g. with the rest of the first 100 primes) for
+larger `n`. -/
 def primes : Array Nat := #[
     2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
     59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131,
     137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223,
-    227, 229, 233, 239, 241, 251, 257, 263, 269, 271, 277, 281, 283, 293, 307, 311,
-    313, 317, 331, 337, 347, 349, 353, 359, 367, 373, 379, 383, 389, 397, 401, 409,
-    419, 421, 431, 433, 439, 443, 449, 457, 461, 463, 467, 479, 487, 491, 499, 503,
-    509, 521, 523, 541]
+    227]
 
 /-- The result of growing the wheel's prime window: it ran off the table, or its
 product exceeded the budget (no witness down this branch), or it is feasible
@@ -93,6 +94,30 @@ def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
       | some q =>
         let lhs' := lhs * q
         if lhs' > m2 then .overBudget else extend fuel m2 front front lhs' (rhs * (q - 1))
+
+/-- Readable, well-founded twin of `extend`, written to make the algorithm clear:
+it recurses directly on the window growing toward the end of the table
+(`termination_by primes.size - back`) rather than on a fuel counter. It is the
+specification `extend` implements — the two agree whenever `fuel ≥ primes.size`
+(then `extend` never hits its `fuel = 0` case before this one hits the table edge).
+`extend` is used by the search because the fuel form reduces in the kernel; this
+form is here only to be read and to prove `extend` against. -/
+def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
+  if front ≤ back then
+    if lhs ≥ rhs then .window back lhs rhs
+    else if h : back + 1 < primes.size then
+      let q := primes[back + 1]
+      let lhs' := lhs * q
+      if lhs' > m2 then .overBudget else extendWF m2 front (back + 1) lhs' (rhs * (q - 1))
+    else .exhaustedTable
+  else  -- empty window (lhs = m, rhs = target): seed it with primes[front]
+    if h : front < primes.size then
+      let q := primes[front]
+      let lhs' := lhs * q
+      if lhs' > m2 then .overBudget else extendWF m2 front front lhs' (rhs * (q - 1))
+    else .exhaustedTable
+  termination_by primes.size - back
+  decreasing_by all_goals omega
 
 /-- A pending task in the depth-first search (see the module docstring). `B = L` is
 fixed throughout, so it is not stored in frames. -/
