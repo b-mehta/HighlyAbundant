@@ -48,9 +48,9 @@ namespace ProofData
 
 variable (d : ProofData)
 
-lemma h_muls_sorted : d.muls.Sorted (·.1 < ·.1) := d.h_muls_chain.pairwise
+lemma h_muls_sorted : d.muls.Pairwise (·.1 < ·.1) := d.h_muls_chain.pairwise
 lemma h_muls_pairwise : d.muls.Pairwise (·.1 ≠ ·.1) := d.h_muls_sorted.imp ne_of_lt
-lemma h_divs_sorted : d.divs.Sorted (· < ·) := d.h_divs_chain.pairwise
+lemma h_divs_sorted : d.divs.Pairwise (· < ·) := d.h_divs_chain.pairwise
 lemma h_muls_nodup : d.muls.Nodup := d.h_muls_sorted.nodup
 lemma h_divs_nodup : d.divs.Nodup := d.h_divs_sorted.nodup
 
@@ -110,7 +110,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
     rw [Nat.mem_primeFactors_of_ne_zero lcmRange_ne_zero]
     refine ⟨d.h_divs _ hp, ?_⟩
     exact dvd_lcmRange_of_le (d.h_divs p hp).ne_zero
-      (by have := d.h_divs_lo; grind [Finset.mem_Icc])
+      (by have := d.h_divs_lo; grind)
   have : p ∉ d.muls.map (·.1) := by have := d.h_disjoint; grind
   convert_to p ^ (lcmRange i).factorization p ∣ d.K i
   · rw [d.h_divs_i hi _ hp, Nat.pow_one]
@@ -119,7 +119,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
 lemma L_eq {i : ℕ} :
     lcmRange i = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * d.K i := by
   conv_lhs =>
-    rw [← Nat.factorization_prod_pow_eq_self (n := lcmRange i) lcmRange_ne_zero, Finsupp.prod,
+    rw [← Nat.prod_factorization_pow_eq_self (n := lcmRange i) lcmRange_ne_zero, Finsupp.prod,
       Nat.support_factorization]
   rw [← Finset.prod_filter_mul_prod_filter_not (lcmRange i).primeFactors (· ∈ d.muls.map (·.1)) _]
   change _ * d.K i = _
@@ -284,7 +284,7 @@ lemma inequality {p a a' b : ℕ} (ha : a' ≤ a) (hp : 2 ≤ p) :
   have : ∀ n, p ^ (n + 1) - 1 ≠ 0 := by
     intro n
     have : 2 ≤ p ^ (n + 1) := hp.trans (Nat.le_pow (by simp))
-    cutsat
+    lia
   rw [div_le_div_iff₀ (by have := this a; positivity) (by have := this a'; positivity)]
   norm_cast
   obtain ⟨c, rfl⟩ := ha.dest
@@ -312,14 +312,14 @@ theorem not_HA' : ∀ i ∈ Finset.Icc d.lo d.hi, ¬ IsHighlyAbundant (lcmRange 
     · simp [L]
     · rw [← Nat.cast_mul, Nat.cast_ne_zero]
       simp only [ne_eq, mul_eq_zero, List.prod_eq_zero_iff, List.mem_map, Prod.exists,
-        Nat.add_eq_zero, one_ne_zero, and_false, exists_const, or_false, not_exists, not_and]
+        Nat.add_eq_zero_iff, one_ne_zero, and_false, exists_const, or_false, not_exists, not_and]
       intro p k i hpki
       have : p.Prime := d.h_muls _ hpki
       have : 2 ≤ p ^ (i + 1) := this.two_le.trans (Nat.le_pow (by simp))
       omega
   intro h
   have := h (d.M i) (d.M_pos hi) (d.M_lt_L hi)
-  cutsat
+  lia
 
 end ProofData
 
