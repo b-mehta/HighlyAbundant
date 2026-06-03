@@ -8,76 +8,82 @@ import Mathlib.Data.Nat.Log
 /-!
 # Deciding whether `lcm(1..n)` is highly abundant
 
-`N` is *highly abundant* if `σ(m) < σ(N)` for every `0 < m < N`, where `σ` is the
-sum of divisors. So `L = lcm(1..n)` fails to be highly abundant exactly when some
-`m < L` has `σ(m) ≥ σ(L)`; we call such an `m` a *witness*.
+`σ` denotes the sum-of-divisors function. `N` is *highly abundant* if `σ m < σ N`
+for every `m` with `0 < m < N`. Hence `L = lcm(1..n)` is highly abundant iff there
+is no `m` with `1 ≤ m < L` and `σ m ≥ σ L`.
 
-`L` is enormous, so we cannot scan `m < L`. Following Alekseyev
-(<https://mathoverflow.net/q/501066>) we hunt for a witness by building candidates
-as products of prime powers over an increasing run of primes. Writing `num` for a
-partial product (using primes below index `minIdx`) and `target = ⌈σ(L)/σ(num)⌉`
-for the sum of divisors still required, a witness extending `num` is a `t` using
-only primes of index `≥ minIdx` with `num·t < L` and `σ(t) ≥ target` (as `σ` is
-multiplicative).
+Following Alekseyev (<https://mathoverflow.net/q/501066>) we search over numbers
+written as products of prime powers, taking primes in increasing order. Notation
+used throughout (and assuming `primes` lists the primes in increasing order, so
+`primes[i]` is the `i`-th prime, `primes[0] = 2`):
 
-The search is a depth-first search over a stack of subproblems, driven by a single
-self-recursive `step` (no mutual recursion). A *node* `(target, num, minIdx)`
-stands for: find `t`, a product of prime powers using only primes of index
-`≥ minIdx`, with `num·t < L` and `σ(t) ≥ target`; then `num·t` is a witness (since
-`target = ⌈σ(L)/σ(num)⌉` makes `σ(t) ≥ target ↔ σ(num·t) ≥ σ(L)`).
+* `P j := { t : ℕ | 1 ≤ t ∧ ∀ prime q, q ∣ t → primes[j] ≤ q }`
+  (the naturals `≥ 1` all of whose prime factors have index `≥ j`; note `1 ∈ P j`).
+* A *node* is a triple `(target, num, minIdx)`. Its *witness set* is
+  `W target num minIdx := { t ∈ P minIdx | num * t < B ∧ target ≤ σ t }`,
+  where `B = L`. Under the standing meaning `target = ⌈σ L / σ num⌉` with `num` a
+  product of primes of index `< minIdx`, multiplicativity of `σ` gives
+  `target ≤ σ t ↔ σ L ≤ σ (num * t)`, so each `t ∈ W target num minIdx` makes
+  `num * t` an `m` with `1 ≤ m < L` and `σ L ≤ σ m`.
 
-* `children` expands one node into its child subproblems: for each front prime `p`
-  the wheel deems feasible and each exponent `k ≥ 1` with `p^k ≤ m = L/num`, the
-  child `(⌈target/σ(p^k)⌉, num·p^k, idx(p)+1)`, stopping the exponents once
-  `σ(p^k) ≥ target`. Feasibility uses the wheel `extend`: slide a window of
-  consecutive primes `primes[front..back]`; since `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`,
-  the window can only yield a witness once `∏ p/(p-1) ≥ target/m`, and yields none
-  once `∏ p > m`. To avoid multiplying huge numbers `extend` carries
-  `lhs = (∏ p)·m` and `rhs = target·(∏ (p-1))`: feasibility is `lhs ≥ rhs`, the
-  budget test is `lhs > m·m`. (`σ(p^k) = (p^k·p − 1)/(p−1)` reuses `p^k`.)
-* `step` pops a node: if `target ≤ 1` it is a witness iff `num < L` (the case
-  `t = 1`); otherwise it pushes that node's `children` and continues. A stack thus
-  denotes the union of its nodes' subtrees, and `step` answers whether any of them
-  contains a witness — so independent subtrees can be verified separately and the
-  results combined (`step (s₁ ++ s₂)` splits along `++`).
+The pieces (full pre/postconditions are on each definition):
 
-Two finite resources keep everything terminating and self-certifying: the prime
-table (the search returns `none` if it would read past it) and the `fuel` bound on
-the number of nodes (`none` if it runs out). A `some _` result certifies both
-sufficed, so neither bound has to be proved correct in advance.
+* `extend` examines the primes `primes[front], …` and decides, for the size limit
+  `m`, whether some product of them can reach the required `σ`-ratio.
+* `children` maps a node to a list `cs` of child nodes such that the node has a
+  witness `t ≠ 1` iff some child in `cs` has a witness. (Every `t ∈ P minIdx` with
+  `t ≠ 1` equals `primes[i]^k * t'` with `i ≥ minIdx` the index of its least prime
+  factor, `k ≥ 1`, `t' ∈ P (i+1)`, and `target ≤ σ t ↔ ⌈target/σ(primes[i]^k)⌉ ≤
+  σ t'`; the child for `(i,k)` is `(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)`.)
+* `step` searches a list (used as a stack) of nodes: `some true` iff some node on
+  the list has a witness, `some false` iff none does, `none` if a limit is reached.
+  Because the answer is a disjunction over the list, `step (s₁ ++ s₂)` reports a
+  witness iff `step s₁` or `step s₂` does, so sublists may be decided separately.
 
-`highlyAbundantLcm? n` returns `some true` (highly abundant), `some false` (a
-witness exists), or `none` (enlarge `primes` or `fuel`).
+`extend`, `children`, `step` are total. They read the table only through
+`primes[i]?`, so an index `≥ primes.size` yields the result `none` rather than a
+wrong answer; and each recurses on a `Nat` that bounds its number of recursive
+calls, yielding `none` at `0`. Thus a `some _` result is valid for any table
+length and any sufficiently large bound.
 -/
 
 namespace Sage
 
-/-- The first 49 primes (up to 227). This is the shortest table for which every
-known highly-abundant `L_n` (`n ≤ 172`) is decided: the search reads it only via
-`primes[i]?` (returning `none` past the end), so it reports `none` rather than a
-wrong answer if it would ever need more, and the table size never has to be
-assumed correct. Enlarge it (e.g. with the rest of the first 100 primes) for
-larger `n`. -/
+/-- The first 49 primes, `2` to `227`, in increasing order, read only through
+`primes[i]?`. This is the least length for which `highlyAbundantLcm? n ≠ none` for
+all `n ≤ 172`; extend it for larger `n`. -/
 def primes : Array Nat := #[
     2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
     59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131,
     137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223,
     227]
 
-/-- The result of growing the wheel's prime window: it ran off the table, or its
-product exceeded the budget (no witness down this branch), or it is feasible
-(`primes[front..back]`, with `lhs = (∏ p)·m`, `rhs = target·(∏ (p-1))`). -/
+/-- Result of `extend` (its three cases are specified in `extend`).
+* `window back lhs rhs`: the index `back` and the two products `lhs`, `rhs`.
+* `tooLarge`: no admissible product of `primes[front], …` reaches the ratio.
+* `exhaustedTable`: an index `≥ primes.size` was reached. -/
 inductive Wheel where
   | exhaustedTable
-  | overBudget
+  | tooLarge
   | window (back lhs rhs : Nat)
 
-/-- Grow the window's right end until it is feasible (`lhs ≥ rhs`), reporting
-`overBudget` once the product exceeds the budget (`∏ p > m`, tested `lhs > m·m`) or
-`exhaustedTable` past the end of `primes`. `front` is unchanged, so not returned.
-`fuel ≥ primes.size` always suffices (the window cannot exceed the table).
-Structurally recursive on `fuel`, so it is a plain terminating helper, not part of
-the search's recursion. -/
+/-- Let `m, target` be the naturals with `m2 = m * m`, and for `front ≤ b` write
+`Π b = ∏ i ∈ [front, b], primes[i]` and `Π' b = ∏ i ∈ [front, b], (primes[i] - 1)`.
+
+Call invariant: `m2 = m * m`, `fuel ≥ primes.size + 1 - back`, and either
+`front ≤ back` with `lhs = m * Π back` and `rhs = target * Π' back`, or
+`front = back + 1` (the range is empty) with `lhs = m` and `rhs = target`.
+
+Output, under the invariant:
+* `window b lhs' rhs'`: `b` is the least index `≥ back` with `Π b ≤ m` and
+  `target * Π' b ≤ m * Π b`; and `lhs' = m * Π b`, `rhs' = target * Π' b`.
+* `tooLarge`: no index `b ≥ back` has both `Π b ≤ m` and `target * Π' b ≤ m * Π b`;
+  equivalently `σ t < target` for every `t ∈ P front` with `t ≤ m`.
+* `exhaustedTable`: deciding between the two above would read an index `≥
+  primes.size`.
+
+`front` is never changed, so it is not returned. `extend` is used by the search
+because it recurses on `fuel` (a `Nat`), which reduces in the kernel. -/
 def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
   match fuel with
   | 0 => .exhaustedTable
@@ -88,42 +94,43 @@ def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
         | none => .exhaustedTable
         | some q =>
           let lhs' := lhs * q
-          if lhs' > m2 then .overBudget else extend fuel m2 front (back + 1) lhs' (rhs * (q - 1))
-    else  -- empty window (lhs = m, rhs = target): seed it with primes[front]
+          if lhs' > m2 then .tooLarge else extend fuel m2 front (back + 1) lhs' (rhs * (q - 1))
+    else  -- front = back + 1: the range is empty; start it at index front
       match primes[front]? with
       | none => .exhaustedTable
       | some q =>
         let lhs' := lhs * q
-        if lhs' > m2 then .overBudget else extend fuel m2 front front lhs' (rhs * (q - 1))
+        if lhs' > m2 then .tooLarge else extend fuel m2 front front lhs' (rhs * (q - 1))
 
-/-- Readable, well-founded twin of `extend`, written to make the algorithm clear:
-it recurses directly on the window growing toward the end of the table
-(`termination_by primes.size - back`) rather than on a fuel counter. It is the
-specification `extend` implements — the two agree whenever `fuel ≥ primes.size`
-(then `extend` never hits its `fuel = 0` case before this one hits the table edge).
-`extend` is used by the search because the fuel form reduces in the kernel; this
-form is here only to be read and to prove `extend` against. -/
+/-- Well-founded form of `extend` with the same input/output specification, written
+to be read: it recurses on the index `back` increasing toward `primes.size`
+(`termination_by primes.size - back`) and reads `primes[i]` under a proof `i <
+primes.size` instead of via `primes[i]?` and a `fuel`. It equals `extend fuel …`
+whenever `fuel ≥ primes.size + 1 - back`. Not used by the search; kept as the
+reference `extend` is proved against. -/
 def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
   if front ≤ back then
     if lhs ≥ rhs then .window back lhs rhs
     else if h : back + 1 < primes.size then
       let q := primes[back + 1]
       let lhs' := lhs * q
-      if lhs' > m2 then .overBudget else extendWF m2 front (back + 1) lhs' (rhs * (q - 1))
+      if lhs' > m2 then .tooLarge else extendWF m2 front (back + 1) lhs' (rhs * (q - 1))
     else .exhaustedTable
-  else  -- empty window (lhs = m, rhs = target): seed it with primes[front]
+  else
     if h : front < primes.size then
       let q := primes[front]
       let lhs' := lhs * q
-      if lhs' > m2 then .overBudget else extendWF m2 front front lhs' (rhs * (q - 1))
+      if lhs' > m2 then .tooLarge else extendWF m2 front front lhs' (rhs * (q - 1))
     else .exhaustedTable
   termination_by primes.size - back
   decreasing_by all_goals omega
 
-/-- Exponent children of the front prime `p` (`pk = p^k`, starting at `k = 1`):
-for each `k ≥ 1` with `p^k ≤ m`, prepend the child `(⌈target/σ(p^k)⌉, num·p^k,
-nextMinIdx)`, stopping once `σ(p^k) ≥ target`. Structural on `fuel` (`fuel ≥
-⌊log_p m⌋ + 1` suffices; `m + 1` does). -/
+/-- Call invariant: `pk = p ^ k` for the current `k ≥ 1`, and `m`, `target`, `num`,
+`nextMinIdx` are fixed. Returns `acc` with the following nodes prepended, for `k`
+running from its initial value upward: the node `(⌈target / σ(p^k)⌉, num * p^k,
+nextMinIdx)` for each `k` with `p^k ≤ m`, taking no further `k` after the first one
+with `σ(p^k) ≥ target` (using `σ(p^k) = (p^k * p - 1)/(p - 1)`). `fuel` must be at
+least the number of such `k` (e.g. `fuel = m + 1`). -/
 def expChildren (fuel target num nextMinIdx m p pk : Nat)
     (acc : List (Nat × Nat × Nat)) : List (Nat × Nat × Nat) :=
   match fuel with
@@ -131,16 +138,19 @@ def expChildren (fuel target num nextMinIdx m p pk : Nat)
   | fuel + 1 =>
     if pk > m then acc
     else
-      let spk := (pk * p - 1) / (p - 1)              -- σ(p^k), reusing pk (pk·p = p^(k+1))
+      let spk := (pk * p - 1) / (p - 1)              -- σ(p^k); pk * p = p^(k+1)
       let target' := (target + spk - 1) / spk         -- ⌈target / σ(p^k)⌉
       let acc := (target', num * pk, nextMinIdx) :: acc
       if spk ≥ target then acc
       else expChildren fuel target num nextMinIdx m p (pk * p) acc
 
-/-- Accumulate the children of node `(target, num, minIdx)` (budget `m = B/num`):
-the wheel `extend` slides over feasible front primes and each contributes its
-`expChildren`. `none` if the prime table is exhausted. Structural on `fuel`
-(`fuel ≥ primes.size` suffices). -/
+/-- Call invariant: the `extend` invariant for `(m2, front, back, lhs, rhs)` with
+this `m` and `target`, and `fuel ≥ primes.size + 1 - front`. Returns `none` if
+`extend` reaches an index `≥ primes.size`; otherwise returns `some` of `acc`
+together with, for every index `i ≥ front` at which `extend` returns a `window`,
+the `expChildren` of `primes[i]` (the nodes
+`(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)` for `k ≥ 1` with `primes[i]^k ≤
+m`, stopping after `σ(primes[i]^k) ≥ target`). Helper for `children`. -/
 def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
@@ -148,7 +158,7 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
   | fuel + 1 =>
     match extend (primes.size + 1) m2 front back lhs rhs with
     | .exhaustedTable => none
-    | .overBudget => some acc
+    | .tooLarge => some acc
     | .window b lhs' rhs' =>
       match primes[front]? with
       | none => none
@@ -156,9 +166,13 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
         wheelChildren fuel m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
           (expChildren (m + 1) target num (front + 1) m p p acc)
 
-/-- The child subproblems of node `(target, num, minIdx)`: the `(prime, exponent)`
-one-step extensions the search would explore. `none` iff a needed prime lies past
-the table. This is the explicit subtree structure of the search. -/
+/-- The child nodes of node `(target, num, minIdx)` (with `m = B / num`):
+* `children B target num minIdx = none` iff deciding the node would read an index
+  `≥ primes.size`;
+* `children B target num minIdx = some cs` with each `c ∈ cs` of the form
+  `(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)` for some `i ≥ minIdx`, `k ≥ 1`
+  with `primes[i]^k ≤ m`, such that
+  `(∃ t ∈ W target num minIdx, t ≠ 1) ↔ (∃ c ∈ cs, W c.1 c.2.1 c.2.2 ≠ ∅)`. -/
 def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
   match primes[minIdx]? with
   | none => none
@@ -166,15 +180,22 @@ def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
     let m := B / num
     wheelChildren (primes.size + 1) (m * m) m target num minIdx minIdx (p0 * m) (target * (p0 - 1)) []
 
-/-- A generous bound on the number of nodes the search visits; `none` is returned
-(rather than a wrong answer) if it is ever too small. -/
+/-- A `Nat` at least the number of nodes the search visits; `step` returns `none`
+if it is too small, never a wrong answer. -/
 def searchFuel : Nat := 1000000000
 
-/-- Depth-first search over a stack of node subproblems `(target, num, minIdx)`.
-Returns `some true` if some node on the stack has a witness, `some false` if none
-does (stack emptied), `none` if a resource (prime table or `fuel`) ran out.
-Self-recursive and structural on `fuel`; `children` is a plain helper, so there is
-no mutual recursion. -/
+/-- Searches `stack`, a list of nodes, for a witness (`B = L`):
+* `step B fuel stack = some true` ⟹ some `(target, num, minIdx) ∈ stack` has
+  `W target num minIdx ≠ ∅`;
+* `step B fuel stack = some false` ⟹ every `(target, num, minIdx) ∈ stack` has
+  `W target num minIdx = ∅`;
+* `step B fuel stack = none` ⟹ `fuel` reached `0`, or `children` read an index
+  `≥ primes.size`.
+
+Removing the head node `(target, num, minIdx)`: if `target ≤ 1` then `t = 1` is a
+witness for it iff `num < B`; otherwise its witnesses with `t ≠ 1` are those of its
+`children`, which replace it. Self-recursive and structural on `fuel`; `children`
+does not call `step`, so there is no mutual recursion. -/
 def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
   | _, [] => some false
@@ -185,31 +206,36 @@ def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
       | none => none
       | some cs => step B fuel (cs ++ rest)
 
-/-- `(L_n, σ(L_n))`, from `L_n = ∏_{p ≤ n} p^{⌊log_p n⌋}`. -/
+/-- `lcmData n = (lcm (1..n), σ (lcm (1..n)))`, computed as
+`(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n`. Correct for
+`n ≤ 227` (so every prime `≤ n` is in the table). -/
 def lcmData (n : Nat) : Nat × Nat :=
   (primes.toList.takeWhile (· ≤ n)).foldl
     (fun (acc : Nat × Nat) p =>
       let e := Nat.log p n
       (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
 
-/-- Whether `lcm(1..n)` is highly abundant: `some true` (yes), `some false` (no, a
-witness exists), or `none` (a resource ran out — enlarge `primes` or `searchFuel`). -/
+/-- Decides whether `lcm (1..n)` is highly abundant:
+* `some true` ⟹ `lcm (1..n)` is highly abundant (no `m` with `1 ≤ m < L`,
+  `σ L ≤ σ m`);
+* `some false` ⟹ such an `m` exists;
+* `none` ⟹ the table or `searchFuel` was too small (enlarge and retry). -/
 def highlyAbundantLcm? (n : Nat) : Option Bool :=
   let (B, sL) := lcmData n
   if B ≤ 1 then some true else (step B searchFuel [(sL, 1, 0)]).map (!·)
 
-/-- Indices `n ≤ 172` for which `L_n` is known to be highly abundant. -/
+/-- The indices `n ≤ 172` for which `lcm (1..n)` is known to be highly abundant. -/
 def knownHA (n : Nat) : Bool :=
   (1 ≤ n && n ≤ 70) || (81 ≤ n && n ≤ 96) || (125 ≤ n && n ≤ 148) || (169 ≤ n && n ≤ 172)
 
--- Sanity: `L_n` is highly abundant for every `n ≤ 12`.
+-- `lcm (1..n)` is highly abundant for every `n ≤ 12`.
 #eval (List.range 13).all (highlyAbundantLcm? · == some true)
 
 end Sage
 
 open Sage in
-/-- `lake exe sage n₁ n₂ …` reports `highlyAbundantLcm?` (with timing) for each
-given `n`; with no arguments it checks every known highly-abundant `n ≤ 50`. -/
+/-- `lake exe sage n₁ n₂ …` prints `highlyAbundantLcm?` (with timing) for each given
+`n`; with no arguments it does so for every known highly-abundant `n ≤ 50`. -/
 def main (args : List String) : IO Unit := do
   let out ← IO.getStdout
   let ns := if args.isEmpty then (List.range 51).filter knownHA else args.filterMap (·.toNat?)
