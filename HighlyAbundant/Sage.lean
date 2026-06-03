@@ -35,12 +35,12 @@ The pieces (full pre/postconditions are on each definition):
   `t ≠ 1` equals `primes[i]^k * t'` with `i ≥ minIdx` the index of its least prime
   factor, `k ≥ 1`, `t' ∈ P (i+1)`, and `target ≤ σ t ↔ ⌈target/σ(primes[i]^k)⌉ ≤
   σ t'`; the child for `(i,k)` is `(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)`.)
-* `step` searches a list (used as a stack) of nodes: `some true` if some node on
-  the list has a witness, `some false` if none does, `none` if a limit is reached
-  (exact postcondition on `step`). `step` runs one shared `fuel` over the whole
-  list, so `step B f (s₁ ++ s₂)` is not determined by `step B f s₁` and
-  `step B f s₂`; subtrees are combined through their witness sets `W`, not through
-  `step` on appended lists. See *Partial verification*.
+* `step` searches a list (used as a stack) of nodes: `some true` if every node on
+  the list has an empty witness set, `some false` if some node has a witness,
+  `none` if a limit is reached (exact postcondition on `step`). `step` runs one
+  shared `fuel` over the whole list, so `step B f (s₁ ++ s₂)` is not determined
+  by `step B f s₁` and `step B f s₂`; subtrees are combined through their witness
+  sets `W`, not through `step` on appended lists. See *Partial verification*.
 
 `extend`, `children`, `step` are total. They read the table only through
 `primes[i]?`, so an index `≥ primes.size` yields the result `none` rather than a
@@ -55,7 +55,7 @@ evaluation of the whole search), let `(B, sL) = lcmData n` and assume `2 ≤ B`:
 
 1. Evaluate `children B sL 1 0`. If it is `none`, enlarge `primes`. Otherwise it
    is `some cs`, and `cs` is the list of the root node's children.
-2. For each `c ∈ cs`, obtain `step B searchFuel [c] = some false` (each is a
+2. For each `c ∈ cs`, obtain `step B searchFuel [c] = some true` (each is a
    separate, smaller evaluation). By the postcondition of `step`, this gives
    `W c.1 c.2.1 c.2.2 = ∅`.
 3. `1 ∉ W sL 1 0`, because `σ 1 = 1 < sL`. The postcondition of `children`, negated,
@@ -79,6 +79,9 @@ def primes : Array Nat := #[
     59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131,
     137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223,
     227]
+
+/-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
+def ceilDiv (a b : Nat) : Nat := (a + b - 1) / b
 
 /-- Result of `extend` (its three cases are specified in `extend`).
 * `window back lhs rhs`: the index `back` and the two products `lhs`, `rhs`.
@@ -105,7 +108,8 @@ Output, under the invariant:
   primes.size`.
 
 `front` is never changed, so it is not returned. `extend` is used by the search
-because it recurses on `fuel` (a `Nat`), which reduces in the kernel. -/
+because it recurses on `fuel` (a `Nat`), which reduces in the kernel. It equals
+`extendWF` whenever `fuel ≥ primes.size + 1 - back`. -/
 def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
   match fuel with
   | 0 => .exhaustedTable
@@ -127,9 +131,9 @@ def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
 /-- Well-founded form of `extend` with the same input/output specification, written
 to be read: it recurses on the index `back` increasing toward `primes.size`
 (`termination_by primes.size - back`) and reads `primes[i]` under a proof `i <
-primes.size` instead of via `primes[i]?` and a `fuel`. It equals `extend fuel …`
-whenever `fuel ≥ primes.size + 1 - back`. Not used by the search; kept as the
-reference `extend` is proved against. -/
+primes.size` instead of via `primes[i]?` and a `fuel`. Not used by the search;
+kept as the reference `extend` is proved against. The two are equal when
+`fuel ≥ primes.size + 1 - back`. -/
 def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
   if front ≤ back then
     if lhs ≥ rhs then .window back lhs rhs
@@ -148,31 +152,30 @@ def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
   decreasing_by all_goals omega
 
 /-- Call invariant: `pk = p ^ k` for the current `k ≥ 1`, and `m`, `target`, `num`,
-`nextMinIdx` are fixed. Returns `acc` with the following nodes prepended, for `k`
-running from its initial value upward: the node `(⌈target / σ(p^k)⌉, num * p^k,
-nextMinIdx)` for each `k` with `p^k ≤ m`, taking no further `k` after the first one
-with `σ(p^k) ≥ target` (using `σ(p^k) = (p^k * p - 1)/(p - 1)`). `fuel` must be at
-least the number of such `k` (e.g. `fuel = m + 1`). -/
-def expChildren (fuel target num nextMinIdx m p pk : Nat)
-    (acc : List (Nat × Nat × Nat)) : List (Nat × Nat × Nat) :=
+`nextMinIdx` are fixed. Returns the list of nodes `(⌈target / σ(p^k)⌉, num * p^k,
+nextMinIdx)` for `k` running from its initial value upward, for each `k` with
+`p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`
+(using `σ(p^k) = (p^k * p - 1)/(p - 1)`). `fuel` must be at least the number of
+such `k` (e.g. `fuel = m + 1`). -/
+def expChildren (fuel target num nextMinIdx m p pk : Nat) : List (Nat × Nat × Nat) :=
   match fuel with
-  | 0 => acc
+  | 0 => []
   | fuel + 1 =>
-    if pk > m then acc
+    if pk > m then []
     else
       let spk := (pk * p - 1) / (p - 1)              -- σ(p^k); pk * p = p^(k+1)
-      let target' := (target + spk - 1) / spk         -- ⌈target / σ(p^k)⌉
-      let acc := (target', num * pk, nextMinIdx) :: acc
-      if spk ≥ target then acc
-      else expChildren fuel target num nextMinIdx m p (pk * p) acc
+      let child := (ceilDiv target spk, num * pk, nextMinIdx)
+      if spk ≥ target then [child]
+      else child :: expChildren fuel target num nextMinIdx m p (pk * p)
 
 /-- Call invariant: the `extend` invariant for `(m2, front, back, lhs, rhs)` with
 this `m` and `target`, and `fuel ≥ primes.size + 1 - front`. Returns `none` if
-`extend` reaches an index `≥ primes.size`; otherwise returns `some` of `acc`
-together with, for every index `i ≥ front` at which `extend` returns a `window`,
+`extend` reaches an index `≥ primes.size`; otherwise returns `some` of the list
+consisting of, for every index `i ≥ front` at which `extend` returns a `window`,
 the `expChildren` of `primes[i]` (the nodes
 `(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)` for `k ≥ 1` with `primes[i]^k ≤
-m`, stopping after `σ(primes[i]^k) ≥ target`). Helper for `children`. -/
+m`, stopping after `σ(primes[i]^k) ≥ target`). Helper for `children`.
+It equals `wheelChildrenWF` whenever `fuel ≥ primes.size + 1 - front`. -/
 def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
@@ -186,7 +189,26 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
       | none => none
       | some p =>
         wheelChildren fuel m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
-          (expChildren (m + 1) target num (front + 1) m p p acc)
+          (expChildren (m + 1) target num (front + 1) m p p ++ acc)
+
+/-- Well-founded form of `wheelChildren` with the same specification, written to be
+read: it recurses on `primes.size - front` and uses `extendWF` instead of `extend`
+with fuel. Not used by the search; kept as the reference `wheelChildren` is proved
+against. The two are equal when `fuel ≥ primes.size + 1 - front`. -/
+def wheelChildrenWF (m2 m target num front back lhs rhs : Nat) :
+    Option (List (Nat × Nat × Nat)) :=
+  if h : front ≥ primes.size then none
+  else
+    match extendWF m2 front back lhs rhs with
+    | .exhaustedTable => none
+    | .tooLarge => some []
+    | .window b lhs' rhs' =>
+      let p := primes[front]
+      match wheelChildrenWF m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1)) with
+      | none => none
+      | some rest => some (expChildren (m + 1) target num (front + 1) m p p ++ rest)
+  termination_by primes.size - front
+  decreasing_by omega
 
 /-- The child nodes of node `(target, num, minIdx)` (with `m = B / num`):
 * `children B target num minIdx = none` iff deciding the node would read an index
@@ -194,7 +216,12 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
 * `children B target num minIdx = some cs` with each `c ∈ cs` of the form
   `(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)` for some `i ≥ minIdx`, `k ≥ 1`
   with `primes[i]^k ≤ m`, such that
-  `(∃ t ∈ W target num minIdx, t ≠ 1) ↔ (∃ c ∈ cs, W c.1 c.2.1 c.2.2 ≠ ∅)`. -/
+  `(∃ t ∈ W target num minIdx, t ≠ 1) ↔ (∃ c ∈ cs, W c.1 c.2.1 c.2.2 ≠ ∅)`.
+
+The initial call to `wheelChildren` starts with the range [minIdx..minIdx] already
+seeded (lhs = m * primes[minIdx], rhs = target * (primes[minIdx] - 1)), because
+starting in the empty-range state would require `back = minIdx - 1`, which
+underflows for `minIdx = 0`. -/
 def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
   match primes[minIdx]? with
   | none => none
@@ -203,14 +230,16 @@ def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
     wheelChildren (primes.size + 1) (m * m) m target num minIdx minIdx (p0 * m) (target * (p0 - 1)) []
 
 /-- A `Nat` at least the number of nodes the search visits; `step` returns `none`
-if it is too small, never a wrong answer. -/
-def searchFuel : Nat := 1000000000
+if it is too small, never a wrong answer. Experimentally determined to be the
+minimum value for which `highlyAbundantLcm? n ≠ none` for all `n ≤ 172` (the
+hardest cases, n = 169–172, each visit between 6.3M and 6.4M nodes). -/
+def searchFuel : Nat := 6400000
 
 /-- Searches `stack`, a list of nodes, for a witness (`B = L`):
-* `step B fuel stack = some true` ⟹ some `(target, num, minIdx) ∈ stack` has
-  `W target num minIdx ≠ ∅`;
-* `step B fuel stack = some false` ⟹ every `(target, num, minIdx) ∈ stack` has
-  `W target num minIdx = ∅`;
+* `step B fuel stack = some true` ⟹ every `(target, num, minIdx) ∈ stack` has
+  `W target num minIdx = ∅` (no witness exists);
+* `step B fuel stack = some false` ⟹ some `(target, num, minIdx) ∈ stack` has
+  `W target num minIdx ≠ ∅` (a witness exists);
 * `step B fuel stack = none` ⟹ `fuel` reached `0`, or `children` read an index
   `≥ primes.size`.
 
@@ -220,10 +249,10 @@ witness for it iff `num < B`; otherwise its witnesses with `t ≠ 1` are those o
 does not call `step`, so there is no mutual recursion. -/
 def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
-  | _, [] => some false
+  | _, [] => some true
   | fuel + 1, (target, num, minIdx) :: rest =>
     if target ≤ 1 then
-      if num < B then some true else step B fuel rest   -- t = 1 is a witness iff num < B
+      if num < B then some false else step B fuel rest   -- t = 1 is a witness iff num < B
     else match children B target num minIdx with
       | none => none
       | some cs => step B fuel (cs ++ rest)
@@ -244,7 +273,7 @@ def lcmData (n : Nat) : Nat × Nat :=
 * `none` ⟹ the table or `searchFuel` was too small (enlarge and retry). -/
 def highlyAbundantLcm? (n : Nat) : Option Bool :=
   let (B, sL) := lcmData n
-  if B ≤ 1 then some true else (step B searchFuel [(sL, 1, 0)]).map (!·)
+  if B ≤ 1 then some true else step B searchFuel [(sL, 1, 0)]
 
 /-- The indices `n ≤ 172` for which `lcm (1..n)` is known to be highly abundant. -/
 def knownHA (n : Nat) : Bool :=
