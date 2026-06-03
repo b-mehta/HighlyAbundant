@@ -48,9 +48,9 @@ namespace ProofData
 
 variable (d : ProofData)
 
-lemma h_muls_sorted : d.muls.Sorted (·.1 < ·.1) := d.h_muls_chain.pairwise
+lemma h_muls_sorted : d.muls.Pairwise (·.1 < ·.1) := d.h_muls_chain.pairwise
 lemma h_muls_pairwise : d.muls.Pairwise (·.1 ≠ ·.1) := d.h_muls_sorted.imp ne_of_lt
-lemma h_divs_sorted : d.divs.Sorted (· < ·) := d.h_divs_chain.pairwise
+lemma h_divs_sorted : d.divs.Pairwise (· < ·) := d.h_divs_chain.pairwise
 lemma h_muls_nodup : d.muls.Nodup := d.h_muls_sorted.nodup
 lemma h_divs_nodup : d.divs.Nodup := d.h_divs_sorted.nodup
 
