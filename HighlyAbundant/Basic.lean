@@ -8,7 +8,7 @@ import Mathlib.Algebra.GCDMonoid.Finset
 import Mathlib.Algebra.GCDMonoid.Nat
 import Mathlib.Algebra.Order.Star.Basic
 import Mathlib.Data.Nat.Cast.Field
-import Mathlib.NumberTheory.ArithmeticFunction
+import Mathlib.NumberTheory.ArithmeticFunction.Misc
 
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
@@ -76,17 +76,17 @@ lemma Nat.factorization_finsetLcm {α : Type*} {p : ℕ} {s : Finset α} {f : α
     rw [Finset.lcm_insert, lcm_eq_nat_lcm, Nat.factorization_lcm h.1 (by simpa using h.2)]
     simp only [Finset.sup_insert, Finsupp.sup_apply, ih h.2]
 
-@[simp, grind] lemma lcmRange_ne_zero {n : ℕ} : lcmRange n ≠ 0 := by simp [lcmRange]
-@[simp, grind] lemma lcmRange_pos {n : ℕ} : 0 < lcmRange n := lcmRange_ne_zero.bot_lt
+@[simp, grind .] lemma lcmRange_ne_zero {n : ℕ} : lcmRange n ≠ 0 := by simp [lcmRange]
+@[simp, grind .] lemma lcmRange_pos {n : ℕ} : 0 < lcmRange n := lcmRange_ne_zero.bot_lt
 
 lemma dvd_lcmRange_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmRange n := by
   apply Finset.dvd_lcm
-  grind [Finset.mem_Icc]
+  grind
 
 lemma factorization_lcmRange {p n : ℕ} :
     (lcmRange n).factorization p = Finset.sup (Finset.Icc 1 n) (fun i ↦ i.factorization p) := by
   apply Nat.factorization_finsetLcm
-  grind [Finset.mem_Icc]
+  grind
 
 lemma factorization_lcmRange_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
     (lcmRange n).factorization p ≤ k := by

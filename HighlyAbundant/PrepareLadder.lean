@@ -110,7 +110,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
     rw [Nat.mem_primeFactors_of_ne_zero lcmRange_ne_zero]
     refine ⟨d.h_divs _ hp, ?_⟩
     exact dvd_lcmRange_of_le (d.h_divs p hp).ne_zero
-      (by have := d.h_divs_lo; grind [Finset.mem_Icc])
+      (by have := d.h_divs_lo; grind)
   have : p ∉ d.muls.map (·.1) := by have := d.h_disjoint; grind
   convert_to p ^ (lcmRange i).factorization p ∣ d.K i
   · rw [d.h_divs_i hi _ hp, Nat.pow_one]
@@ -312,7 +312,7 @@ theorem not_HA' : ∀ i ∈ Finset.Icc d.lo d.hi, ¬ IsHighlyAbundant (lcmRange 
     · simp [L]
     · rw [← Nat.cast_mul, Nat.cast_ne_zero]
       simp only [ne_eq, mul_eq_zero, List.prod_eq_zero_iff, List.mem_map, Prod.exists,
-        Nat.add_eq_zero, one_ne_zero, and_false, exists_const, or_false, not_exists, not_and]
+        Nat.add_eq_zero_iff, one_ne_zero, and_false, exists_const, or_false, not_exists, not_and]
       intro p k i hpki
       have : p.Prime := d.h_muls _ hpki
       have : 2 ≤ p ^ (i + 1) := this.two_le.trans (Nat.le_pow (by simp))

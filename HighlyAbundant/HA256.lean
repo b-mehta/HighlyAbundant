@@ -18,7 +18,7 @@ set up here.
 
 open Nat ArithmeticFunction
 
-@[grind] lemma not_HA_block256 : ¬ IsHighlyAbundant (lcmRange 256) := by
+@[grind .] lemma not_HA_block256 : ¬ IsHighlyAbundant (lcmRange 256) := by
   set l : ℕ := 2 ^ 8 * 3 ^ 5 * 5 ^ 3 * 7 ^ 2 * 17 * 19 * 227 * 239 * 241
   set m : ℕ := 2 ^ 7 * 3 ^ 7 * 5 ^ 4 * 7 ^ 3 * 17 ^ 2 * 19 ^ 2 * 257
   have hσL : σ₁ l = 7884709431434035200 := by
