@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 import Mathlib.Data.Nat.Log
+import Mathlib.NumberTheory.ArithmeticFunction
 
 /-!
 # Deciding whether `lcm(1..n)` is highly abundant
@@ -281,6 +282,57 @@ def knownHA (n : Nat) : Bool :=
 
 -- `lcm (1..n)` is highly abundant for every `n ≤ 12`.
 #eval (List.range 13).all (highlyAbundantLcm? · == some true)
+
+/-! ## Formal statements of the key properties
+
+The properties the search is proved against. Stated here; proofs are `sorry`. -/
+section Spec
+
+local notation "σ" => ArithmeticFunction.sigma 1
+
+/-- `P j`: naturals `≥ 1` all of whose prime factors occur in `primes` at index `≥ j`. -/
+def P (j : Nat) : Set Nat :=
+  { t | 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → ∃ i, primes[i]? = some q ∧ j ≤ i }
+
+/-- The witness set of a node `(target, num, minIdx)` for bound `B`. -/
+def W (B target num minIdx : Nat) : Set Nat :=
+  { t | t ∈ P minIdx ∧ num * t < B ∧ target ≤ σ t }
+
+/-- The fuel-based and well-founded forms of `extend` agree once fuel is large enough. -/
+theorem extend_eq_extendWF {fuel m2 front back lhs rhs : Nat}
+    (h : primes.size + 1 - back ≤ fuel) :
+    extend fuel m2 front back lhs rhs = extendWF m2 front back lhs rhs := sorry
+
+/-- The fuel-based and well-founded forms of `wheelChildren` agree once fuel is large
+enough. `wheelChildrenWF` returns `some []` where `wheelChildren` returns `some acc`. -/
+theorem wheelChildren_eq_wheelChildrenWF
+    {fuel m2 m target num front back lhs rhs : Nat}
+    (h : primes.size + 1 - front ≤ fuel) (acc : List (Nat × Nat × Nat)) :
+    wheelChildren fuel m2 m target num front back lhs rhs acc =
+      (wheelChildrenWF m2 m target num front back lhs rhs).map (· ++ acc) := sorry
+
+/-- `children` reduces nontrivial witnesses of a node to witnesses of its children. -/
+theorem children_spec {B target num minIdx : Nat} {cs : List (Nat × Nat × Nat)}
+    (h : children B target num minIdx = some cs) :
+    (∃ t ∈ W B target num minIdx, t ≠ 1) ↔
+      ∃ c ∈ cs, W B c.1 c.2.1 c.2.2 ≠ ∅ := sorry
+
+/-- `step = some true` ⟹ every node on the stack has an empty witness set. -/
+theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
+    (h : step B fuel stack = some true) :
+    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := sorry
+
+/-- `step = some false` ⟹ some node on the stack has a nonempty witness set. -/
+theorem step_false {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
+    (h : step B fuel stack = some false) :
+    ∃ node ∈ stack, W B node.1 node.2.1 node.2.2 ≠ ∅ := sorry
+
+/-- Top-level correctness: `some true` ⟹ no `m` with `1 ≤ m < B` has `σ m ≥ sL`,
+i.e. `lcm (1..n)` is highly abundant (with `(B, sL) = lcmData n`). -/
+theorem highlyAbundantLcm_correct {n : Nat} (h : highlyAbundantLcm? n = some true) :
+    ∀ m, 1 ≤ m → m < (lcmData n).1 → σ m < (lcmData n).2 := sorry
+
+end Spec
 
 end Sage
 
