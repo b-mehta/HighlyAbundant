@@ -282,6 +282,13 @@ def knownHA (n : Nat) : Bool :=
 -- `lcm (1..n)` is highly abundant for every `n ≤ 12`.
 #eval (List.range 13).all (highlyAbundantLcm? · == some true)
 
+-- Isolate whether Nat.log is the kernel reduction blocker.
+example : Nat.log 2 2 = 1 := by decide
+-- Kernel reduction tests: `by decide` asks the kernel to reduce the closed term.
+example : highlyAbundantLcm? 2 = some true := by decide
+example : highlyAbundantLcm? 3 = some true := by decide
+example : highlyAbundantLcm? 5 = some true := by decide
+
 end Sage
 
 open Sage in
