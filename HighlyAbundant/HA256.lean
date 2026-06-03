@@ -36,10 +36,10 @@ open Nat ArithmeticFunction
   have hL : L = l * K := by decide +kernel
   have hLK : Nat.gcd l K = 1 := by decide +kernel
   have hMK : Nat.gcd m K = 1 := by decide +kernel
-  have hK : 0 < K := by cutsat
+  have hK : 0 < K := by lia
   clear_value K
   intro h
-  have := h M (by cutsat) (by cutsat)
+  have := h M (by lia) (by lia)
   rw [hM, hL, isMultiplicative_sigma.map_mul_of_coprime hMK,
     isMultiplicative_sigma.map_mul_of_coprime hLK, hσL, hσM] at this
-  cutsat
+  lia

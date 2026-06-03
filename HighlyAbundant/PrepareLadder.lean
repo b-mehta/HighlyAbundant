@@ -119,7 +119,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
 lemma L_eq {i : ℕ} :
     lcmRange i = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * d.K i := by
   conv_lhs =>
-    rw [← Nat.factorization_prod_pow_eq_self (n := lcmRange i) lcmRange_ne_zero, Finsupp.prod,
+    rw [← Nat.prod_factorization_pow_eq_self (n := lcmRange i) lcmRange_ne_zero, Finsupp.prod,
       Nat.support_factorization]
   rw [← Finset.prod_filter_mul_prod_filter_not (lcmRange i).primeFactors (· ∈ d.muls.map (·.1)) _]
   change _ * d.K i = _
@@ -284,7 +284,7 @@ lemma inequality {p a a' b : ℕ} (ha : a' ≤ a) (hp : 2 ≤ p) :
   have : ∀ n, p ^ (n + 1) - 1 ≠ 0 := by
     intro n
     have : 2 ≤ p ^ (n + 1) := hp.trans (Nat.le_pow (by simp))
-    cutsat
+    lia
   rw [div_le_div_iff₀ (by have := this a; positivity) (by have := this a'; positivity)]
   norm_cast
   obtain ⟨c, rfl⟩ := ha.dest
@@ -319,7 +319,7 @@ theorem not_HA' : ∀ i ∈ Finset.Icc d.lo d.hi, ¬ IsHighlyAbundant (lcmRange 
       omega
   intro h
   have := h (d.M i) (d.M_pos hi) (d.M_lt_L hi)
-  cutsat
+  lia
 
 end ProofData
 
