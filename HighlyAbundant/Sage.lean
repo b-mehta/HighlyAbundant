@@ -20,30 +20,31 @@ for the sum of divisors still required, a witness extending `num` is a `t` using
 only primes of index `≥ minIdx` with `num·t < L` and `σ(t) ≥ target` (as `σ` is
 multiplicative).
 
-The search is an explicit-stack depth-first search: a single recursive function
-`step` consuming a stack of `Frame`s (no mutual recursion, so it is easy to run
-and to reason about). The frames are:
+The search is a depth-first search over a stack of subproblems, driven by a single
+self-recursive `step` (no mutual recursion). A *node* `(target, num, minIdx)`
+stands for: find `t`, a product of prime powers using only primes of index
+`≥ minIdx`, with `num·t < L` and `σ(t) ≥ target`; then `num·t` is a witness (since
+`target = ⌈σ(L)/σ(num)⌉` makes `σ(t) ≥ target ↔ σ(num·t) ≥ σ(L)`).
 
-* `node target num minIdx` — a subproblem: look for a witness extending `num`
-  using primes of index `≥ minIdx`. If `target ≤ 1` then `σ(num) ≥ σ(L)` already,
-  so `num` is a witness iff `num < L`; otherwise expand it into a `wheel`.
-* `wheel … front back lhs rhs` — choosing the next prime factor. The helper
-  `extend` slides a window of consecutive primes `primes[front..back]`; since
-  `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`, a window can only yield a witness once
-  `∏ p/(p-1) ≥ target/m` (`m = L/num`), and is hopeless once its product exceeds
-  `m`. To avoid multiplying huge numbers we carry `lhs = (∏ p)·m` and
-  `rhs = target·(∏ (p-1))`: feasibility is `lhs ≥ rhs` and the budget test is
-  `lhs > m·m`. A feasible window emits an `exps` frame for its front prime and a
-  `wheel` frame for the window with that prime dropped.
-* `exps … p pk` — the exponents of the front prime `p`, with `pk = p^k`. It emits
-  the child `node` for `num·p^k` and, unless `σ(p^k) ≥ target`, an `exps` frame for
-  `k+1` (carrying `pk·p`, reusing `pk` so no power is recomputed).
+* `children` expands one node into its child subproblems: for each front prime `p`
+  the wheel deems feasible and each exponent `k ≥ 1` with `p^k ≤ m = L/num`, the
+  child `(⌈target/σ(p^k)⌉, num·p^k, idx(p)+1)`, stopping the exponents once
+  `σ(p^k) ≥ target`. Feasibility uses the wheel `extend`: slide a window of
+  consecutive primes `primes[front..back]`; since `σ(t)/t ≤ ∏_{p ∣ t} p/(p-1)`,
+  the window can only yield a witness once `∏ p/(p-1) ≥ target/m`, and yields none
+  once `∏ p > m`. To avoid multiplying huge numbers `extend` carries
+  `lhs = (∏ p)·m` and `rhs = target·(∏ (p-1))`: feasibility is `lhs ≥ rhs`, the
+  budget test is `lhs > m·m`. (`σ(p^k) = (p^k·p − 1)/(p−1)` reuses `p^k`.)
+* `step` pops a node: if `target ≤ 1` it is a witness iff `num < L` (the case
+  `t = 1`); otherwise it pushes that node's `children` and continues. A stack thus
+  denotes the union of its nodes' subtrees, and `step` answers whether any of them
+  contains a witness — so independent subtrees can be verified separately and the
+  results combined (`step (s₁ ++ s₂)` splits along `++`).
 
-Two finite resources keep everything terminating and self-certifying: a fixed
-table of the first 100 primes (the search returns `none` if it would read past it)
-and a `fuel` budget on the number of steps (`none` if it runs out). A `some _`
-result therefore certifies that both sufficed, so neither bound has to be proved
-correct in advance.
+Two finite resources keep everything terminating and self-certifying: the prime
+table (the search returns `none` if it would read past it) and the `fuel` bound on
+the number of nodes (`none` if it runs out). A `some _` result certifies both
+sufficed, so neither bound has to be proved correct in advance.
 
 `highlyAbundantLcm? n` returns `some true` (highly abundant), `some false` (a
 witness exists), or `none` (enlarge `primes` or `fuel`).
@@ -119,49 +120,70 @@ def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
   termination_by primes.size - back
   decreasing_by all_goals omega
 
-/-- A pending task in the depth-first search (see the module docstring). `B = L` is
-fixed throughout, so it is not stored in frames. -/
-inductive Frame where
-  | node (target num minIdx : Nat)
-  | wheel (target num m m2 front back lhs rhs : Nat)
-  | exps (target num nextMinIdx m p pk : Nat)
+/-- Exponent children of the front prime `p` (`pk = p^k`, starting at `k = 1`):
+for each `k ≥ 1` with `p^k ≤ m`, prepend the child `(⌈target/σ(p^k)⌉, num·p^k,
+nextMinIdx)`, stopping once `σ(p^k) ≥ target`. Structural on `fuel` (`fuel ≥
+⌊log_p m⌋ + 1` suffices; `m + 1` does). -/
+def expChildren (fuel target num nextMinIdx m p pk : Nat)
+    (acc : List (Nat × Nat × Nat)) : List (Nat × Nat × Nat) :=
+  match fuel with
+  | 0 => acc
+  | fuel + 1 =>
+    if pk > m then acc
+    else
+      let spk := (pk * p - 1) / (p - 1)              -- σ(p^k), reusing pk (pk·p = p^(k+1))
+      let target' := (target + spk - 1) / spk         -- ⌈target / σ(p^k)⌉
+      let acc := (target', num * pk, nextMinIdx) :: acc
+      if spk ≥ target then acc
+      else expChildren fuel target num nextMinIdx m p (pk * p) acc
 
-/-- One step of the search. Returns `some true` if a witness exists, `some false`
-if the stack empties with none found, and `none` if a resource (prime table or
-`fuel`) is exhausted. Structurally recursive on `fuel`. -/
-def step (B : Nat) : Nat → List Frame → Option Bool
-  | 0, _ => none
-  | _, [] => some false
-  | fuel + 1, .node target num minIdx :: rest =>
-    if target ≤ 1 then
-      if num < B then some true else step B fuel rest
-    else match primes[minIdx]? with
-      | none => none
-      | some p0 =>
-        let m := B / num
-        step B fuel (.wheel target num m (m * m) minIdx minIdx (p0 * m) (target * (p0 - 1)) :: rest)
-  | fuel + 1, .wheel target num m m2 front back lhs rhs :: rest =>
+/-- Accumulate the children of node `(target, num, minIdx)` (budget `m = B/num`):
+the wheel `extend` slides over feasible front primes and each contributes its
+`expChildren`. `none` if the prime table is exhausted. Structural on `fuel`
+(`fuel ≥ primes.size` suffices). -/
+def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
+    (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
+  match fuel with
+  | 0 => none
+  | fuel + 1 =>
     match extend (primes.size + 1) m2 front back lhs rhs with
     | .exhaustedTable => none
-    | .overBudget => step B fuel rest  -- no feasible window: this node has no witness
-    | .window b lhs' rhs' =>           -- use the front prime, keep sliding from front+1
+    | .overBudget => some acc
+    | .window b lhs' rhs' =>
       match primes[front]? with
       | none => none
       | some p =>
-        step B fuel (.exps target num (front + 1) m p p ::
-          .wheel target num m m2 (front + 1) b (lhs' / p) (rhs' / (p - 1)) :: rest)
-  | fuel + 1, .exps target num nextMinIdx m p pk :: rest =>
-    if pk > m then step B fuel rest  -- p^k > m: exponents of p exhausted
-    else
-      let spk := (pk * p - 1) / (p - 1)            -- σ(p^k), reusing pk (pk·p = p^(k+1))
-      let target' := (target + spk - 1) / spk       -- ⌈target / σ(p^k)⌉
-      let child : Frame := .node target' (num * pk) nextMinIdx
-      if spk ≥ target then step B fuel (child :: rest)  -- larger exponents only enlarge num
-      else step B fuel (child :: .exps target num nextMinIdx m p (pk * p) :: rest)
+        wheelChildren fuel m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
+          (expChildren (m + 1) target num (front + 1) m p p acc)
 
-/-- A generous bound on the number of search steps; `none` is returned (rather than
-a wrong answer) if it is ever too small. -/
+/-- The child subproblems of node `(target, num, minIdx)`: the `(prime, exponent)`
+one-step extensions the search would explore. `none` iff a needed prime lies past
+the table. This is the explicit subtree structure of the search. -/
+def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
+  match primes[minIdx]? with
+  | none => none
+  | some p0 =>
+    let m := B / num
+    wheelChildren (primes.size + 1) (m * m) m target num minIdx minIdx (p0 * m) (target * (p0 - 1)) []
+
+/-- A generous bound on the number of nodes the search visits; `none` is returned
+(rather than a wrong answer) if it is ever too small. -/
 def searchFuel : Nat := 1000000000
+
+/-- Depth-first search over a stack of node subproblems `(target, num, minIdx)`.
+Returns `some true` if some node on the stack has a witness, `some false` if none
+does (stack emptied), `none` if a resource (prime table or `fuel`) ran out.
+Self-recursive and structural on `fuel`; `children` is a plain helper, so there is
+no mutual recursion. -/
+def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
+  | 0, _ => none
+  | _, [] => some false
+  | fuel + 1, (target, num, minIdx) :: rest =>
+    if target ≤ 1 then
+      if num < B then some true else step B fuel rest   -- t = 1 is a witness iff num < B
+    else match children B target num minIdx with
+      | none => none
+      | some cs => step B fuel (cs ++ rest)
 
 /-- `(L_n, σ(L_n))`, from `L_n = ∏_{p ≤ n} p^{⌊log_p n⌋}`. -/
 def lcmData (n : Nat) : Nat × Nat :=
@@ -174,7 +196,7 @@ def lcmData (n : Nat) : Nat × Nat :=
 witness exists), or `none` (a resource ran out — enlarge `primes` or `searchFuel`). -/
 def highlyAbundantLcm? (n : Nat) : Option Bool :=
   let (B, sL) := lcmData n
-  if B ≤ 1 then some true else (step B searchFuel [.node sL 1 0]).map (!·)
+  if B ≤ 1 then some true else (step B searchFuel [(sL, 1, 0)]).map (!·)
 
 /-- Indices `n ≤ 172` for which `L_n` is known to be highly abundant. -/
 def knownHA (n : Nat) : Bool :=
