@@ -35,16 +35,38 @@ The pieces (full pre/postconditions are on each definition):
   `t ≠ 1` equals `primes[i]^k * t'` with `i ≥ minIdx` the index of its least prime
   factor, `k ≥ 1`, `t' ∈ P (i+1)`, and `target ≤ σ t ↔ ⌈target/σ(primes[i]^k)⌉ ≤
   σ t'`; the child for `(i,k)` is `(⌈target/σ(primes[i]^k)⌉, num*primes[i]^k, i+1)`.)
-* `step` searches a list (used as a stack) of nodes: `some true` iff some node on
-  the list has a witness, `some false` iff none does, `none` if a limit is reached.
-  Because the answer is a disjunction over the list, `step (s₁ ++ s₂)` reports a
-  witness iff `step s₁` or `step s₂` does, so sublists may be decided separately.
+* `step` searches a list (used as a stack) of nodes: `some true` if some node on
+  the list has a witness, `some false` if none does, `none` if a limit is reached
+  (exact postcondition on `step`). `step` runs one shared `fuel` over the whole
+  list, so `step B f (s₁ ++ s₂)` is not determined by `step B f s₁` and
+  `step B f s₂`; subtrees are combined through their witness sets `W`, not through
+  `step` on appended lists. See *Partial verification*.
 
 `extend`, `children`, `step` are total. They read the table only through
 `primes[i]?`, so an index `≥ primes.size` yields the result `none` rather than a
 wrong answer; and each recurses on a `Nat` that bounds its number of recursive
 calls, yielding `none` at `0`. Thus a `some _` result is valid for any table
 length and any sufficiently large bound.
+
+## Partial verification
+
+To prove `lcm (1..n)` highly abundant from results about subtrees (instead of one
+evaluation of the whole search), let `(B, sL) = lcmData n` and assume `2 ≤ B`:
+
+1. Evaluate `children B sL 1 0`. If it is `none`, enlarge `primes`. Otherwise it
+   is `some cs`, and `cs` is the list of the root node's children.
+2. For each `c ∈ cs`, obtain `step B searchFuel [c] = some false` (each is a
+   separate, smaller evaluation). By the postcondition of `step`, this gives
+   `W c.1 c.2.1 c.2.2 = ∅`.
+3. `1 ∉ W sL 1 0`, because `σ 1 = 1 < sL`. The postcondition of `children`, negated,
+   states `(∀ t ∈ W sL 1 0, t = 1) ↔ (∀ c ∈ cs, W c.1 c.2.1 c.2.2 = ∅)`; its right
+   side holds by step 2, and `W sL 1 0 = ∅ ↔ (1 ∉ W sL 1 0 ∧ ∀ t ∈ W sL 1 0, t = 1)`,
+   so `W sL 1 0 = ∅`.
+4. `W sL 1 0 = ∅` is, by definition, `¬ ∃ m, 1 ≤ m ∧ m < B ∧ sL ≤ σ m`. With
+   `B = lcm (1..n)` and `sL = σ B`, this is exactly: `lcm (1..n)` is highly abundant.
+
+The only facts used are the postconditions of `step` and `children` stated below;
+the full root is never evaluated.
 -/
 
 namespace Sage
