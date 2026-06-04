@@ -141,7 +141,8 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
 
 /-- Well-founded form of `wheelChildren` (same spec). Recurses on
 `primes.size - front` and uses `extendWF`. Not used by the search; kept as the
-reference `wheelChildren` is proved against. -/
+reference `wheelChildren` is proved against. Children at later `front` indices
+come first in the output, matching `wheelChildren`'s accumulation order. -/
 def wheelChildrenWF (m2 m target num front back lhs rhs : Nat) :
     Option (List (Nat × Nat × Nat)) :=
   if h : front ≥ primes.size then none
@@ -153,7 +154,7 @@ def wheelChildrenWF (m2 m target num front back lhs rhs : Nat) :
       let p := primes[front]
       match wheelChildrenWF m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1)) with
       | none => none
-      | some rest => some (expChildren (m + 1) target num (front + 1) m p p ++ rest)
+      | some rest => some (rest ++ expChildren (m + 1) target num (front + 1) m p p)
   termination_by primes.size - front
   decreasing_by omega
 
