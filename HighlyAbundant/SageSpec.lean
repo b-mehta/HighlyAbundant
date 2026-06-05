@@ -28,7 +28,7 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 3. Membership in `P`: `mem_P_succ_of_factors_gt`, `one_mem_P`.
 4. Multiplicative decomposition: `exists_factor_decomp`, `exists_minFac_decomp`.
 5. Products over prime windows: `primesProd`, `primesProdM1`, and the wheel
-   invariant updates in cases 3 and 6 of `extend.induct`.
+   invariant updates in cases 3 and 6 of `extend`'s recursion.
 6. Sigma at a single prime: `sigma_pow_le_window_factor`, `sigma_pow_expChildren_eq`.
 7. The two main bounds: `sigma_bound_window` and `primesProd_le_t`.
 8. Ruling out `.tooLarge` from a witness: `extend_ne_tooLarge_of_witness`.
@@ -382,25 +382,20 @@ private theorem extend_ne_tooLarge_of_witness (fuel m target front t : Nat) (ht2
     (back lhs rhs : Nat) (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back) (hfront : front ≤ back + 1) :
     extend fuel (m * m) front back lhs rhs ≠ .tooLarge := by
-  induction fuel, back, lhs, rhs using extend.induct (m2 := m * m) (front := front) with
-  | case1 _ _ _ => simp [extend]
-  | case2 _ _ _ _ hf hge => simp [extend, hf, hge]
-  | case3 _ _ _ _ _ hlt hb1 _ _ hbig =>
+  fun_induction extend fuel (m * m) front back lhs rhs with
+  | case1 | case2 | case5 | case8 => simp
+  | case3 _ _ _ _ _ _ hb1 _ _ hbig =>
     intro _
     exact extend_tooLarge_contradiction hlhs hrhs hfront hb1 (by omega) hbig ht2 htP htm htσ
-  | case4 _ _ _ _ hf hlt hb1 _ _ hle ih =>
-    rw [extend, if_pos hf, if_neg hlt, if_pos hb1, if_neg hle]
+  | case4 _ _ _ _ hf _ hb1 _ _ _ ih =>
     obtain ⟨hlhs', hrhs'⟩ := extend_case3_invariants hlhs hrhs hf hb1
     exact ih hlhs' hrhs' (by omega)
-  | case5 _ _ _ _ hf hlt hb1 => simp [extend, hf, hlt, hb1]
   | case6 _ _ _ _ _ hf1 _ _ hbig =>
     intro _
     exact extend_tooLarge_empty_contradiction hlhs hf1 (by omega) hbig ht2 htP htm
-  | case7 _ _ _ _ hf hf1 _ _ hle ih =>
-    rw [extend, if_neg hf, if_pos hf1, if_neg hle]
+  | case7 _ _ _ _ _ hf1 _ _ _ ih =>
     obtain ⟨hlhs_new, hrhs_new⟩ := extend_case6_invariants hlhs hrhs (by omega) hf1
     exact ih hlhs_new hrhs_new (by omega)
-  | case8 _ _ _ _ hf hf1 => simp [extend, hf, hf1]
 
 /-! ### Window invariants -/
 
@@ -412,28 +407,20 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
     (heq : extend fuel (m * m) front back lhs rhs = Wheel.window b lhs' rhs') :
     lhs' = m * primesProd front b ∧ rhs' = target * primesProdM1 front b ∧
     back ≤ b ∧ front ≤ b := by
-  induction fuel, back, lhs, rhs using extend.induct (m2 := m * m) (front := front) with
-  | case1 _ _ _ => simp [extend] at heq
-  | case2 back lhs rhs _ hf hge =>
-    rw [extend] at heq; simp [hf, hge] at heq
+  fun_induction extend fuel (m * m) front back lhs rhs with
+  | case1 | case5 | case8 => simp at heq
+  | case2 _ _ _ _ hf _ =>
     obtain ⟨rfl, rfl, rfl⟩ := heq
     exact ⟨hlhs, hrhs, le_refl _, hf⟩
-  | case3 _ _ _ _ hf hlt hb1 _ _ hbig =>
-    rw [extend, if_pos hf, if_neg hlt, if_pos hb1, if_pos hbig] at heq; cases heq
-  | case4 _ _ _ _ hf hlt hb1 _ _ hle ih =>
-    rw [extend, if_pos hf, if_neg hlt, if_pos hb1, if_neg hle] at heq
+  | case3 | case6 => cases heq
+  | case4 _ _ _ _ hf _ hb1 _ _ _ ih =>
     obtain ⟨hlhs_new, hrhs_new⟩ := extend_case3_invariants hlhs hrhs hf hb1
     obtain ⟨h1, h2, _, h4⟩ := ih hlhs_new hrhs_new (by omega) heq
     exact ⟨h1, h2, by omega, h4⟩
-  | case5 _ _ _ _ hf hlt hb1 => simp [extend, hf, hlt, hb1] at heq
-  | case6 _ _ _ _ hf hf1 _ _ hbig =>
-    rw [extend, if_neg hf, if_pos hf1, if_pos hbig] at heq; cases heq
-  | case7 _ _ _ _ hf hf1 _ _ hle ih =>
-    rw [extend, if_neg hf, if_pos hf1, if_neg hle] at heq
+  | case7 _ _ _ _ _ hf1 _ _ _ ih =>
     obtain ⟨hlhs_new, hrhs_new⟩ := extend_case6_invariants hlhs hrhs (by omega) hf1
     obtain ⟨h1, h2, _, h4⟩ := ih hlhs_new hrhs_new (by omega) heq
     exact ⟨h1, h2, by omega, h4⟩
-  | case8 _ _ _ _ hf hf1 => simp [extend, hf, hf1] at heq
 
 /-! ### Degenerate case: `lhs = 0` -/
 
@@ -442,48 +429,29 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
 private lemma extend_zero_lhs_combined (fuel front back lhs rhs : Nat) (hlhs : lhs = 0) :
     extend fuel 0 front back lhs rhs = Wheel.exhaustedTable ∨
     ∃ b rhs', extend fuel 0 front back lhs rhs = Wheel.window b 0 rhs' := by
-  induction fuel, back, lhs, rhs using extend.induct (m2 := 0) (front := front) with
-  | case1 _ _ _ => exact Or.inl rfl
-  | case2 back lhs rhs _ hf hge =>
-    exact Or.inr ⟨back, rhs, by rw [extend, if_pos hf, if_pos hge, hlhs]⟩
-  | case3 _ _ _ _ _ _ _ _ _ hbig => subst hlhs; omega
-  | case4 _ _ _ _ hf hlt hb1 _ _ hle ih =>
-    rw [extend, if_pos hf, if_neg hlt, if_pos hb1, if_neg hle]; exact ih (by omega)
-  | case5 _ _ _ _ hf hlt hb1 =>
-    rw [extend, if_pos hf, if_neg hlt, if_neg hb1]; exact Or.inl rfl
-  | case6 _ _ _ _ _ _ _ _ hbig => subst hlhs; omega
-  | case7 _ _ _ _ hf hf1 _ _ hle ih =>
-    rw [extend, if_neg hf, if_pos hf1, if_neg hle]; exact ih (by omega)
-  | case8 _ _ _ _ hf hf1 =>
-    rw [extend, if_neg hf, if_neg hf1]; exact Or.inl rfl
+  fun_induction extend fuel 0 front back lhs rhs with
+  | case1 | case5 | case8 => exact Or.inl rfl
+  | case2 back _ rhs => exact Or.inr ⟨back, rhs, by simp [hlhs]⟩
+  | case3 | case6 => subst hlhs; omega
+  | case4 _ _ _ _ _ _ _ _ _ _ ih => exact ih (by omega)
+  | case7 _ _ _ _ _ _ _ _ _ ih => exact ih (by omega)
 
 /-- For `m2 = 0` and `lhs = 0`, `wheelChildren` returns `none`. -/
 private theorem wheelChildren_zero_no_some (fuel target num front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) (hlhs : lhs = 0) :
     wheelChildren fuel 0 0 target num front back lhs rhs acc = none := by
-  induction fuel, front, back, lhs, rhs, acc using wheelChildren.induct
-    (m2 := 0) (m := 0) (target := target) (num := num) with
-  | case1 _ _ _ _ _ => rw [wheelChildren]
-  | case2 _ _ _ _ _ _ hext => rw [wheelChildren, hext]
+  fun_induction wheelChildren fuel 0 0 target num front back lhs rhs acc with
+  | case1 | case2 | case5 => rfl
   | case3 front back lhs rhs _ _ hext =>
     rcases extend_zero_lhs_combined 50 front back lhs rhs hlhs with h' | ⟨_, _, h'⟩
-    · rw [wheelChildren, h']
+    · simp [h'] at hext
     · rw [h'] at hext; cases hext
-  | case4 front back lhs rhs _ _ _ _ _ hext hp _ ih =>
+  | case4 front back lhs rhs _ _ _ _ _ hext _ _ ih =>
     rcases extend_zero_lhs_combined 50 front back lhs rhs hlhs with h' | ⟨_, _, h'⟩
-    · rw [wheelChildren, h']
+    · simp [h'] at hext
     · rw [h'] at hext
       obtain ⟨rfl, rfl, rfl⟩ := hext
-      rw [wheelChildren, h']
-      simp only [if_pos hp]
       exact ih (by simp)
-  | case5 front back lhs rhs _ _ _ _ _ hext hnotfront =>
-    rcases extend_zero_lhs_combined 50 front back lhs rhs hlhs with h' | ⟨_, _, h'⟩
-    · rw [wheelChildren, h']
-    · rw [h'] at hext
-      obtain ⟨rfl, rfl, rfl⟩ := hext
-      rw [wheelChildren, h']
-      simp only [if_neg hnotfront]
 
 /-! ### `expChildren` analysis -/
 
@@ -620,21 +588,13 @@ private theorem mem_wheelChildren {fuel m2 m target num front back lhs rhs : Nat
     c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ (Nat.nth Nat.Prime i) ^ k ≤ m ∧
       c = (ceilDiv target (σ₁ ((Nat.nth Nat.Prime i) ^ k)),
         num * (Nat.nth Nat.Prime i) ^ k, i + 1) := by
-  induction fuel, front, back, lhs, rhs, acc using wheelChildren.induct
-    (m2 := m2) (m := m) (target := target) (num := num) generalizing L with
-  | case1 _ _ _ _ _ => rw [wheelChildren] at h; cases h
-  | case2 _ _ _ _ _ _ hext => rw [wheelChildren, hext] at h; cases h
-  | case3 _ _ _ _ _ _ hext =>
-    rw [wheelChildren, hext] at h
-    obtain rfl := Option.some.inj h
-    exact Or.inl hc
-  | case4 front _ _ _ _ _ _ _ _ hext hp _ =>
+  fun_induction wheelChildren fuel m2 m target num front back lhs rhs acc generalizing L with
+  | case1 | case2 | case5 => cases h
+  | case3 => obtain rfl := Option.some.inj h; exact Or.inl hc
+  | case4 front _ _ _ _ _ _ _ _ _ hp _ =>
     rename_i hrec
-    rw [wheelChildren, hext] at h
-    simp only [if_pos hp] at h
-    have hpf : front < primes.size := hp
     have hq : primesRArray.get front = Nat.nth Nat.Prime front :=
-      primesRArray_get_eq_nth front hpf
+      primesRArray_get_eq_nth front hp
     rcases hrec h hc with hcacc | ⟨i, k, hi, hk, hpkm, hceq⟩
     · rcases List.mem_append.mp hcacc with hcexp | hcorig
       · have hcexp' : c ∈ expChildren (m + 1) target num (front + 1) m
@@ -645,33 +605,18 @@ private theorem mem_wheelChildren {fuel m2 m target num front back lhs rhs : Nat
         exact Or.inr ⟨front, k, le_rfl, hk, hpkm, hceq⟩
       · exact Or.inl hcorig
     · exact Or.inr ⟨i, k, by omega, hk, hpkm, hceq⟩
-  | case5 _ _ _ _ _ _ _ _ _ hext hnotfront =>
-    rw [wheelChildren, hext] at h
-    simp only [if_neg hnotfront] at h
-    cases h
 
 /-- Anything in `acc` going in is still in the output `L` coming out, since `wheelChildren`
 only ever prepends to `acc`. -/
 private lemma wheelChildren_acc_subset (fuel m2 m target num front back lhs rhs : Nat)
     (acc L : List (Nat × Nat × Nat))
     (h : wheelChildren fuel m2 m target num front back lhs rhs acc = some L) : acc ⊆ L := by
-  induction fuel, front, back, lhs, rhs, acc using wheelChildren.induct
-    (m2 := m2) (m := m) (target := target) (num := num) generalizing L with
-  | case1 _ _ _ _ _ => rw [wheelChildren] at h; cases h
-  | case2 _ _ _ _ _ _ hext => rw [wheelChildren, hext] at h; cases h
-  | case3 _ _ _ _ _ _ hext =>
-    rw [wheelChildren, hext] at h
-    obtain rfl := Option.some.inj h
-    exact fun _ hx => hx
-  | case4 _ _ _ _ _ _ _ _ _ hext hp _ =>
+  fun_induction wheelChildren fuel m2 m target num front back lhs rhs acc generalizing L with
+  | case1 | case2 | case5 => cases h
+  | case3 => obtain rfl := Option.some.inj h; exact fun _ hx => hx
+  | case4 =>
     rename_i hrec
-    rw [wheelChildren, hext] at h
-    simp only [if_pos hp] at h
     exact fun x hx => hrec _ h (List.mem_append_right _ hx)
-  | case5 _ _ _ _ _ _ _ _ _ hext hnotfront =>
-    rw [wheelChildren, hext] at h
-    simp only [if_neg hnotfront] at h
-    cases h
 
 /-- At any state of `wheelChildren`
 with the wheel invariants and a viable witness `t`, some child in the output `L` has a non-empty
@@ -684,13 +629,8 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
     (hwc : wheelChildren fuel (m * m) m target num front back lhs rhs acc = some L)
     (t : Nat) (ht2 : 2 ≤ t) (htP : t ∈ P front) (hnumt : num * t < B) (htσ : target ≤ σ₁ t) :
     ∃ c ∈ L, W B c.1 c.2.1 c.2.2 ≠ ∅ := by
-  induction fuel, front, back, lhs, rhs, acc using wheelChildren.induct
-    (m2 := m * m) (m := m) (target := target) (num := num)
-    generalizing L with
-  | case1 _ _ _ _ _ =>
-    rw [wheelChildren] at hwc; cases hwc
-  | case2 _ _ _ _ _ _ hext =>
-    rw [wheelChildren, hext] at hwc; cases hwc
+  fun_induction wheelChildren fuel (m * m) m target num front back lhs rhs acc generalizing L with
+  | case1 | case2 | case5 => cases hwc
   | case3 front _ _ _ _ _ hext =>
     exfalso
     have htm : t ≤ m := hmdef ▸ (Nat.le_div_iff_mul_le hnum_pos).mpr (by linarith)
@@ -698,11 +638,8 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
       _ _ _ hlhs hrhs hfront_le hext
   | case4 front back lhs rhs acc _ b lhs' rhs' hext hp _ =>
     rename_i hrec
-    rw [wheelChildren, hext] at hwc
-    simp only [if_pos hp] at hwc
-    have hfront_lt : front < primes.size := hp
     have hq : primesRArray.get front = Nat.nth Nat.Prime front :=
-      primesRArray_get_eq_nth front hfront_lt
+      primesRArray_get_eq_nth front hp
     have hp_prime : (Nat.nth Nat.Prime front).Prime := Nat.prime_nth_prime front
     have htm : t ≤ m := hmdef ▸ (Nat.le_div_iff_mul_le hnum_pos).mpr (by linarith)
     obtain ⟨hlhs', hrhs', _, hfront_b⟩ :=
@@ -734,17 +671,16 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
         (by omega) (by omega) hk_pos hpk_le_m ht''_pos ht''_P
         (by rw [mul_assoc, hpk_t]; exact hnumt) htσ' (fuel := m + 1)
         (by have : k ≤ m := (Nat.lt_pow_self hp_prime.one_lt).le.trans hpk_le_m; omega)
+      have hcget : c ∈ expChildren (m + 1) target num (front + 1) m
+          (primesRArray.get front) (primesRArray.get front) := by
+        rw [hq]; rwa [pow_one] at hc
       exact ⟨c, wheelChildren_acc_subset _ _ _ _ _ _ _ _ _ _ _ hwc
-        (hq ▸ List.mem_append_left _ (by rwa [pow_one] at hc)), hwit⟩
+        (List.mem_append_left _ hcget), hwit⟩
     · have ht_in_P_next : t ∈ P (front + 1) :=
         mem_P_succ_of_factors_gt (by omega) fun q' hq'_prime hq'_dvd =>
           lt_of_le_of_ne (htP.2 q' hq'_prime hq'_dvd)
             (Ne.symm fun h => hdvd (h ▸ hq'_dvd))
       exact hrec L (by omega) hlhs_new hrhs_new (by omega) hwc ht_in_P_next
-  | case5 _ _ _ _ _ _ _ _ _ hext hnotfront =>
-    rw [wheelChildren, hext] at hwc
-    simp only [if_neg hnotfront] at hwc
-    cases hwc
 
 /-- Every `c` in `children`'s output is a prime-power child of the form
 `(⌈target / σ₁(p^k)⌉, num * p^k, i + 1)` for some prime index `i ≥ minIdx`
