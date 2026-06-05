@@ -24,8 +24,8 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 ## File layout
 
 1. Specification: `P`, `W`, `lcmData`.
-2. The `primes` table: monotonicity, injectivity, the "consecutive primes" property.
-3. Membership in `P`: `P_le_factor`, `mem_P_succ_of_factors_gt`, `one_mem_P`.
+2. The `primes` table: bridge to `Nat.nth Nat.Prime`.
+3. Membership in `P`: `mem_P_succ_of_factors_gt`, `one_mem_P`.
 4. Multiplicative decomposition: `exists_factor_decomp`, `exists_minFac_decomp`.
 5. Products over prime windows: `primesProd`, `primesProdM1`, and the wheel
    invariant updates in cases 3 and 6 of `extend.induct`.
@@ -84,49 +84,31 @@ def lcmData (n : Nat) : Nat × Nat :=
 
 /-! ### The `primes` table -/
 
-/-- Every entry of `primes` is a prime. -/
-private theorem primes_prime_of_mem : ∀ p ∈ primes, p.Prime := by
-  decide +kernel
-
-/-- If `primes[i]? = some p`, then `p` is prime. -/
-private theorem primes_prime {i p : Nat} (h : primes[i]? = some p) : p.Prime :=
-  primes_prime_of_mem _ (Array.mem_of_getElem? h)
-
-
-private lemma primes_eq_nth_aux : ∀ i : Fin primes.size,
-    primes[i.val] = Nat.nth Nat.Prime i.val := by
+private lemma primesRArray_get_eq_nth_aux : ∀ i : Fin primes.size,
+    primesRArray.get i.val = Nat.nth Nat.Prime i.val := by
   intro i
-  have hp : ∀ i : Fin primes.size, Nat.Prime primes[i.val] := by decide +kernel
+  have hp : ∀ i : Fin primes.size, Nat.Prime (primesRArray.get i.val) := by
+    intro i; change Nat.Prime primesRArray[i.val]; revert i; decide +kernel
   rw [← Nat.nth_count (hp i)]
   congr 1
   revert i
+  change ∀ i : Fin primes.size, Nat.count Nat.Prime primesRArray[i.val] = i.val
   decide +kernel
 
-/-- The bridge `primes[i] = Nat.nth Nat.Prime i` for in-range indices. -/
-private lemma primes_eq_nth (i : Nat) (hi : i < primes.size) :
-    primes[i] = Nat.nth Nat.Prime i := primes_eq_nth_aux ⟨i, hi⟩
-
-/-- Direct bridge: the wheel's array lookup gives the `i`-th prime. -/
+/-- The wheel's array lookup gives the `i`-th prime. -/
 private lemma primesRArray_get_eq_nth (i : Nat) (hi : i < primes.size) :
-    primesRArray.get i = Nat.nth Nat.Prime i := by
-  rw [primesRArray_get_eq_primes_get _ hi, primes_eq_nth _ hi]
+    primesRArray.get i = Nat.nth Nat.Prime i :=
+  primesRArray_get_eq_nth_aux ⟨i, hi⟩
 
 /-! ### Membership in `P` -/
 
-/-- If `t ∈ P front` with `front < primes.size`, then `primes[front]` bounds every prime
-factor of `t` from below. -/
-private lemma P_le_factor {t front q : Nat} (hP : t ∈ P front) (hq : q.Prime) (hqd : q ∣ t)
-    (hfront_lt : front < primes.size) : primes[front] ≤ q := by
-  rw [primes_eq_nth _ hfront_lt]; exact hP.2 q hq hqd
-
-/-- If `x ≥ 1` and every prime factor of `x` exceeds `primes[front]`, then `x ∈ P (front + 1)`. -/
+/-- If `x ≥ 1` and every prime factor of `x` exceeds the `front`-th prime, then
+`x ∈ P (front + 1)`. -/
 private lemma mem_P_succ_of_factors_gt {x front : Nat} (hx : 1 ≤ x)
-    (hfront : front < primes.size)
-    (h : ∀ q, q.Prime → q ∣ x → primes[front] < q) : x ∈ P (front + 1) :=
+    (h : ∀ q, q.Prime → q ∣ x → Nat.nth Nat.Prime front < q) : x ∈ P (front + 1) :=
   ⟨hx, fun q hq hqd => by
     by_contra! hlt
     have := Nat.le_nth_of_lt_nth_succ hlt hq
-    have := primes_eq_nth _ hfront
     have := h q hq hqd
     omega⟩
 
@@ -288,7 +270,6 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
     have hcard' : t'.primeFactors.card + (front + 1) ≤ B + 1 := by
       rw [hpf, Finset.card_insert_of_notMem hp_not_t'] at hcard
       omega
-    have hfront_lt : front < primes.size := by omega
     have ht'_P : t' ∈ P (front + 1) := ⟨ht'_pos, fun q hq hqd => by
       by_contra! h
       have hpq : p < q := lt_of_le_of_ne
@@ -297,20 +278,17 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
       have := Nat.le_nth_of_lt_nth_succ h hq
       omega⟩
     have IH := ih t' ht'_lt _ _ ht'_pos ht'_P hBsize hcard'
-    have hp_geprimes' : primes[front] ≤ p := (primes_eq_nth _ hfront_lt).symm ▸ hp_geprimes
-    have hcons : σ₁ (p^k) * (primes[front] - 1) ≤ p^k * primes[front] :=
-      sigma_pow_le_window_factor hp_prime
-        (primes_prime_of_mem _ (Array.getElem_mem hfront_lt)).two_le hp_geprimes'
+    have hcons : σ₁ (p^k) * (Nat.nth Nat.Prime front - 1) ≤ p^k * Nat.nth Nat.Prime front :=
+      sigma_pow_le_window_factor hp_prime (Nat.prime_nth_prime front).two_le hp_geprimes
     calc σ₁ t * primesProdM1 front B
-        = σ₁ (p^k) * (primes[front] - 1) * (σ₁ t' * primesProdM1 (front + 1) B) := by
+        = σ₁ (p^k) * (Nat.nth Nat.Prime front - 1) *
+            (σ₁ t' * primesProdM1 (front + 1) B) := by
           rw [← hpk_t, ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime
-            (hcoprime.pow_left k), primesProdM1_succ_front (by omega),
-            ← primes_eq_nth _ hfront_lt]
+            (hcoprime.pow_left k), primesProdM1_succ_front (by omega)]
           ring
-      _ ≤ p^k * primes[front] * (t' * primesProd (front + 1) B) := by gcongr
+      _ ≤ p^k * Nat.nth Nat.Prime front * (t' * primesProd (front + 1) B) := by gcongr
       _ = t * primesProd front B := by
-          rw [← hpk_t, primesProd_succ_front (by omega : front ≤ B),
-            ← primes_eq_nth _ hfront_lt]
+          rw [← hpk_t, primesProd_succ_front (by omega : front ≤ B)]
           ring
 
 /-- Radical bound: `primesProd front (front + j - 1) ≤ t` for `t ∈ P front` with at least `j ≥ 1`
@@ -327,9 +305,7 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
       exists_minFac_decomp ht2
     have hp_dvd : p ∣ t := hpk_t ▸ (dvd_pow_self p (by omega)).mul_right _
     have hp_geprimes : Nat.nth Nat.Prime front ≤ p := hP.2 p hp_prime hp_dvd
-    have hfront_lt : front < primes.size := by omega
-    have hp_geprimes' : primes[front] ≤ p := (primes_eq_nth _ hfront_lt).symm ▸ hp_geprimes
-    have hpk_ge : primes[front] ≤ p^k := hp_geprimes'.trans (Nat.le_self_pow (by omega) p)
+    have hpk_ge : Nat.nth Nat.Prime front ≤ p^k := hp_geprimes.trans (Nat.le_self_pow (by omega) p)
     rcases Nat.lt_or_ge 1 j with hj2 | hj2
     · have hp_not_t' : p ∉ t'.primeFactors := fun h =>
         hp_prime.coprime_iff_not_dvd.mp hcoprime (Nat.mem_primeFactors.mp h).2.1
@@ -340,21 +316,21 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
         rw [h_pf_eq, Finset.card_union_of_disjoint (Finset.disjoint_singleton_left.mpr hp_not_t'),
             Finset.card_singleton]; omega
       have ht'_in_P : t' ∈ P (front + 1) :=
-        mem_P_succ_of_factors_gt ht'_pos hfront_lt fun q hq_prime hq_dvd =>
-          hp_geprimes'.trans_lt (lt_of_le_of_ne
+        mem_P_succ_of_factors_gt ht'_pos fun q hq_prime hq_dvd =>
+          hp_geprimes.trans_lt (lt_of_le_of_ne
             (hp_min q hq_prime (hpk_t ▸ dvd_mul_of_dvd_right hq_dvd _))
             fun hqp => hp_prime.coprime_iff_not_dvd.mp hcoprime (hqp ▸ hq_dvd))
       have IH := ih t' ht'_lt _ ht'_pos ht'_in_P (j - 1) (by omega) (by rw [ht'_card_eq]; omega)
         (by omega)
       rw [(by omega : (front + 1) + (j - 1) - 1 = front + j - 1)] at IH
       calc primesProd front (front + j - 1)
-          = primes[front] * primesProd (front + 1) (front + j - 1) := by
-            rw [primesProd_succ_front (by omega), primes_eq_nth _ hfront_lt]
+          = Nat.nth Nat.Prime front * primesProd (front + 1) (front + j - 1) :=
+            primesProd_succ_front (by omega)
         _ ≤ p^k * t' := by gcongr
         _ = t := hpk_t
     · obtain rfl : j = 1 := by omega
-      rw [Nat.add_sub_cancel, primesProd_self, ← primes_eq_nth _ hfront_lt]
-      calc primes[front] ≤ p^k := hpk_ge
+      rw [Nat.add_sub_cancel, primesProd_self]
+      calc Nat.nth Nat.Prime front ≤ p^k := hpk_ge
         _ ≤ p^k * t' := Nat.le_mul_of_pos_right _ ht'_pos
         _ = t := hpk_t
 
@@ -391,8 +367,9 @@ private theorem extend_tooLarge_contradiction
     omega
 
 /-- At a wheel `.tooLarge` empty-window state with `front < primes.size`, the witness `t`
-with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. The condition `lhs * primes[front] > m*m`
-with `lhs = m` implies `primes[front] > m`, but `t ≥ primes[front]`. -/
+with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. The condition
+`lhs * (front-th prime) > m*m` with `lhs = m` implies `(front-th prime) > m`, but `t` is
+at least the `front`-th prime. -/
 private theorem extend_tooLarge_empty_contradiction
     {m front back lhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back) (hfront_lt : front < primes.size)
@@ -650,8 +627,9 @@ private theorem mem_wheelChildren {fuel m2 m target num front back lhs rhs : Nat
     {acc : List (Nat × Nat × Nat)} {L : List (Nat × Nat × Nat)}
     (h : wheelChildren fuel m2 m target num front back lhs rhs acc = some L)
     {c : Nat × Nat × Nat} (hc : c ∈ L) :
-    c ∈ acc ∨ ∃ i p k, front ≤ i ∧ primes[i]? = some p ∧ 1 ≤ k ∧
-      p ^ k ≤ m ∧ c = (ceilDiv target (σ₁ (p ^ k)), num * p ^ k, i + 1) := by
+    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ (Nat.nth Nat.Prime i) ^ k ≤ m ∧
+      c = (ceilDiv target (σ₁ ((Nat.nth Nat.Prime i) ^ k)),
+        num * (Nat.nth Nat.Prime i) ^ k, i + 1) := by
   induction fuel, front, back, lhs, rhs, acc using wheelChildren.induct
     (m2 := m2) (m := m) (target := target) (num := num) generalizing L with
   | case1 _ _ _ _ _ => rw [wheelChildren] at h; cases h
@@ -665,19 +643,18 @@ private theorem mem_wheelChildren {fuel m2 m target num front back lhs rhs : Nat
     rw [wheelChildren, hext] at h
     simp only [if_pos hp] at h
     have hpf : front < primes.size := hp
-    have hq : primesRArray.get front = primes[front] :=
-      primesRArray_get_eq_primes_get front hpf
-    rcases hrec h hc with hcacc | ⟨i, p', k, hi, hpi, hk, hpkm, hceq⟩
+    have hq : primesRArray.get front = Nat.nth Nat.Prime front :=
+      primesRArray_get_eq_nth front hpf
+    rcases hrec h hc with hcacc | ⟨i, k, hi, hk, hpkm, hceq⟩
     · rcases List.mem_append.mp hcacc with hcexp | hcorig
       · have hcexp' : c ∈ expChildren (m + 1) target num (front + 1) m
-            primes[front] primes[front] := hq ▸ hcexp
+            (Nat.nth Nat.Prime front) (Nat.nth Nat.Prime front) := hq ▸ hcexp
         obtain ⟨k, hk, hpkm, hceq⟩ :=
-          mem_expChildren (primes_prime_of_mem _ (Array.getElem_mem hpf)) le_rfl
+          mem_expChildren (Nat.prime_nth_prime front) le_rfl
             (by rw [pow_one]; exact hcexp')
-        exact Or.inr ⟨front, primes[front], k, le_rfl,
-          Array.getElem?_eq_getElem hpf, hk, hpkm, hceq⟩
+        exact Or.inr ⟨front, k, le_rfl, hk, hpkm, hceq⟩
       · exact Or.inl hcorig
-    · exact Or.inr ⟨i, p', k, by omega, hpi, hk, hpkm, hceq⟩
+    · exact Or.inr ⟨i, k, by omega, hk, hpkm, hceq⟩
   | case5 _ _ _ _ _ _ _ _ _ hext hnotfront =>
     rw [wheelChildren, hext] at h
     simp only [if_neg hnotfront] at h
@@ -706,9 +683,8 @@ private lemma wheelChildren_acc_subset (fuel m2 m target num front back lhs rhs 
     simp only [if_neg hnotfront] at h
     cases h
 
-/-- When `front ≥ primes.size`, `extend` never returns `.tooLarge`: in the `front ≤ back`
-branch every relevant `primes[back+1]?` is `none`, and in the `front > back` branch we read
-`primes[front]? = none`. -/
+/-- When `front ≥ primes.size`, `extend` never returns `.tooLarge`: the
+`back + 1 < 49` and `front < 49` branches both fail. -/
 private lemma extend_ne_tooLarge_of_front_ge {fuel m2 front back lhs rhs : Nat}
     (hge : primes.size ≤ front) :
     extend fuel m2 front back lhs rhs ≠ .tooLarge := by
@@ -730,7 +706,7 @@ private lemma extend_ne_tooLarge_of_front_ge {fuel m2 front back lhs rhs : Nat}
 
 /-- If `wheelChildren` returns `some`, then `front < primes.size`. When `front ≥ primes.size`,
 `extend` is `.exhaustedTable` or `.window`, and both lead to `none` in `wheelChildren` (the
-latter via `primes[front]? = none` in case4). -/
+latter via the `front < 49` test in case4). -/
 private lemma wheelChildren_some_imp_front_lt
     {fuel m2 m target num front back lhs rhs : Nat} {acc L : List (Nat × Nat × Nat)}
     (h : wheelChildren fuel m2 m target num front back lhs rhs acc = some L) :
@@ -780,34 +756,33 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
     rw [wheelChildren, hext] at hwc
     simp only [if_pos hp] at hwc
     have hfront_lt : front < primes.size := hp
-    have hq : primesRArray.get front = primes[front] :=
-      primesRArray_get_eq_primes_get front hfront_lt
-    have hp_prime : (primes[front]).Prime := primes_prime_of_mem _ (Array.getElem_mem hfront_lt)
+    have hq : primesRArray.get front = Nat.nth Nat.Prime front :=
+      primesRArray_get_eq_nth front hfront_lt
+    have hp_prime : (Nat.nth Nat.Prime front).Prime := Nat.prime_nth_prime front
     have htm : t ≤ m := hmdef ▸ (Nat.le_div_iff_mul_le hnum_pos).mpr (by linarith)
     obtain ⟨hlhs', hrhs', _, hfront_b⟩ :=
       extend_window_invariant 50 m target front back lhs rhs b lhs' rhs'
         hlhs hrhs hfront_le hext
     have hlhs_new : lhs' / primesRArray.get front = m * primesProd (front + 1) b := by
-      rw [hq, hlhs', primesProd_succ_front hfront_b, ← primes_eq_nth _ hfront_lt,
+      rw [hq, hlhs', primesProd_succ_front hfront_b,
         mul_left_comm, Nat.mul_div_cancel_left _ hp_prime.pos]
     have hrhs_new : rhs' / (primesRArray.get front - 1) =
         target * primesProdM1 (front + 1) b := by
-      rw [hq, hrhs', primesProdM1_succ_front hfront_b, ← primes_eq_nth _ hfront_lt,
-        mul_left_comm,
-        Nat.mul_div_cancel_left _ (by have := hp_prime.two_le; omega : 0 < primes[front] - 1)]
-    have hf1 : front + 1 < primes.size := wheelChildren_some_imp_front_lt hwc
-    by_cases hdvd : primes[front] ∣ t
+      rw [hq, hrhs', primesProdM1_succ_front hfront_b, mul_left_comm,
+        Nat.mul_div_cancel_left _
+          (by have := hp_prime.two_le; omega : 0 < Nat.nth Nat.Prime front - 1)]
+    by_cases hdvd : Nat.nth Nat.Prime front ∣ t
     · obtain ⟨k, t'', hk_pos, hpk_t, _, ht''_pos, _, hcoprime⟩ :=
         exists_factor_decomp hp_prime hdvd (by omega)
-      have hpk_le_m : primes[front]^k ≤ m :=
+      have hpk_le_m : (Nat.nth Nat.Prime front)^k ≤ m :=
         le_trans (Nat.le_of_dvd (by omega) ⟨t'', hpk_t.symm⟩) htm
-      have htσ' : target ≤ σ₁ (primes[front]^k) * σ₁ t'' := by
+      have htσ' : target ≤ σ₁ ((Nat.nth Nat.Prime front)^k) * σ₁ t'' := by
         rwa [← ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime
           (hcoprime.pow_left k), hpk_t]
       have ht''_P : t'' ∈ P (front + 1) :=
-        mem_P_succ_of_factors_gt ht''_pos hfront_lt fun q' hq'_prime hq'_dvd => by
+        mem_P_succ_of_factors_gt ht''_pos fun q' hq'_prime hq'_dvd => by
           refine lt_of_le_of_ne
-            (P_le_factor htP hq'_prime (hpk_t ▸ dvd_mul_of_dvd_right hq'_dvd _) hfront_lt) ?_
+            (htP.2 q' hq'_prime (hpk_t ▸ dvd_mul_of_dvd_right hq'_dvd _)) ?_
           rintro rfl
           exact hp_prime.coprime_iff_not_dvd.mp hcoprime hq'_dvd
       obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (front + 1) (k - 1) k 1
@@ -817,8 +792,8 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
       exact ⟨c, wheelChildren_acc_subset _ _ _ _ _ _ _ _ _ _ _ hwc
         (hq ▸ List.mem_append_left _ (by rwa [pow_one] at hc)), hwit⟩
     · have ht_in_P_next : t ∈ P (front + 1) :=
-        mem_P_succ_of_factors_gt (by omega) hfront_lt fun q' hq'_prime hq'_dvd =>
-          lt_of_le_of_ne (P_le_factor htP hq'_prime hq'_dvd hfront_lt)
+        mem_P_succ_of_factors_gt (by omega) fun q' hq'_prime hq'_dvd =>
+          lt_of_le_of_ne (htP.2 q' hq'_prime hq'_dvd)
             (Ne.symm fun h => hdvd (h ▸ hq'_dvd))
       exact hrec L (by omega) hlhs_new hrhs_new (by omega) hwc ht_in_P_next
   | case5 _ _ _ _ _ _ _ _ _ hext hnotfront =>
@@ -828,35 +803,35 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
 
 /-- Every `c` in `children`'s output is a prime-power child of the form
 `(⌈target / σ₁(p^k)⌉, num * p^k, i + 1)` for some prime index `i ≥ minIdx`
-(with `primes[i]? = some p`) and some `k ≥ 1` with `p^k ≤ B/num`. -/
+with `p = Nat.nth Nat.Prime i` and some `k ≥ 1`, `p^k ≤ B/num`. -/
 private theorem mem_children {B target num minIdx : Nat} {cs : List (Nat × Nat × Nat)}
     (h : children B target num minIdx = some cs) {c : Nat × Nat × Nat} (hc : c ∈ cs) :
-    ∃ i p k, minIdx ≤ i ∧ primes[i]? = some p ∧ 1 ≤ k ∧
-      p ^ k ≤ B / num ∧
-      c = (ceilDiv target (σ₁ (p ^ k)), num * p ^ k, i + 1) := by
+    ∃ i k, minIdx ≤ i ∧ 1 ≤ k ∧ (Nat.nth Nat.Prime i) ^ k ≤ B / num ∧
+      c = (ceilDiv target (σ₁ ((Nat.nth Nat.Prime i) ^ k)),
+        num * (Nat.nth Nat.Prime i) ^ k, i + 1) := by
   rw [children] at h
   split at h
   · exact (mem_wheelChildren h hc).resolve_left (by simp)
   · cases h
 
 /-- If `t'` is a witness of the child `(⌈target / σ₁(p^k)⌉, num * p^k, i+1)`
-where `primes[i]? = some p`, then `p^k * t'` is a non-trivial witness of the
+where `p = Nat.nth Nat.Prime i`, then `p^k * t'` is a non-trivial witness of the
 parent `(target, num, minIdx)`. -/
-private theorem child_witness_to_parent {B target num minIdx i p k : Nat}
-    (hmi : minIdx ≤ i) (hp : primes[i]? = some p) (hk : 1 ≤ k) {t' : Nat}
-    (ht' : t' ∈ W B (ceilDiv target (σ₁ (p ^ k))) (num * p ^ k) (i + 1)) :
-    p ^ k * t' ∈ W B target num minIdx ∧ p ^ k * t' ≠ 1 := by
+private theorem child_witness_to_parent {B target num minIdx i k : Nat}
+    (hmi : minIdx ≤ i) (hk : 1 ≤ k) {t' : Nat}
+    (ht' : t' ∈ W B (ceilDiv target (σ₁ ((Nat.nth Nat.Prime i) ^ k)))
+      (num * (Nat.nth Nat.Prime i) ^ k) (i + 1)) :
+    (Nat.nth Nat.Prime i) ^ k * t' ∈ W B target num minIdx ∧
+      (Nat.nth Nat.Prime i) ^ k * t' ≠ 1 := by
+  set p := Nat.nth Nat.Prime i with hp_def
   obtain ⟨⟨ht'1, ht'P⟩, ht'lt, ht'σ⟩ := ht'
-  have hpPrime : p.Prime := primes_prime hp
+  have hpPrime : p.Prime := Nat.prime_nth_prime i
   have hpk_ge2 : 2 ≤ p ^ k := hpPrime.two_le.trans (Nat.le_self_pow (by omega) p)
   have hpkt'_ge2 : 2 ≤ p ^ k * t' := hpk_ge2.trans (Nat.le_mul_of_pos_right _ ht'1)
-  obtain ⟨hi, hp_eq⟩ := Array.getElem?_eq_some_iff.mp hp
-  have hmi_lt : minIdx < primes.size := by omega
   have hp_not_dvd : ¬ p ∣ t' := fun hpdvd => by
     have hple : Nat.nth Nat.Prime (i + 1) ≤ p := ht'P p hpPrime hpdvd
     have hlt : Nat.nth Nat.Prime i < Nat.nth Nat.Prime (i + 1) :=
       Nat.nth_strictMono Nat.infinite_setOf_prime (Nat.lt_succ_self i)
-    have := primes_eq_nth i hi
     omega
   have hcop : Nat.Coprime (p ^ k) t' :=
     (hpPrime.coprime_iff_not_dvd.mpr hp_not_dvd).pow_left _
@@ -864,11 +839,7 @@ private theorem child_witness_to_parent {B target num minIdx i p k : Nat}
   · rcases hqPrime.dvd_mul.mp hqDvd with h1 | h2
     · obtain rfl : q = p :=
         (Nat.prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
-      calc Nat.nth Nat.Prime minIdx
-          ≤ Nat.nth Nat.Prime i :=
-            (Nat.nth_strictMono Nat.infinite_setOf_prime).monotone hmi
-        _ = primes[i] := (primes_eq_nth _ hi).symm
-        _ = q := hp_eq
+      exact (Nat.nth_strictMono Nat.infinite_setOf_prime).monotone hmi
     · exact ((Nat.nth_strictMono Nat.infinite_setOf_prime).monotone (by omega)).trans
         (ht'P q hqPrime h2)
   · rw [ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime hcop]
@@ -880,7 +851,7 @@ private theorem child_witness_to_parent {B target num minIdx i p k : Nat}
     omega
 
 /-- A non-trivial witness of the parent gives a witness for some child in `cs`.
-Two cases: if `t`'s smallest prime is in the table (`= primes[i]`), decompose
+Two cases: if `t`'s smallest prime is in the table (`= Nat.nth Nat.Prime i`), decompose
 and find the corresponding child via the wheel-correctness of `extend`. If
 `t`'s smallest prime exceeds the table, the wheel's geometric `.tooLarge`
 argument rules `t` out — any prime in `t` could be replaced by a smaller
@@ -902,13 +873,13 @@ private theorem witness_to_child {B target num minIdx : Nat} {cs : List (Nat × 
     · rename_i hminIdx_lt
       dsimp only at h
       obtain ⟨⟨ht_pos, htP⟩, htlt, htσ⟩ := ht
-      have hpeq : primesRArray.get minIdx = primes[minIdx] :=
-        primesRArray_get_eq_primes_get minIdx hminIdx_lt
+      have hpeq : primesRArray.get minIdx = Nat.nth Nat.Prime minIdx :=
+        primesRArray_get_eq_nth minIdx hminIdx_lt
       rw [hpeq] at h
-      have hL : primes[minIdx] * (B / num) = B / num * primesProd minIdx minIdx := by
-        rw [primesProd_self, ← primes_eq_nth _ hminIdx_lt]; ring
-      have hR : target * (primes[minIdx] - 1) = target * primesProdM1 minIdx minIdx := by
-        rw [primesProdM1_self, ← primes_eq_nth _ hminIdx_lt]
+      have hL : Nat.nth Nat.Prime minIdx * (B / num) =
+          B / num * primesProd minIdx minIdx := by rw [primesProd_self]; ring
+      have hR : target * (Nat.nth Nat.Prime minIdx - 1) =
+          target * primesProdM1 minIdx minIdx := by rw [primesProdM1_self]
       rw [hL, hR] at h
       have hps : (primes.size : Nat) = 49 := rfl
       exact wheelChildren_witness rfl hnum_pos _ minIdx minIdx _ _ [] cs (by omega) rfl rfl
@@ -922,10 +893,10 @@ theorem children_spec {B target num minIdx : Nat} {cs : List (Nat × Nat × Nat)
       ∃ c ∈ cs, W B c.1 c.2.1 c.2.2 ≠ ∅ := by
   refine ⟨fun ⟨t, ht, h1⟩ => witness_to_child h ht h1, ?_⟩
   rintro ⟨c, hc, hwit⟩
-  obtain ⟨i, p, k, hmi, hp, hk, _, hceq⟩ := mem_children h hc
+  obtain ⟨i, k, hmi, hk, _, hceq⟩ := mem_children h hc
   obtain ⟨t', ht'⟩ := Set.nonempty_iff_ne_empty.mpr hwit
   rw [hceq] at ht'
-  obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hp hk ht'
+  obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hk ht'
   exact ⟨_, hw, hne⟩
 
 /-! ### Step correctness and top-level result -/
@@ -981,8 +952,8 @@ theorem step_false {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
 /-- Top-level correctness: a `some true` answer of `highlyAbundantLcm?` on
 `(lcmRange n, σ₁ (lcmRange n))` certifies that `lcm (1..n)` is highly abundant.
 
-With `P j` defined as "smallest prime factor `≥ primes[j]`" (off-table primes
-allowed), `step_true` at the root directly gives `W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅`,
+With `P j` defined as "smallest prime factor `≥ Nat.nth Nat.Prime j`",
+`step_true` at the root directly gives `W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅`,
 which unfolds to "no `m ≥ 2 < B` has `σ₁ m ≥ σ₁ B`"; combined with `σ₁ 1 = 1 < σ₁ B`
 this is `IsHighlyAbundant`. -/
 theorem highlyAbundantLcm_correct {n : Nat}
