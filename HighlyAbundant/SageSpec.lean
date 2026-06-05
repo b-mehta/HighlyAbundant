@@ -71,9 +71,17 @@ namespace Sage
 def P (j : Nat) : Set Nat :=
   { t | 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → nth Nat.Prime j ≤ q }
 
+@[grind =] lemma mem_P {j t : ℕ} :
+    t ∈ P j ↔ 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → nth Nat.Prime j ≤ q :=
+  Iff.rfl
+
 /-- The witness set of a node `(target, num, minIdx)` for bound `B`. -/
 def W (B target num minIdx : Nat) : Set Nat :=
   { t | t ∈ P minIdx ∧ num * t < B ∧ target ≤ σ₁ t }
+
+@[grind =] lemma mem_W {B target num minIdx t : ℕ} :
+    t ∈ W B target num minIdx ↔ t ∈ P minIdx ∧ num * t < B ∧ target ≤ σ₁ t :=
+  Iff.rfl
 
 /-- Fast computation of `(lcmRange n, σ₁ (lcmRange n))` as
 `(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n` in the table.
@@ -92,12 +100,10 @@ private lemma primesRArray_get_eq_nth_aux : ∀ i : Fin primes.size,
     primesRArray.get i.val = nth Nat.Prime i.val := by
   intro i
   have hp : ∀ i : Fin primes.size, Nat.Prime (primesRArray.get i.val) := by
-    intro i; change Nat.Prime primesRArray[i.val]; revert i; decide +kernel
+    decide +kernel
   rw [← nth_count (hp i)]
   congr 1
-  revert i
-  change ∀ i : Fin primes.size, count Nat.Prime primesRArray[i.val] = i.val
-  decide +kernel
+  decide +kernel +revert
 
 /-- The wheel's array lookup gives the `i`-th prime. -/
 private lemma primesRArray_get_eq_nth (i : Nat) (hi : i < primes.size) :
@@ -430,11 +436,8 @@ private lemma extend_zero_lhs_combined (fuel front back lhs rhs : Nat) (hlhs : l
     extend fuel 0 front back lhs rhs = Wheel.exhaustedTable ∨
     ∃ b rhs', extend fuel 0 front back lhs rhs = Wheel.window b 0 rhs' := by
   fun_induction extend fuel 0 front back lhs rhs with
-  | case1 | case5 | case8 => exact Or.inl rfl
-  | case2 back _ rhs => exact Or.inr ⟨back, rhs, by simp [hlhs]⟩
-  | case3 | case6 => subst hlhs; omega
-  | case4 _ _ _ _ _ _ _ _ _ _ ih => exact ih (by omega)
-  | case7 _ _ _ _ _ _ _ _ _ ih => exact ih (by omega)
+  | case2 back _ rhs => exact Or.inr ⟨back, rhs, by grind⟩
+  | _ => grind
 
 /-- For `m2 = 0` and `lhs = 0`, `wheelChildren` returns `none`. -/
 private theorem wheelChildren_zero_no_some (fuel target num front back lhs rhs : Nat)
@@ -697,7 +700,7 @@ private theorem child_witness_to_parent {B target num minIdx i k : Nat}
       (num * (nth Nat.Prime i) ^ k) (i + 1)) :
     (nth Nat.Prime i) ^ k * t' ∈ W B target num minIdx ∧
       (nth Nat.Prime i) ^ k * t' ≠ 1 := by
-  set p := nth Nat.Prime i with hp_def
+  set p := nth Nat.Prime i
   obtain ⟨⟨ht'1, ht'P⟩, ht'lt, ht'σ⟩ := ht'
   have hpPrime : p.Prime := prime_nth_prime i
   have hpk_ge2 : 2 ≤ p ^ k := hpPrime.two_le.trans (le_self_pow (by omega) p)
@@ -793,8 +796,7 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
       intro node hnode
       simp only [List.mem_cons] at hnode
       rcases hnode with rfl | hnode
-      · push Not at hn
-        rw [Set.eq_empty_iff_forall_notMem]
+      · rw [Set.eq_empty_iff_forall_notMem]
         rintro t ⟨⟨ht1, _⟩, htlt, _⟩
         have := Nat.le_mul_of_pos_right num ht1
         simp at htlt; omega
@@ -802,20 +804,16 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
     · simp only [ht, if_false] at h
       match hch : children B target num minIdx, h with
       | some cs, h =>
-        have ih_all := ih (h : step B fuel (cs ++ rest) = some true)
+        have ih_all := ih h
         intro node hnode
         simp only [List.mem_cons] at hnode
         rcases hnode with rfl | hnode
-        · push Not at ht
-          rw [Set.eq_empty_iff_forall_notMem]
+        · rw [Set.eq_empty_iff_forall_notMem]
           rintro t htW
           by_cases h1 : t = 1
-          · subst h1
-            have : σ₁ 1 = 1 := by simp
-            have := htW.2.2
-            omega
+          · grind [ArithmeticFunction.sigma_one]
           obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
-          exact hwc (ih_all c (List.mem_append.mpr (Or.inl hc)))
+          grind
         · exact ih_all _ (List.mem_append.mpr (Or.inr hnode))
 
 /-- `step = some false` ⟹ some node on the stack has a nonempty witness set. -/
@@ -840,12 +838,10 @@ theorem highlyAbundantLcm_correct {n : Nat}
   simp only [hB, if_false] at h
   have hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅ :=
     step_true h (σ₁ (lcmRange n), 1, 0) List.mem_cons_self
-  by_contra hcontra
-  push Not at hcontra
-  have h2 : nth Nat.Prime 0 = 2 := by
-    rw [show (0 : Nat) = count Nat.Prime 2 from by decide, nth_count prime_two]
-  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 :=
-    ⟨⟨hm_pos, fun q hqPrime _ => h2 ▸ hqPrime.two_le⟩, by simpa using hm_lt, hcontra⟩
+  by_contra! hcontra
+  have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
+  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by
+    grind [Nat.Prime.two_le]
   rwa [hW] at hmW
 
 end Sage
