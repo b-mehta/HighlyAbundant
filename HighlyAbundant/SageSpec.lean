@@ -651,8 +651,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
     have hrhs_new : rhs' / (primesRArray.get front - 1) =
         target * primesProdM1 (front + 1) b := by
       rw [hq, hrhs', primesProdM1_succ_front hfront_b, mul_left_comm,
-        Nat.mul_div_cancel_left _
-          (by have := hp_prime.two_le; omega : 0 < Nat.nth Nat.Prime front - 1)]
+        Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
     by_cases hdvd : Nat.nth Nat.Prime front ∣ t
     · obtain ⟨k, t'', hk_pos, hpk_t, _, ht''_pos, _, hcoprime⟩ :=
         exists_factor_decomp hp_prime hdvd (by omega)
