@@ -59,6 +59,8 @@ To prove `lcm (1..n)` highly abundant from per-subtree results, with
 Only `children_spec` and `step_true` are used; the full root is never evaluated.
 -/
 
+set_option linter.mathlibStandardSet true
+
 namespace Sage
 
 /-! ### Specification: `P`, `W`, `lcmData` -/
@@ -158,12 +160,10 @@ private noncomputable def primesProdM1 (front back : Nat) : Nat :=
   ∏ i ∈ Finset.Ico front (back + 1), (Nat.nth Nat.Prime i - 1)
 
 private theorem primesProd_empty {front back : Nat} (h : back < front) :
-    primesProd front back = 1 := by
-  simp [primesProd, Finset.Ico_eq_empty (by omega : ¬ front < back + 1)]
+    primesProd front back = 1 := by grind [primesProd, Finset.Ico_eq_empty]
 
 private theorem primesProdM1_empty {front back : Nat} (h : back < front) :
-    primesProdM1 front back = 1 := by
-  simp [primesProdM1, Finset.Ico_eq_empty (by omega : ¬ front < back + 1)]
+    primesProdM1 front back = 1 := by grind [primesProdM1, Finset.Ico_eq_empty]
 
 private theorem primesProd_succ {front back : Nat} (h : front ≤ back + 1) :
     primesProd front (back + 1) = primesProd front back * Nat.nth Nat.Prime (back + 1) :=
@@ -201,9 +201,7 @@ private lemma extend_case3_invariants {m target front back lhs rhs : Nat}
     (hf : front ≤ back) (hb : back + 1 < primes.size) :
     lhs * primesRArray.get (back + 1) = m * primesProd front (back + 1) ∧
     rhs * (primesRArray.get (back + 1) - 1) = target * primesProdM1 front (back + 1) := by
-  rw [primesRArray_get_eq_nth _ hb]
-  exact ⟨by rw [primesProd_succ (Nat.le_succ_of_le hf), hlhs]; ring,
-    by rw [primesProdM1_succ (Nat.le_succ_of_le hf), hrhs]; ring⟩
+  grind [primesRArray_get_eq_nth, primesProd_succ, primesProdM1_succ]
 
 /-- Wheel invariant update in the `case6` step (seeding an empty window at `front`). -/
 private lemma extend_case6_invariants {m target front back lhs rhs : Nat}
@@ -211,9 +209,8 @@ private lemma extend_case6_invariants {m target front back lhs rhs : Nat}
     (hback : back < front) (hf : front < primes.size) :
     lhs * primesRArray.get front = m * primesProd front front ∧
     rhs * (primesRArray.get front - 1) = target * primesProdM1 front front := by
-  rw [primesRArray_get_eq_nth _ hf]
-  exact ⟨by rw [primesProd_self, hlhs, primesProd_empty hback, mul_one],
-    by rw [primesProdM1_self, hrhs, primesProdM1_empty hback, mul_one]⟩
+  grind [primesRArray_get_eq_nth, primesProd_self, primesProdM1_self,
+    primesProd_empty, primesProdM1_empty]
 
 /-! ### Sigma at a single prime -/
 
@@ -512,18 +509,11 @@ private lemma one_witnesses_stop {B num target next p k j₀ t'' : Nat}
     (hnumt : num * p^k * t'' < B) (hσ_target : σ₁ (p^j₀) ≥ target) :
     W B (ceilDiv target (σ₁ (p^j₀))) (num * p^j₀) next ≠ ∅ := by
   refine Set.nonempty_iff_ne_empty.mp ⟨1, one_mem_P _, ?_, ?_⟩
-  · rw [mul_one]
-    calc num * p^j₀ ≤ num * p^k :=
-          Nat.mul_le_mul_left _ (Nat.pow_le_pow_right hp.one_lt.le hjk)
-      _ ≤ num * p^k * t'' := Nat.le_mul_of_pos_right _ ht''_pos
-      _ < B := hnumt
+  · have : num * p^j₀ ≤ num * p^k := Nat.mul_le_mul_left _ (Nat.pow_le_pow_right hp.one_lt.le hjk)
+    have := Nat.le_mul_of_pos_right (num * p^k) ht''_pos; omega
   · have hσpj_pos : 0 < σ₁ (p^j₀) :=
       ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hp.pos.ne')
-    have hσ1 : σ₁ 1 = 1 := by simp
-    rw [hσ1]
-    unfold ceilDiv
-    rw [Nat.div_le_iff_le_mul_add_pred hσpj_pos]
-    omega
+    simp [ceilDiv, Nat.div_le_iff_le_mul_add_pred hσpj_pos]; omega
 
 /-- Walk `expChildren` from `pk₀ = p^j₀` looking for a child with a witness, given a parent
 witness `t = p^k * t''` (factored at `p` with `t''` coprime to `p`). The proof iterates by
