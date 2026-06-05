@@ -185,14 +185,6 @@ private theorem primesProdM1_le_primesProd (front B : Nat) :
     primesProdM1 front B ≤ primesProd front B :=
   Finset.prod_le_prod (fun _ _ => Nat.zero_le _) (fun _ _ => by omega)
 
-/-- `primesProd` is positive: each factor is at least `1`. -/
-private theorem primesProd_pos (front B : Nat) : 1 ≤ primesProd front B :=
-  Finset.one_le_prod' (fun i _ => (Nat.prime_nth_prime i).one_le)
-
-/-- `primesProdM1` is positive since each factor `Nat.nth Nat.Prime i - 1 ≥ 1` (primes ≥ 2). -/
-private theorem primesProdM1_pos (front B : Nat) : 1 ≤ primesProdM1 front B :=
-  Finset.one_le_prod' (fun i _ => by have := (Nat.prime_nth_prime i).two_le; omega)
-
 /-- Factoring `primesProd` at the front. -/
 private theorem primesProd_succ_front {front B : Nat} (hB : front ≤ B) :
     primesProd front B = Nat.nth Nat.Prime front * primesProd (front + 1) B := by
@@ -270,13 +262,11 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
     have hcard' : t'.primeFactors.card + (front + 1) ≤ B + 1 := by
       rw [hpf, Finset.card_insert_of_notMem hp_not_t'] at hcard
       omega
-    have ht'_P : t' ∈ P (front + 1) := ⟨ht'_pos, fun q hq hqd => by
-      by_contra! h
-      have hpq : p < q := lt_of_le_of_ne
-        (hp_min q hq (hpk_t ▸ dvd_mul_of_dvd_right hqd _))
-        (Ne.symm fun hqp => hp_prime.coprime_iff_not_dvd.mp hcoprime (hqp ▸ hqd))
-      have := Nat.le_nth_of_lt_nth_succ h hq
-      omega⟩
+    have ht'_P : t' ∈ P (front + 1) :=
+      mem_P_succ_of_factors_gt ht'_pos fun q hq hqd =>
+        hp_geprimes.trans_lt (lt_of_le_of_ne
+          (hp_min q hq (hpk_t ▸ dvd_mul_of_dvd_right hqd _))
+          fun hqp => hp_prime.coprime_iff_not_dvd.mp hcoprime (hqp ▸ hqd))
     have IH := ih t' ht'_lt _ _ ht'_pos ht'_P hBsize hcard'
     have hcons : σ₁ (p^k) * (Nat.nth Nat.Prime front - 1) ≤ p^k * Nat.nth Nat.Prime front :=
       sigma_pow_le_window_factor hp_prime (Nat.prime_nth_prime front).two_le hp_geprimes
@@ -682,51 +672,6 @@ private lemma wheelChildren_acc_subset (fuel m2 m target num front back lhs rhs 
     rw [wheelChildren, hext] at h
     simp only [if_neg hnotfront] at h
     cases h
-
-/-- When `front ≥ primes.size`, `extend` never returns `.tooLarge`: the
-`back + 1 < 49` and `front < 49` branches both fail. -/
-private lemma extend_ne_tooLarge_of_front_ge {fuel m2 front back lhs rhs : Nat}
-    (hge : primes.size ≤ front) :
-    extend fuel m2 front back lhs rhs ≠ .tooLarge := by
-  induction fuel, back, lhs, rhs using extend.induct (m2 := m2) (front := front) with
-  | case1 _ _ _ => simp [extend]
-  | case2 _ _ _ _ hf hge' => simp [extend, hf, hge']
-  | case3 _ _ _ _ hf hlt hb1 _ _ _ =>
-    have : (primes.size : Nat) = 49 := rfl
-    omega
-  | case4 _ _ _ _ hf hlt hb1 _ _ hle ih =>
-    rw [extend, if_pos hf, if_neg hlt, if_pos hb1, if_neg hle]; exact ih
-  | case5 _ _ _ _ hf hlt hb1 => simp [extend, hf, hlt, hb1]
-  | case6 _ _ _ _ hf hf1 _ _ _ =>
-    have : (primes.size : Nat) = 49 := rfl
-    omega
-  | case7 _ _ _ _ hf hf1 _ _ hle ih =>
-    rw [extend, if_neg hf, if_pos hf1, if_neg hle]; exact ih
-  | case8 _ _ _ _ hf hf1 => simp [extend, hf, hf1]
-
-/-- If `wheelChildren` returns `some`, then `front < primes.size`. When `front ≥ primes.size`,
-`extend` is `.exhaustedTable` or `.window`, and both lead to `none` in `wheelChildren` (the
-latter via the `front < 49` test in case4). -/
-private lemma wheelChildren_some_imp_front_lt
-    {fuel m2 m target num front back lhs rhs : Nat} {acc L : List (Nat × Nat × Nat)}
-    (h : wheelChildren fuel m2 m target num front back lhs rhs acc = some L) :
-    front < primes.size := by
-  by_contra hge
-  push Not at hge
-  cases fuel with
-  | zero => rw [wheelChildren] at h; cases h
-  | succ fuel =>
-    rw [wheelChildren] at h
-    have hnotfront : ¬ front < 49 := by
-      have : (primes.size : Nat) = 49 := rfl
-      omega
-    match hext : extend 50 m2 front back lhs rhs with
-    | .exhaustedTable => rw [hext] at h; cases h
-    | .tooLarge => exact (extend_ne_tooLarge_of_front_ge hge) hext
-    | .window b lhs' rhs' =>
-      rw [hext] at h
-      simp only [if_neg hnotfront] at h
-      cases h
 
 /-- At any state of `wheelChildren`
 with the wheel invariants and a viable witness `t`, some child in the output `L` has a non-empty
