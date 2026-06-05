@@ -546,7 +546,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
         exact expChildren_stop (by omega) hpk_le_m (by rw [h_sig_eq]; exact hσ_target)
       rw [h_exp]
       exact ⟨_, List.mem_singleton.mpr rfl, one_witnesses_stop hp le_rfl ht''_pos hnumt hσ_target⟩
-    · push Not at hσ_target
+    · push_neg at hσ_target
       have h_exp : expChildren fuel target num next m p (p^j₀) =
           (ceilDiv target (σ₁ (p^j₀)), num * p^j₀, next) ::
           expChildren (fuel - 1) target num next m p (p^j₀ * p) := by
@@ -567,7 +567,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
         exact expChildren_stop (by omega) hpj_le_m (by rw [h_sig_eq]; exact hσ_target)
       rw [h_exp]
       exact ⟨_, List.mem_singleton.mpr rfl, one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩
-    · push Not at hσ_target
+    · push_neg at hσ_target
       have h_exp : expChildren fuel target num next m p (p^j₀) =
           (ceilDiv target (σ₁ (p^j₀)), num * p^j₀, next) ::
           expChildren (fuel - 1) target num next m p (p^j₀ * p) := by
@@ -800,7 +800,7 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
       intro node hnode
       simp only [List.mem_cons] at hnode
       rcases hnode with rfl | hnode
-      · push Not at hn
+      · push_neg at hn
         rw [Set.eq_empty_iff_forall_notMem]
         rintro t ⟨⟨ht1, _⟩, htlt, _⟩
         have := Nat.le_mul_of_pos_right num ht1
@@ -813,7 +813,7 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
         intro node hnode
         simp only [List.mem_cons] at hnode
         rcases hnode with rfl | hnode
-        · push Not at ht
+        · push_neg at ht
           rw [Set.eq_empty_iff_forall_notMem]
           rintro t htW
           by_cases h1 : t = 1
@@ -848,7 +848,7 @@ theorem highlyAbundantLcm_correct {n : Nat}
   have hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅ :=
     step_true h (σ₁ (lcmRange n), 1, 0) List.mem_cons_self
   by_contra hcontra
-  push Not at hcontra
+  push_neg at hcontra
   have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 :=
     ⟨⟨hm_pos, fun q hqPrime _ => by simp; exact hqPrime.two_le⟩, by simpa using hm_lt, hcontra⟩
   rwa [hW] at hmW
