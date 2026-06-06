@@ -144,8 +144,7 @@ private lemma card_primeFactors_of_coprime_decomp {t t' p k : Nat} (hp_prime : p
     Finset.card_singleton, Nat.add_comm]
 
 /-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
-private theorem one_mem_P (j : Nat) : 1 ∈ P j := by
-  grind [Nat.not_prime_one, Nat.dvd_one]
+private theorem one_mem_P (j : Nat) : 1 ∈ P j := by grind [Nat.not_prime_one, Nat.dvd_one]
 
 /-! ### Multiplicative decomposition -/
 
@@ -225,16 +224,14 @@ private lemma extend_case3_invariants {m target front back lhs rhs : Nat}
     (hlhs : lhs = m * primesProd front back) (hrhs : rhs = target * primesProdM1 front back)
     (hf : front ≤ back) (hb : back + 1 < 49) :
     lhs * primesRArray.get (back + 1) = m * primesProd front (back + 1) ∧
-    rhs * (primesRArray.get (back + 1) - 1) = target * primesProdM1 front (back + 1) := by
-  grind
+    rhs * (primesRArray.get (back + 1) - 1) = target * primesProdM1 front (back + 1) := by grind
 
 /-- Wheel invariant update in the `case6` step (seeding an empty window at `front`). -/
 private lemma extend_case6_invariants {m target front back lhs rhs : Nat}
     (hlhs : lhs = m * primesProd front back) (hrhs : rhs = target * primesProdM1 front back)
     (hback : back < front) (hf : front < 49) :
     lhs * primesRArray.get front = m * primesProd front front ∧
-    rhs * (primesRArray.get front - 1) = target * primesProdM1 front front := by
-  grind
+    rhs * (primesRArray.get front - 1) = target * primesProdM1 front front := by grind
 
 /-! ### Sigma at a single prime -/
 
