@@ -254,6 +254,12 @@ private theorem sigma_pow_le_window_factor {p p₀ k : Nat} (hp : p.Prime) (hp�
 @[grind =] private theorem sigma_pow_expChildren_eq {p k : Nat} (hp : p.Prime) :
     (p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k) := by rw [← pow_succ, ← sigma_one_apply_prime_pow' hp]
 
+private theorem ceilDiv_le_iff {a b c : Nat} (hb : 0 < b) : ceilDiv a b ≤ c ↔ a ≤ c * b := by
+  rw [ceilDiv, div_le_iff_le_mul_add_pred hb, mul_comm]; omega
+
+private theorem le_ceilDiv_mul {a b : Nat} (hb : 0 < b) : a ≤ ceilDiv a b * b :=
+  (ceilDiv_le_iff hb).mp le_rfl
+
 /-! ### The two main bounds: σ-window and radical -/
 
 /-- Main sigma window bound: `σ₁(t) * Π'(front, B) ≤ t * Π(front, B)` for `t ∈ P front`
@@ -501,9 +507,8 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
     push Not at hσ_target
     rw [expChildren_step (by omega) hpk_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
     refine ⟨_, List.mem_cons_self, Set.nonempty_iff_ne_empty.mp ⟨t'', ht''_P, hnumt, ?_⟩⟩
-    have hσpk_pos : 0 < σ₁ (p ^ j₀) := ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hp.pos.ne')
-    simp [ceilDiv, div_le_iff_le_mul_add_pred hσpk_pos]
-    omega
+    exact (ceilDiv_le_iff (ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hp.pos.ne'))).mpr
+      (by linarith [mul_comm (σ₁ (p ^ j₀)) (σ₁ t'')])
   | succ n ih =>
     have hpj_le_m : p ^ j₀ ≤ m := (Nat.pow_le_pow_right hp.one_lt.le hj₀_k).trans hpk_le_m
     have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
@@ -645,13 +650,9 @@ private theorem child_witness_to_parent {B target num minIdx i k : Nat}
         (prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
       exact (nth_strictMono infinite_setOf_prime).monotone hmi
     · exact ((nth_strictMono infinite_setOf_prime).monotone (by omega)).trans (ht'P q hqPrime h2)
-  · rw [ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime hcop]
-    refine le_trans ?_ (Nat.mul_le_mul_left _ ht'σ)
-    have hσpk_pos : 0 < σ₁ (p ^ k) := ArithmeticFunction.sigma_pos _ _ (by positivity)
-    have := div_add_mod (target + σ₁ (p ^ k) - 1) (σ₁ (p ^ k))
-    have := mod_lt (target + σ₁ (p ^ k) - 1) hσpk_pos
-    simp [ceilDiv]
-    omega
+  · rw [ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime hcop, mul_comm]
+    exact (le_ceilDiv_mul (ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hpPrime.pos.ne'))).trans
+      (Nat.mul_le_mul_right _ ht'σ)
 
 /-- A non-trivial witness of the parent gives a witness for some child in `cs`.
 Two cases: if `t`'s smallest prime is in the table (`= nth Nat.Prime i`), decompose
