@@ -705,16 +705,14 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
     linarith [Nat.le_mul_of_pos_right num ht1]
   | case6 _ _ _ _ _ _ _ hch ih1 =>
     intro node hnode
-    have ih_all := ih1 h
-    simp only [List.mem_cons] at hnode
-    rcases hnode with rfl | hnode
+    rcases List.mem_cons.mp hnode with rfl | hnode
     · rw [Set.eq_empty_iff_forall_notMem]
-      rintro t htW
+      intro t htW
       by_cases h1 : t = 1
       · grind [ArithmeticFunction.sigma_one]
       obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
       grind
-    · exact ih_all _ (List.mem_append.mpr (Or.inr hnode))
+    · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
 
 /-- `step = some false` ⟹ some node on the stack has a nonempty witness set. -/
 theorem step_false {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
