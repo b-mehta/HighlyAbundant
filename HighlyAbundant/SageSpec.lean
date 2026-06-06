@@ -335,12 +335,9 @@ private theorem extend_tooLarge_contradiction
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) (htσ : target ≤ σ₁ t) : False := by
   rw [primesRArray_get_eq_nth _ hback_lt] at hbig
   rcases lt_or_ge t.primeFactors.card (back + 2 - front) with hcard | hcard
-  · have h_chain : σ₁ t * primesProdM1 front back < target * primesProdM1 front back :=
-      calc σ₁ t * primesProdM1 front back
-          ≤ t * primesProd front back :=
-            sigma_bound_window t front back (by omega) htP (by omega) (by omega)
-        _ ≤ m * primesProd front back := Nat.mul_le_mul_right _ htm
-        _ < target * primesProdM1 front back := by rw [← hlhs, ← hrhs]; exact hsmall
+  · have hbound := sigma_bound_window t front back (by omega) htP (by omega) (by omega)
+    have h_chain : σ₁ t * primesProdM1 front back < target * primesProdM1 front back := by
+      nlinarith [Nat.mul_le_mul_right (primesProd front back) htm, hlhs, hrhs, hsmall]
     exact absurd htσ (not_le.mpr (Nat.lt_of_mul_lt_mul_right h_chain))
   · have hrad := primesProd_le_t t front (by omega) htP (back + 2 - front) (by omega) hcard
       (by omega)
