@@ -523,15 +523,11 @@ private theorem mem_wheelChildren {fuel m2 m target num front back lhs rhs : Nat
   | case3 => grind
   | case4 front _ _ _ _ _ _ _ _ _ hp _ =>
     rename_i hrec
-    have hq : primesRArray.get front = nth Nat.Prime front :=
-      primesRArray_get_eq_nth front hp
+    have hq : primesRArray.get front = nth Nat.Prime front := primesRArray_get_eq_nth front hp
     rcases hrec h hc with hcacc | ⟨i, k, hi, hk, hpkm, hceq⟩
     · rcases List.mem_append.mp hcacc with hcexp | hcorig
-      · have hcexp' : c ∈ expChildren (m + 1) target num (front + 1) m
-            (nth Nat.Prime front) (nth Nat.Prime front) := hq ▸ hcexp
-        obtain ⟨k, hk, hpkm, hceq⟩ :=
-          mem_expChildren (prime_nth_prime front) le_rfl
-            (by rw [pow_one]; exact hcexp')
+      · obtain ⟨k, hk, hpkm, hceq⟩ := mem_expChildren (prime_nth_prime front) le_rfl
+          (by rw [pow_one, ← hq]; exact hcexp)
         exact Or.inr ⟨front, k, le_rfl, hk, hpkm, hceq⟩
       · exact Or.inl hcorig
     · exact Or.inr ⟨i, k, by omega, hk, hpkm, hceq⟩
