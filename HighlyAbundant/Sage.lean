@@ -60,7 +60,7 @@ def primesRArray : Lean.RArray Nat :=
             (.branch 46 (.leaf 199) (.leaf 211))
             (.branch 48 (.leaf 223) (.leaf 227))))))
 
-theorem primesRArray_get_eq_primes_get (i : Nat) (hi : i < primes.size) :
+theorem primesRArray_get_eq_primes_get (i : Nat) (hi : i < 49) :
     primesRArray.get i = primes[i] := by
   change primesRArray[i] = primes[i]
   decide +kernel +revert
@@ -129,7 +129,7 @@ def expChildren (fuel target num nextMinIdx m p pk : Nat) : List (Nat × Nat × 
       else child :: expChildren fuel target num nextMinIdx m p (pk * p)
 
 /-- Iterate `extend` from `front` onward, collecting `expChildren` at every
-`.window` index. Returns `none` if an index `≥ primes.size` is read. -/
+`.window` index. Returns `none` if an index `≥ 49` is read. -/
 def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
@@ -165,7 +165,7 @@ def wheelChildrenWF (m2 m target num front back lhs rhs : Nat) :
 /-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
 `(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
 `k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
-`≥ primes.size`. -/
+`≥ 49`. -/
 def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
   if minIdx < 49 then
     let p0 := primesRArray.get minIdx
@@ -179,7 +179,7 @@ def searchFuel : Nat := 6400000
 
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read
-an index `≥ primes.size`. -/
+an index `≥ 49`. -/
 def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
   | _, [] => some true
