@@ -606,10 +606,8 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
         (by omega) (by omega) hk_pos hpk_le_m ht''_pos ht''_P
         (by rwa [mul_assoc, hpk_t]) htσ' (fuel := m + 1)
         (by have : k ≤ m := (Nat.lt_pow_self hp_prime.one_lt).le.trans hpk_le_m; omega)
-      have hcget : c ∈ expChildren (m + 1) target num (front + 1) m
-          (primesRArray.get front) (primesRArray.get front) := by grind
       exact ⟨c, wheelChildren_acc_subset _ _ _ _ _ _ _ _ _ _ _ hwc
-        (List.mem_append_left _ hcget), hwit⟩
+        (List.mem_append_left _ (by grind)), hwit⟩
     · exact hrec L (by omega) hlhs_new hrhs_new (by omega) hwc
         (mem_P_succ_of_factors_gt (by omega) fun q' hq'_prime hq'_dvd =>
           lt_of_le_of_ne (htP.2 q' hq'_prime hq'_dvd) (Ne.symm fun h => hdvd (h ▸ hq'_dvd)))
