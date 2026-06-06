@@ -544,9 +544,7 @@ private lemma wheelChildren_acc_subset (fuel m2 m target num front back lhs rhs 
   fun_induction wheelChildren fuel m2 m target num front back lhs rhs acc generalizing L with
   | case1 | case2 | case5 => cases h
   | case3 => grind
-  | case4 =>
-    rename_i hrec
-    exact fun x hx => hrec _ h (List.mem_append_right _ hx)
+  | case4 => grind [List.mem_append_right]
 
 /-- At any state of `wheelChildren`
 with the wheel invariants and a viable witness `t`, some child in the output `L` has a non-empty
