@@ -113,6 +113,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
       (by have := d.h_divs_lo; grind)
   have : p ∉ d.muls.map (·.1) := by have := d.h_disjoint; grind
   convert_to p ^ (lcmRange i).factorization p ∣ d.K i
+  · rfl
   · rw [d.h_divs_i hi _ hp, Nat.pow_one]
   exact Finset.dvd_prod_of_mem _ (by simp [hpl, this])
 
