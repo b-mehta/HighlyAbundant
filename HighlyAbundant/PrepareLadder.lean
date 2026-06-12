@@ -48,7 +48,7 @@ namespace ProofData
 
 variable (d : ProofData)
 
-instance : Std.Symm (α := ℕ × ℕ × ℕ) (·.1 ≠ ·.1) where
+local instance {α : Type*} : Std.Symm (α := ℕ × α) (·.1 ≠ ·.1) where
   symm _ _ := Ne.symm
 
 lemma h_muls_sorted : d.muls.Pairwise (·.1 < ·.1) := d.h_muls_chain.pairwise
