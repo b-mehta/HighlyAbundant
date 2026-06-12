@@ -48,6 +48,9 @@ namespace ProofData
 
 variable (d : ProofData)
 
+local instance {α : Type*} : Std.Symm (α := ℕ × α) (·.1 ≠ ·.1) where
+  symm _ _ := Ne.symm
+
 lemma h_muls_sorted : d.muls.Pairwise (·.1 < ·.1) := d.h_muls_chain.pairwise
 lemma h_muls_pairwise : d.muls.Pairwise (·.1 ≠ ·.1) := d.h_muls_sorted.imp ne_of_lt
 lemma h_divs_sorted : d.divs.Pairwise (· < ·) := d.h_divs_chain.pairwise
@@ -55,7 +58,7 @@ lemma h_muls_nodup : d.muls.Nodup := d.h_muls_sorted.nodup
 lemma h_divs_nodup : d.divs.Nodup := d.h_divs_sorted.nodup
 
 lemma h_muls_setPairwise : {x | x ∈ d.muls}.Pairwise (·.1 ≠ ·.1) :=
-  d.h_muls_pairwise.set_pairwise (by grind [Symmetric])
+  d.h_muls_pairwise.set_pairwise
 
 lemma h_disjoint : ∀ pki ∈ d.muls, pki.1 ∉ d.divs := d.h_disjoint'
 
@@ -140,7 +143,7 @@ lemma L_eq {i : ℕ} :
   · simp only [List.mem_toFinset, ne_eq, Nat.pow_eq_one, not_or, and_imp, Prod.forall]
     rintro p₁ k₁ i₁ hpki₁ hp₁ hLp₁ p₂ k₂ i₂ hpki₂ hp₂ hLp₂ rfl
     by_contra! h
-    exact (d.h_muls_sorted.imp ne_of_lt).set_pairwise (by grind [Symmetric]) hpki₁ hpki₂ h rfl
+    exact (d.h_muls_sorted.imp ne_of_lt).set_pairwise hpki₁ hpki₂ h rfl
   · simp +contextual
 
 lemma K_div_L {i : ℕ} : d.K i ∣ lcmRange i := by
