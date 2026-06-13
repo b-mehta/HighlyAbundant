@@ -28,8 +28,8 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 3. Membership in `P` and factor-count bookkeeping: `mem_P_succ_of_factors_gt`,
    `mem_P_succ_of_coprime_decomp`, `card_primeFactors_of_coprime_decomp`, `one_mem_P`.
 4. Multiplicative decomposition: `exists_factor_decomp`, `exists_minFac_decomp`.
-5. Products over prime windows: `primesProd`, `primesProdM1`, and the wheel
-   invariant updates fed to cases 4 and 7 of `extend`'s recursion.
+5. Products over prime windows: `primesProd`, `primesProdM1`, and their `@[grind =]`
+   equational lemmas. Used to thread the wheel invariants through `extend`.
 6. Sigma at a single prime: `sigma_pow_le_window_factor`, `sigma_pow_expChildren_eq`;
    ceiling-division: `ceilDiv_le_iff`, `le_ceilDiv_mul`.
 7. The two main bounds: `sigma_bound_window` and `primesProd_le_t`.
@@ -218,22 +218,6 @@ private theorem primesProdM1_le_primesProd (front B : Nat) :
 @[grind =] private theorem primesProdM1_succ_front {front B : Nat} (hB : front ≤ B) :
     primesProdM1 front B = (nth Nat.Prime front - 1) * primesProdM1 (front + 1) B := by
   grind [primesProdM1, Finset.prod_eq_prod_Ico_succ_bot]
-
-/-- Wheel invariant after extending the window by one prime (the recursive arm
-on a non-empty window). -/
-private lemma extend_case3_invariants {m target front back lhs rhs : Nat}
-    (hlhs : lhs = m * primesProd front back) (hrhs : rhs = target * primesProdM1 front back)
-    (hf : front ≤ back) (hb : back + 1 < 49) :
-    lhs * primesRArray.get (back + 1) = m * primesProd front (back + 1) ∧
-    rhs * (primesRArray.get (back + 1) - 1) = target * primesProdM1 front (back + 1) := by grind
-
-/-- Wheel invariant when seeding an empty window at `front` (the recursive arm
-on an empty window). -/
-private lemma extend_case6_invariants {m target front back lhs rhs : Nat}
-    (hlhs : lhs = m * primesProd front back) (hrhs : rhs = target * primesProdM1 front back)
-    (hback : back < front) (hf : front < 49) :
-    lhs * primesRArray.get front = m * primesProd front front ∧
-    rhs * (primesRArray.get front - 1) = target * primesProdM1 front front := by grind
 
 /-! ### Sigma at a single prime -/
 
