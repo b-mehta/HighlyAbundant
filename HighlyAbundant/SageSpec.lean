@@ -86,11 +86,10 @@ def W (B target num minIdx : Nat) : Set Nat :=
     t ∈ W B target num minIdx ↔ t ∈ P minIdx ∧ num * t < B ∧ target ≤ σ₁ t :=
   Iff.rfl
 
-/-- Fast computation of `(lcmRange n, σ₁ (lcmRange n))` as
+/-- `(lcmRange n, σ₁ (lcmRange n))` computed as
 `(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n` in the table.
-Intended for `#eval`-style use to supply `(B, sL)` to `highlyAbundantLcm?`;
-the proof in `highlyAbundantLcm_correct` is stated in terms of `lcmRange` so
-this equivalence is not needed formally. -/
+For `#eval` use to supply `(B, sL)` to `highlyAbundantLcm?`; the formal proof
+goes through `lcmRange` directly, so this equivalence is not used. -/
 def lcmData (n : Nat) : Nat × Nat :=
   (primes.toList.takeWhile (· ≤ n)).foldl
     (fun (acc : Nat × Nat) p =>
@@ -240,8 +239,8 @@ private lemma extend_case6_invariants {m target front back lhs rhs : Nat}
 
 /-! ### Sigma at a single prime -/
 
-/-- Core arithmetic bound: for `p₀ ≤ p` both primes (or `p₀ ≥ 2`),
-`σ₁(p ^ k) * (p₀ - 1) ≤ p ^ k * p₀`. Used to "consume" one prime in the window step. -/
+/-- `σ₁(p ^ k) * (p₀ - 1) ≤ p ^ k * p₀` for `p` prime, `2 ≤ p₀ ≤ p`. One step
+of the window σ-bound: it lets a prime in the window absorb a `p^k` factor of `t`. -/
 private theorem sigma_pow_le_window_factor {p p₀ k : Nat} (hp : p.Prime) (hp₀ : 2 ≤ p₀)
     (hple : p₀ ≤ p) :
     σ₁ (p ^ k) * (p₀ - 1) ≤ p ^ k * p₀ := by
@@ -264,8 +263,8 @@ private theorem le_ceilDiv_mul {a b : Nat} (hb : 0 < b) : a ≤ ceilDiv a b * b 
 
 /-! ### The two main bounds: σ-window and radical -/
 
-/-- Main sigma window bound: `σ₁(t) * Π'(front, B) ≤ t * Π(front, B)` for `t ∈ P front`
-with at most `B - front + 1` distinct primes. -/
+/-- `σ₁(t) * Π'(front, B) ≤ t * Π(front, B)` for `t ∈ P front` with at most
+`B - front + 1` distinct primes. -/
 private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ P front)
     (hBsize : B + 1 ≤ 49) (hcard : t.primeFactors.card + front ≤ B + 1) :
     σ₁ t * primesProdM1 front B ≤ t * primesProd front B := by
@@ -293,8 +292,8 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
       _ ≤ p ^ k * nth Nat.Prime front * (t' * primesProd (front + 1) B) := by gcongr
       _ = t * primesProd front B := by grind
 
-/-- Radical bound: `primesProd front (front + j - 1) ≤ t` for `t ∈ P front` with at least `j ≥ 1`
-distinct primes, and `front + j ≤ 49`. Used in the wheel's `.tooLarge` case. -/
+/-- `primesProd front (front + j - 1) ≤ t` for `t ∈ P front` with `j ≥ 1`
+distinct primes, and `front + j ≤ 49`. -/
 private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P front) (j : Nat)
     (hj : 1 ≤ j) (hjle : j ≤ t.primeFactors.card) (hsize : front + j ≤ 49) :
     primesProd front (front + j - 1) ≤ t := by
@@ -349,9 +348,7 @@ private theorem extend_tooLarge_contradiction
     omega
 
 /-- At a wheel `.tooLarge` empty-window state with `front < 49`, the witness `t`
-with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. The condition
-`lhs * (front-th prime) > m*m` with `lhs = m` implies `(front-th prime) > m`, but `t` is
-at least the `front`-th prime. -/
+with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
 private theorem extend_tooLarge_empty_contradiction
     {m front back lhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back) (hfront_lt : front < 49)
@@ -478,10 +475,8 @@ private lemma one_witnesses_stop {B num target next p k j₀ t'' : Nat}
     simp [ceilDiv, div_le_iff_le_mul_add_pred hσpj_pos]
     omega
 
-/-- Walk `expChildren` from `pk₀ = p ^ j₀` looking for a child with a witness, given a parent
-witness `t = p ^ k * t''` (factored at `p` with `t''` coprime to `p`). The proof iterates by
-strong induction on `k - j₀`: at each step either σ(p^{j₀}) ≥ target (stop with witness `1`)
-or σ < target (emit and recurse), bottoming out at `j₀ = k` with witness `t''`. -/
+/-- Walk `expChildren` from `pk₀ = p ^ j₀` looking for a child with a witness, given
+a parent witness `t = p ^ k * t''` (factored at `p` with `t''` coprime to `p`). -/
 private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime) (next : Nat)
     (n k j₀ : Nat) (hn : k - j₀ = n) (hj₀ : 1 ≤ j₀) (hj₀_k : j₀ ≤ k) (hpk_le_m : p ^ k ≤ m)
     {t'' : Nat} (ht''_pos : 1 ≤ t'') (ht''_P : t'' ∈ P next) (hnumt : num * p ^ k * t'' < B)
@@ -547,9 +542,8 @@ private lemma wheelChildren_acc_subset (fuel m2 m target num front back lhs rhs 
   | case3 => grind
   | case4 => grind [List.mem_append_right]
 
-/-- At any state of `wheelChildren`
-with the wheel invariants and a viable witness `t`, some child in the output `L` has a non-empty
-witness set. -/
+/-- Given the wheel invariants and a viable witness `t`, some child in
+`wheelChildren`'s output `L` has a non-empty witness set. -/
 private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / num)
     (hnum_pos : 1 ≤ num) (fuel front back lhs rhs : Nat) (acc L : List (Nat × Nat × Nat))
     (hfuel : 49 + 1 - front ≤ fuel)
@@ -637,13 +631,7 @@ private theorem child_witness_to_parent {B target num minIdx i k : Nat}
     exact (le_ceilDiv_mul (ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hpPrime.pos.ne'))).trans
       (Nat.mul_le_mul_right _ ht'σ)
 
-/-- A non-trivial witness of the parent gives a witness for some child in `cs`.
-Two cases: if `t`'s smallest prime is in the table (`= nth Nat.Prime i`), decompose
-and find the corresponding child via the wheel-correctness of `extend`. If
-`t`'s smallest prime exceeds the table, the wheel's geometric `.tooLarge`
-argument rules `t` out — any prime in `t` could be replaced by a smaller
-in-table prime to give a strictly better witness, so off-table witnesses can
-never arise where the in-table search succeeded. -/
+/-- A non-trivial witness of the parent gives a witness for some child in `cs`. -/
 private theorem witness_to_child {B target num minIdx : Nat} {cs : List (Nat × Nat × Nat)}
     (h : children B target num minIdx = some cs) {t : Nat}
     (ht : t ∈ W B target num minIdx) (h1 : t ≠ 1) :
@@ -704,13 +692,8 @@ theorem step_false {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
     (h : step B fuel stack = some false) :
     ∃ node ∈ stack, W B node.1 node.2.1 node.2.2 ≠ ∅ := sorry
 
-/-- Top-level correctness: a `some true` answer of `highlyAbundantLcm?` on
-`(lcmRange n, σ₁ (lcmRange n))` certifies that `lcm (1..n)` is highly abundant.
-
-With `P j` defined as "smallest prime factor `≥ nth Nat.Prime j`",
-`step_true` at the root directly gives `W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅`,
-which unfolds to "no `m ≥ 2 < B` has `σ₁ m ≥ σ₁ B`"; combined with `σ₁ 1 = 1 < σ₁ B`
-this is `IsHighlyAbundant`. -/
+/-- A `some true` answer of `highlyAbundantLcm?` on `(lcmRange n, σ₁ (lcmRange n))`
+certifies that `lcm (1..n)` is highly abundant. -/
 theorem highlyAbundantLcm_correct {n : Nat}
     (h : highlyAbundantLcm? (lcmRange n) (σ₁ (lcmRange n)) = some true) :
     IsHighlyAbundant (lcmRange n) := by
