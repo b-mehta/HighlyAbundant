@@ -143,7 +143,8 @@ private lemma card_primeFactors_of_coprime_decomp {t t' p k : Nat} (hp_prime : p
     Finset.card_singleton, Nat.add_comm]
 
 /-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
-private theorem one_mem_P (j : Nat) : 1 ∈ P j := by grind [Nat.not_prime_one, Nat.dvd_one]
+@[grind .] private theorem one_mem_P (j : Nat) : 1 ∈ P j := by
+  grind [Nat.not_prime_one, Nat.dvd_one]
 
 /-! ### Multiplicative decomposition -/
 
@@ -368,10 +369,10 @@ private theorem extend_ne_tooLarge_of_witness (fuel m target front t : Nat) (ht2
   | case3 _ _ _ _ _ _ hb1 _ _ hbig =>
     exact fun _ =>
       extend_tooLarge_contradiction hlhs hrhs hfront hb1 (by omega) hbig ht2 htP htm htσ
-  | case4 _ _ _ _ hf _ hb1 _ _ _ ih => grind [extend_case3_invariants]
+  | case4 _ _ _ _ hf _ hb1 _ _ _ ih => grind
   | case6 _ _ _ _ _ hf1 _ _ hbig =>
     exact fun _ => extend_tooLarge_empty_contradiction hlhs hf1 (by omega) hbig ht2 htP htm
-  | case7 _ _ _ _ _ hf1 _ _ _ ih => grind [extend_case6_invariants]
+  | case7 _ _ _ _ _ hf1 _ _ _ ih => grind
 
 /-! ### Window invariants -/
 
@@ -387,8 +388,8 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
   | case1 | case5 | case8 => simp at heq
   | case2 _ _ _ _ hf _ => obtain ⟨rfl, rfl, rfl⟩ := heq; exact ⟨hlhs, hrhs, le_refl _, hf⟩
   | case3 | case6 => cases heq
-  | case4 _ _ _ _ hf _ hb1 _ _ _ ih => grind [extend_case3_invariants]
-  | case7 _ _ _ _ _ hf1 _ _ _ ih => grind [extend_case6_invariants]
+  | case4 _ _ _ _ hf _ hb1 _ _ _ ih => grind
+  | case7 _ _ _ _ _ hf1 _ _ _ ih => grind
 
 /-! ### Degenerate case: `lhs = 0` -/
 
