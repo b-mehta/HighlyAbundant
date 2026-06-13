@@ -222,14 +222,16 @@ private theorem primesProdM1_le_primesProd (front B : Nat) :
     primesProdM1 front B = (nth Nat.Prime front - 1) * primesProdM1 (front + 1) B := by
   grind [primesProdM1, Finset.prod_eq_prod_Ico_succ_bot]
 
-/-- Wheel invariant update in the `case3` step (extending the window by one prime). -/
+/-- Wheel invariant after extending the window by one prime (the recursive arm
+on a non-empty window). -/
 private lemma extend_case3_invariants {m target front back lhs rhs : Nat}
     (hlhs : lhs = m * primesProd front back) (hrhs : rhs = target * primesProdM1 front back)
     (hf : front ≤ back) (hb : back + 1 < 49) :
     lhs * primesRArray.get (back + 1) = m * primesProd front (back + 1) ∧
     rhs * (primesRArray.get (back + 1) - 1) = target * primesProdM1 front (back + 1) := by grind
 
-/-- Wheel invariant update in the `case6` step (seeding an empty window at `front`). -/
+/-- Wheel invariant when seeding an empty window at `front` (the recursive arm
+on an empty window). -/
 private lemma extend_case6_invariants {m target front back lhs rhs : Nat}
     (hlhs : lhs = m * primesProd front back) (hrhs : rhs = target * primesProdM1 front back)
     (hback : back < front) (hf : front < 49) :
