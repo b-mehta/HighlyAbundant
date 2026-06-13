@@ -25,18 +25,21 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 
 1. Specification: `P`, `W`, `lcmData`.
 2. The `primes` table: bridge to `nth Nat.Prime`.
-3. Membership in `P`: `mem_P_succ_of_factors_gt`, `one_mem_P`.
+3. Membership in `P` and factor-count bookkeeping: `mem_P_succ_of_factors_gt`,
+   `mem_P_succ_of_coprime_decomp`, `card_primeFactors_of_coprime_decomp`, `one_mem_P`.
 4. Multiplicative decomposition: `exists_factor_decomp`, `exists_minFac_decomp`.
 5. Products over prime windows: `primesProd`, `primesProdM1`, and the wheel
-   invariant updates in cases 3 and 6 of `extend`'s recursion.
-6. Sigma at a single prime: `sigma_pow_le_window_factor`, `sigma_pow_expChildren_eq`.
+   invariant updates fed to cases 4 and 7 of `extend`'s recursion.
+6. Sigma at a single prime: `sigma_pow_le_window_factor`, `sigma_pow_expChildren_eq`;
+   ceiling-division: `ceilDiv_le_iff`, `le_ceilDiv_mul`.
 7. The two main bounds: `sigma_bound_window` and `primesProd_le_t`.
 8. Ruling out `.tooLarge` from a witness: `extend_ne_tooLarge_of_witness`.
 9. Window invariants: `extend_window_invariant`.
 10. Degenerate case `lhs = 0`: `wheelChildren_zero_no_some`.
 11. `expChildren` analysis: `mem_expChildren`, `expChildren_witness_walk`.
-12. `wheelChildren` and `children`: `mem_wheelChildren`, `wheelChildren_witness`,
-    `mem_children`, `child_witness_to_parent`, `witness_to_child`, `children_spec`.
+12. `wheelChildren` and `children`: `mem_wheelChildren`, `wheelChildren_acc_subset`,
+    `wheelChildren_witness`, `mem_children`, `child_witness_to_parent`,
+    `witness_to_child`, `children_spec`.
 13. Step correctness and top-level result: `step_true`, `step_false`,
     `highlyAbundantLcm_correct`.
 
