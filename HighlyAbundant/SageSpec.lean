@@ -98,9 +98,8 @@ def lcmData (n : Nat) : Nat × Nat :=
 
 /-! ### The `primes` table -/
 
-private lemma primesRArray_get_eq_nth_aux : ∀ i : Fin 49,
+private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
     primesRArray.get i.val = nth Nat.Prime i.val := by
-  intro i
   have hp : ∀ i : Fin 49, Nat.Prime (primesRArray.get i.val) := by decide +kernel
   rw [← nth_count (hp i)]
   congr 1
