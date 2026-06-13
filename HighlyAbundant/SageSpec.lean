@@ -117,9 +117,7 @@ private lemma primesRArray_get_eq_nth (i : Nat) (hi : i < 49) :
 `x ∈ P (front + 1)`. -/
 private lemma mem_P_succ_of_factors_gt {x front : Nat} (hx : 1 ≤ x)
     (h : ∀ q, q.Prime → q ∣ x → nth Nat.Prime front < q) : x ∈ P (front + 1) :=
-  ⟨hx, fun q hq hqd => by
-    by_contra! hlt
-    linarith [le_nth_of_lt_nth_succ hlt hq, h q hq hqd]⟩
+  ⟨hx, fun q hq hqd => by by_contra! hlt; grind [le_nth_of_lt_nth_succ hlt hq]⟩
 
 /-- If `t ∈ P front`, `p ≥ nth Nat.Prime front` is a prime, `t = p^k * t'` with `t'`
 coprime to `p`, and `∀ q ∣ t prime, p ≤ q`, then `t' ∈ P (front + 1)`. -/
