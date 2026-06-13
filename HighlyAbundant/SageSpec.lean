@@ -74,7 +74,7 @@ namespace Sage
 def P (j : Nat) : Set Nat :=
   { t | 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → nth Nat.Prime j ≤ q }
 
-@[grind =] lemma mem_P {j t : ℕ} :
+@[simp, grind =] lemma mem_P {j t : ℕ} :
     t ∈ P j ↔ 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → nth Nat.Prime j ≤ q :=
   Iff.rfl
 
@@ -82,7 +82,7 @@ def P (j : Nat) : Set Nat :=
 def W (B target num minIdx : Nat) : Set Nat :=
   { t | t ∈ P minIdx ∧ num * t < B ∧ target ≤ σ₁ t }
 
-@[grind =] lemma mem_W {B target num minIdx t : ℕ} :
+@[simp, grind =] lemma mem_W {B target num minIdx t : ℕ} :
     t ∈ W B target num minIdx ↔ t ∈ P minIdx ∧ num * t < B ∧ target ≤ σ₁ t :=
   Iff.rfl
 
