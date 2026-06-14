@@ -499,8 +499,7 @@ private lemma wheelChildren_acc_subset (fuel m2 m target num front back lhs rhs 
     (acc L : List (Nat × Nat × Nat))
     (h : wheelChildren fuel m2 m target num front back lhs rhs acc = some L) : acc ⊆ L := by
   fun_induction wheelChildren fuel m2 m target num front back lhs rhs acc generalizing L with
-  | case1 | case2 | case5 => cases h
-  | case3 | case4 => grind [List.mem_append_right]
+    grind [List.mem_append_right]
 
 /-- Given the wheel invariants and a viable witness `t`, some child in
 `wheelChildren`'s output `L` has a non-empty witness set. -/
