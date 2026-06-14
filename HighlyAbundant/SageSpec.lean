@@ -432,10 +432,9 @@ private theorem mem_expChildren {fuel target num nextMinIdx m p k₀ : Nat}
     · grind
     simp only [if_neg hpm, if_neg hge, List.mem_cons] at hc
     rcases hc with rfl | hc
-    · exact ⟨k₀, le_refl _, by omega, by rw [hspk_eq]⟩
+    · grind
     · rw [← pow_succ] at hc
-      have ⟨k, hk, hpkm, hceq⟩ := ih (by omega) hc
-      exact ⟨k, by omega, hpkm, hceq⟩
+      grind
 
 /-- Witness `1` for the stop arm of `expChildren_witness_walk`: when `σ(p ^ j₀) ≥ target`,
 the child `(ceilDiv target σ(p ^ j₀), num*p ^ j₀, next)` has `1` as a witness. -/
