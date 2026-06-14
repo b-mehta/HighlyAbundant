@@ -26,16 +26,16 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 1. Specification: `P`, `W`, `lcmData`.
 2. The `primes` table: bridge to `nth Nat.Prime`.
 3. Membership in `P` and factor-count bookkeeping: `mem_P_succ_of_factors_gt`,
-   `mem_P_succ_of_coprime_decomp`, `card_primeFactors_of_coprime_decomp`, `one_mem_P`.
+   `mem_P_succ_of_coprime`, `card_primeFactors_coprime`, `one_mem_P`.
 4. Multiplicative decomposition: `exists_factor_decomp`, `exists_minFac_decomp`.
 5. Products over prime windows: `primesProd`, `primesProdM1`, and their `@[grind =]`
    equational lemmas. Used to thread the wheel invariants through `extend`.
 6. Sigma at a single prime: `sigma_pow_le_window_factor`, `sigma_pow_expChildren_eq`;
    ceiling-division: `ceilDiv_le_iff`, `le_ceilDiv_mul`.
 7. The two main bounds: `sigma_bound_window` and `primesProd_le_t`.
-8. Ruling out `.tooLarge` from a witness: `extend_ne_tooLarge_of_witness`.
+8. Ruling out `.tooLarge` from a witness: `extend_ne_tooLarge`.
 9. Window invariants: `extend_window_invariant`.
-10. Degenerate case `lhs = 0`: `wheelChildren_zero_no_some`.
+10. Degenerate case `lhs = 0`: `wheelChildren_zero_eq_none`.
 11. `expChildren` analysis: `mem_expChildren`, `expChildren_witness_walk`.
 12. `wheelChildren` and `children`: `mem_wheelChildren`, `wheelChildren_acc_subset`,
     `wheelChildren_witness`, `mem_children`, `child_witness_to_parent`,
@@ -123,7 +123,7 @@ private lemma mem_P_succ_of_factors_gt {x front : Nat} (hx : 1 ≤ x)
 
 /-- If `t ∈ P front`, `p ≥ nth Nat.Prime front` is a prime, `t = p^k * t'` with `t'`
 coprime to `p`, and `∀ q ∣ t prime, p ≤ q`, then `t' ∈ P (front + 1)`. -/
-private lemma mem_P_succ_of_coprime_decomp {t t' p k front : Nat}
+private lemma mem_P_succ_of_coprime {t t' p k front : Nat}
     (hp_prime : p.Prime) (hp_geprimes : nth Nat.Prime front ≤ p)
     (hp_min : ∀ q, q.Prime → q ∣ t → p ≤ q) (hpk_t : p ^ k * t' = t)
     (ht'_pos : 1 ≤ t') (hcoprime : Nat.Coprime p t') : t' ∈ P (front + 1) :=
@@ -136,7 +136,7 @@ open omega
 
 /-- After factoring `t = p^k * t'` with `k ≥ 1`, `p` prime, and `Coprime p t'`, the prime
 factors of `t` are those of `t'` plus `{p}`. -/
-private lemma card_primeFactors_of_coprime_decomp {t t' p k : Nat} (hp_prime : p.Prime)
+private lemma card_primeFactors_coprime {t t' p k : Nat} (hp_prime : p.Prime)
     (hk : 1 ≤ k) (hpk_t : p ^ k * t' = t) (hcoprime : p.Coprime t') :
     #t.primeFactors = #t'.primeFactors + 1 := by
   have hp_not_t' : p ∉ t'.primeFactors := fun h =>
@@ -267,9 +267,9 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
     obtain ⟨p, k, t', hp_prime, hp_dvd, hk_pos, hpk_t, ht'_pos, ht'_lt,
         hcoprime, hp_min⟩ := exists_minFac_decomp ht2
     have hp_geprimes : nth Nat.Prime front ≤ p := hP.2 p hp_prime hp_dvd
-    have hcard := card_primeFactors_of_coprime_decomp hp_prime hk_pos hpk_t hcoprime
+    have hcard := card_primeFactors_coprime hp_prime hk_pos hpk_t hcoprime
     have ht'_P : t' ∈ P (front + 1) :=
-      mem_P_succ_of_coprime_decomp hp_prime hp_geprimes hp_min hpk_t ht'_pos hcoprime
+      mem_P_succ_of_coprime hp_prime hp_geprimes hp_min hpk_t ht'_pos hcoprime
     have IH := ih t' ht'_lt _ _ ht'_pos ht'_P hBsize (by omega)
     have hcons : σ₁ (p ^ k) * (nth Nat.Prime front - 1) ≤ p ^ k * nth Nat.Prime front :=
       sigma_pow_le_window_factor hp_prime (prime_nth_prime front).two_le hp_geprimes
@@ -298,8 +298,8 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
     have hpk_ge : nth Nat.Prime front ≤ p ^ k := hp_geprimes.trans (le_self_pow (by omega) p)
     rcases lt_or_ge 1 j with hj2 | hj2
     · have ht'_in_P : t' ∈ P (front + 1) :=
-        mem_P_succ_of_coprime_decomp hp_prime hp_geprimes hp_min hpk_t ht'_pos hcoprime
-      have hcard := card_primeFactors_of_coprime_decomp hp_prime hk_pos hpk_t hcoprime
+        mem_P_succ_of_coprime hp_prime hp_geprimes hp_min hpk_t ht'_pos hcoprime
+      have hcard := card_primeFactors_coprime hp_prime hk_pos hpk_t hcoprime
       have IH := ih t' ht'_lt _ ht'_pos ht'_in_P (j - 1) (by omega) (by omega) (by omega)
       rw [(by omega : (front + 1) + (j - 1) - 1 = front + j - 1)] at IH
       calc primesProd front (front + j - 1)
@@ -315,7 +315,7 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
 
 /-- At a wheel `.tooLarge` state with `back + 1 < 49`, the witness `t` with
 `t ≤ m`, `t ∈ P front`, `target ≤ σ₁ t` gives `False`. -/
-@[grind .] private theorem extend_tooLarge_contradiction
+@[grind .] private theorem extend_tooLarge_contra
     {m target front back lhs rhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back)
@@ -339,7 +339,7 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
 
 /-- At a wheel `.tooLarge` empty-window state with `front < 49`, the witness `t`
 with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
-@[grind .] private theorem extend_tooLarge_empty_contradiction
+@[grind .] private theorem extend_tooLarge_empty_contra
     {m front back lhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back) (hfront_lt : front < 49)
     (hempty : back + 1 = front)
@@ -351,7 +351,7 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
   grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
 
 /-- If `t` is a witness, `extend` cannot return `.tooLarge`. -/
-@[grind .] private theorem extend_ne_tooLarge_of_witness (fuel m target front t : Nat) (ht2 : 2 ≤ t)
+@[grind .] private theorem extend_ne_tooLarge (fuel m target front t : Nat) (ht2 : 2 ≤ t)
     (htP : t ∈ P front) (htm : t ≤ m) (htσ : target ≤ σ₁ t)
     (back lhs rhs : Nat) (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back) (hfront : front ≤ back + 1) :
@@ -375,7 +375,7 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
 /-- For `m2 = 0` and `lhs = 0`: `extend` returns either `.exhaustedTable` or
 `.window b 0 rhs'` (so never `.tooLarge`, and any `.window` has `lhs' = 0`). -/
 @[grind .]
-private lemma extend_zero_lhs_combined (fuel front back lhs rhs : Nat) (hlhs : lhs = 0) :
+private lemma extend_zero_lhs (fuel front back lhs rhs : Nat) (hlhs : lhs = 0) :
     extend fuel 0 front back lhs rhs = Wheel.exhaustedTable ∨
     ∃ b rhs', extend fuel 0 front back lhs rhs = Wheel.window b 0 rhs' := by
   fun_induction extend fuel 0 front back lhs rhs with
@@ -384,7 +384,7 @@ private lemma extend_zero_lhs_combined (fuel front back lhs rhs : Nat) (hlhs : l
 
 /-- For `m2 = 0` and `lhs = 0`, `wheelChildren` returns `none`. -/
 @[grind =]
-private theorem wheelChildren_zero_no_some (fuel target num front back lhs rhs : Nat)
+private theorem wheelChildren_zero_eq_none (fuel target num front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) (hlhs : lhs = 0) :
     wheelChildren fuel 0 0 target num front back lhs rhs acc = none := by
   fun_induction wheelChildren with grind [Nat.zero_div]
@@ -412,11 +412,11 @@ private theorem expChildren_stop
 
 /-- Every entry of `expChildren ... (p ^ k₀)` (for prime `p`, `k₀ ≥ 1`) has the
 prime-power form for some `k ≥ k₀` with `p ^ k ≤ m`. -/
-private theorem mem_expChildren {fuel target num nextMinIdx m p k₀ : Nat}
+private theorem mem_expChildren {fuel target num next m p k₀ : Nat}
     (hp : p.Prime) (hk₀ : 1 ≤ k₀) {c : Nat × Nat × Nat}
-    (hc : c ∈ expChildren fuel target num nextMinIdx m p (p ^ k₀)) :
+    (hc : c ∈ expChildren fuel target num next m p (p ^ k₀)) :
     ∃ k, k₀ ≤ k ∧ p ^ k ≤ m ∧
-      c = (ceilDiv target (σ₁ (p ^ k)), num * p ^ k, nextMinIdx) := by
+      c = (ceilDiv target (σ₁ (p ^ k)), num * p ^ k, next) := by
   induction fuel generalizing k₀ with
   | zero => simp only [expChildren, List.not_mem_nil] at hc
   | succ fuel ih =>
@@ -543,7 +543,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
       have htσ' : target ≤ σ₁ ((nth Nat.Prime front) ^ k) * σ₁ t'' := by
         rwa [← isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k), hpk_t]
       have ht''_P : t'' ∈ P (front + 1) :=
-        mem_P_succ_of_coprime_decomp hp_prime le_rfl htP.2 hpk_t ht''_pos hcoprime
+        mem_P_succ_of_coprime hp_prime le_rfl htP.2 hpk_t ht''_pos hcoprime
       obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (front + 1) (k - 1) k 1
         (by omega) (by omega) hk_pos hpk_le_m ht''_pos ht''_P
         (by rwa [mul_assoc, hpk_t]) htσ' (fuel := m + 1)

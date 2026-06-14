@@ -115,18 +115,18 @@ def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
   termination_by 49 - back
   decreasing_by all_goals omega
 
-/-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, nextMinIdx)` for `k ≥ 1` with
+/-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
 `p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`. -/
-def expChildren (fuel target num nextMinIdx m p pk : Nat) : List (Nat × Nat × Nat) :=
+def expChildren (fuel target num next m p pk : Nat) : List (Nat × Nat × Nat) :=
   match fuel with
   | 0 => []
   | fuel + 1 =>
     if pk > m then []
     else
       let spk := (pk * p - 1) / (p - 1)              -- σ(p^k); pk * p = p^(k+1)
-      let child := (ceilDiv target spk, num * pk, nextMinIdx)
+      let child := (ceilDiv target spk, num * pk, next)
       if spk ≥ target then [child]
-      else child :: expChildren fuel target num nextMinIdx m p (pk * p)
+      else child :: expChildren fuel target num next m p (pk * p)
 
 /-- Iterate `extend` from `front` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
