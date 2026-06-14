@@ -348,9 +348,7 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
     (back lhs rhs : Nat) (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back) (hfront : front ≤ back + 1) :
     extend fuel (m * m) front back lhs rhs ≠ .tooLarge := by
-  fun_induction extend fuel (m * m) front back lhs rhs with
-  | case1 | case2 | case5 | case8 => simp
-  | case3 | case4 | case6 | case7 => grind
+  fun_induction extend fuel (m * m) front back lhs rhs with grind
 
 /-! ### Window invariants -/
 
@@ -362,11 +360,7 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
     (heq : extend fuel (m * m) front back lhs rhs = Wheel.window b lhs' rhs') :
     lhs' = m * primesProd front b ∧ rhs' = target * primesProdM1 front b ∧
     back ≤ b ∧ front ≤ b := by
-  fun_induction extend fuel (m * m) front back lhs rhs with
-  | case1 | case5 | case8 => simp at heq
-  | case2 _ _ _ _ hf _ => obtain ⟨rfl, rfl, rfl⟩ := heq; exact ⟨hlhs, hrhs, le_refl _, hf⟩
-  | case3 | case6 => cases heq
-  | case4 | case7 => grind
+  fun_induction extend fuel (m * m) front back lhs rhs with grind
 
 /-! ### Degenerate case: `lhs = 0` -/
 
