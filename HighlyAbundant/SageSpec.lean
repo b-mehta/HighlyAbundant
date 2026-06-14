@@ -76,7 +76,7 @@ namespace Sage
 def P (j : Nat) : Set Nat :=
   { t | 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → nth Nat.Prime j ≤ q }
 
-@[simp, grind =] lemma mem_P {j t : ℕ} :
+@[grind =] lemma mem_P {j t : ℕ} :
     t ∈ P j ↔ 1 ≤ t ∧ ∀ q : Nat, q.Prime → q ∣ t → nth Nat.Prime j ≤ q :=
   Iff.rfl
 
@@ -137,7 +137,7 @@ open omega
 /-- After factoring `t = p^k * t'` with `k ≥ 1`, `p` prime, and `Coprime p t'`, the prime
 factors of `t` are those of `t'` plus `{p}`. -/
 private lemma card_primeFactors_of_coprime_decomp {t t' p k : Nat} (hp_prime : p.Prime)
-    (hk : 1 ≤ k) (hpk_t : p ^ k * t' = t) (hcoprime : Nat.Coprime p t') :
+    (hk : 1 ≤ k) (hpk_t : p ^ k * t' = t) (hcoprime : p.Coprime t') :
     #t.primeFactors = #t'.primeFactors + 1 := by
   have hp_not_t' : p ∉ t'.primeFactors := fun h =>
     hp_prime.coprime_iff_not_dvd.mp hcoprime (mem_primeFactors.mp h).2.1
@@ -147,16 +147,15 @@ private lemma card_primeFactors_of_coprime_decomp {t t' p k : Nat} (hp_prime : p
     card_singleton, Nat.add_comm]
 
 /-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
-@[grind .] private theorem one_mem_P (j : Nat) : 1 ∈ P j := by
+@[simp, grind .] private theorem one_mem_P (j : Nat) : 1 ∈ P j := by
   grind [Nat.not_prime_one, Nat.dvd_one]
 
 /-! ### Multiplicative decomposition -/
 
 /-- Decompose `t` at a prime factor `p`: `t = p ^ k * t'` with `k ≥ 1`, `Coprime p t'`,
-`2 ≤ p ^ k`, `1 ≤ t' < t`. -/
+`1 ≤ t' < t`. -/
 private lemma exists_factor_decomp {t p : Nat} (hp : p.Prime) (hpt : p ∣ t) (htne : t ≠ 0) :
-    ∃ k t' : Nat, 1 ≤ k ∧ p ^ k * t' = t ∧ 2 ≤ p ^ k ∧ 1 ≤ t' ∧ t' < t ∧
-      Nat.Coprime p t' := by
+    ∃ k t' : Nat, 1 ≤ k ∧ p ^ k * t' = t ∧ 1 ≤ t' ∧ t' < t ∧ Nat.Coprime p t' := by
   set k := t.factorization p
   set t' := ordCompl[p] t -- t / p ^ k
   have hk_pos : 1 ≤ k :=
@@ -165,17 +164,17 @@ private lemma exists_factor_decomp {t p : Nat} (hp : p.Prime) (hpt : p ∣ t) (h
   have hpk_ge2 : 2 ≤ ordProj[p] t :=
     hp.two_le.trans (by simpa using Nat.pow_le_pow_right hp.one_lt.le hk_pos)
   have ht'_pos : 1 ≤ t' := Nat.ordCompl_pos _ htne
-  refine ⟨k, t', hk_pos, hpk_t, hpk_ge2, ht'_pos, ?_, coprime_ordCompl hp htne⟩
+  refine ⟨k, t', hk_pos, hpk_t, ht'_pos, ?_, coprime_ordCompl hp htne⟩
   nlinarith [hpk_t, hpk_ge2, ht'_pos]
 
 /-- For `t ≥ 2`, decompose at the smallest prime factor. -/
 private lemma exists_minFac_decomp {t : Nat} (ht : 2 ≤ t) :
     ∃ p k t' : Nat, p.Prime ∧ p ∣ t ∧ 1 ≤ k ∧ p ^ k * t' = t ∧
-      2 ≤ p ^ k ∧ 1 ≤ t' ∧ t' < t ∧ Nat.Coprime p t' ∧
+      1 ≤ t' ∧ t' < t ∧ Nat.Coprime p t' ∧
       (∀ q, q.Prime → q ∣ t → p ≤ q) := by
-  obtain ⟨k, t', hk, hpkt, hpk2, ht'p, ht'l, hcop⟩ :=
+  obtain ⟨k, t', hk, hpkt, ht'p, ht'l, hcop⟩ :=
     exists_factor_decomp (minFac_prime (by omega)) (minFac_dvd t) (by omega)
-  exact ⟨_, k, t', minFac_prime (by omega), minFac_dvd t, hk, hpkt, hpk2, ht'p, ht'l,
+  exact ⟨_, k, t', minFac_prime (by omega), minFac_dvd t, hk, hpkt, ht'p, ht'l,
     hcop, fun q hq hqd => minFac_le_of_dvd hq.two_le hqd⟩
 
 /-! ### Products over prime windows -/
@@ -241,8 +240,13 @@ private theorem sigma_pow_le_window_factor {p p₀ k : Nat} (hp : p.Prime) (hp�
 @[grind =] private theorem sigma_pow_expChildren_eq {p k : Nat} (hp : p.Prime) :
     (p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k) := by rw [← pow_succ, ← sigma_one_apply_prime_pow' hp]
 
+@[grind =]
 private theorem ceilDiv_le_iff {a b c : Nat} (hb : 0 < b) : ceilDiv a b ≤ c ↔ a ≤ c * b := by
   rw [ceilDiv, div_le_iff_le_mul_add_pred hb, mul_comm]; omega
+
+@[grind =]
+private theorem lt_ceilDiv_iff {a b c : Nat} (hb : 0 < b) : c < ceilDiv a b ↔ c * b < a :=
+  lt_iff_lt_of_le_iff_le (ceilDiv_le_iff hb)
 
 private theorem le_ceilDiv_mul {a b : Nat} (hb : 0 < b) : a ≤ ceilDiv a b * b :=
   (ceilDiv_le_iff hb).mp le_rfl
@@ -260,7 +264,7 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
     · subst ht1
       simpa using primesProdM1_le_primesProd front B
     have ht2 : 2 ≤ t := by omega
-    obtain ⟨p, k, t', hp_prime, hp_dvd, hk_pos, hpk_t, _, ht'_pos, ht'_lt,
+    obtain ⟨p, k, t', hp_prime, hp_dvd, hk_pos, hpk_t, ht'_pos, ht'_lt,
         hcoprime, hp_min⟩ := exists_minFac_decomp ht2
     have hp_geprimes : nth Nat.Prime front ≤ p := hP.2 p hp_prime hp_dvd
     have hcard := card_primeFactors_of_coprime_decomp hp_prime hk_pos hpk_t hcoprime
@@ -272,8 +276,8 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
     calc σ₁ t * primesProdM1 front B
         = σ₁ (p ^ k) * (nth Nat.Prime front - 1) *
             (σ₁ t' * primesProdM1 (front + 1) B) := by
-          rw [← hpk_t, isMultiplicative_sigma.map_mul_of_coprime
-            (hcoprime.pow_left k), primesProdM1_succ_front (by omega)]
+          rw [← hpk_t, isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
+            primesProdM1_succ_front (by omega)]
           ring
       _ ≤ p ^ k * nth Nat.Prime front * (t' * primesProd (front + 1) B) := by gcongr
       _ = t * primesProd front B := by grind
@@ -287,7 +291,7 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
   | _ t ih =>
     have ht1 : t ≠ 1 := by grind [primeFactors_one]
     have ht2 : 2 ≤ t := by omega
-    obtain ⟨p, k, t', hp_prime, _, hk_pos, hpk_t, _, ht'_pos, ht'_lt, hcoprime, hp_min⟩ :=
+    obtain ⟨p, k, t', hp_prime, _, hk_pos, hpk_t, ht'_pos, ht'_lt, hcoprime, hp_min⟩ :=
       exists_minFac_decomp ht2
     have hp_dvd : p ∣ t := hpk_t ▸ (dvd_pow_self p (by omega)).mul_right _
     have hp_geprimes : nth Nat.Prime front ≤ p := hP.2 p hp_prime hp_dvd
@@ -344,7 +348,7 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
   rw [primesProd_empty (by omega : back < front), mul_one] at hlhs
   rw [primesRArray_get_eq_nth _ hfront_lt, hlhs, mul_comm m m] at hbig
   have h1 : nth Nat.Prime front ≤ t.minFac := htP.2 _ (minFac_prime (by omega)) (minFac_dvd t)
-  linarith [Nat.lt_of_mul_lt_mul_left hbig, minFac_le (by omega : 0 < t)]
+  grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
 
 /-- If `t` is a witness, `extend` cannot return `.tooLarge`. -/
 @[grind .] private theorem extend_ne_tooLarge_of_witness (fuel m target front t : Nat) (ht2 : 2 ≤ t)
@@ -364,7 +368,7 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
     (heq : extend fuel (m * m) front back lhs rhs = Wheel.window b lhs' rhs') :
     lhs' = m * primesProd front b ∧ rhs' = target * primesProdM1 front b ∧
     back ≤ b ∧ front ≤ b := by
-  fun_induction extend fuel (m * m) front back lhs rhs with grind
+  fun_induction extend with grind
 
 /-! ### Degenerate case: `lhs = 0` -/
 
@@ -379,6 +383,7 @@ private lemma extend_zero_lhs_combined (fuel front back lhs rhs : Nat) (hlhs : l
   | _ => grind
 
 /-- For `m2 = 0` and `lhs = 0`, `wheelChildren` returns `none`. -/
+@[grind =]
 private theorem wheelChildren_zero_no_some (fuel target num front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) (hlhs : lhs = 0) :
     wheelChildren fuel 0 0 target num front back lhs rhs acc = none := by
@@ -432,13 +437,12 @@ the child `(ceilDiv target σ(p ^ j₀), num*p ^ j₀, next)` has `1` as a witne
 private lemma one_witnesses_stop {B num target next p k j₀ t'' : Nat}
     (hp : p.Prime) (hjk : j₀ ≤ k) (ht''_pos : 1 ≤ t'')
     (hnumt : num * p ^ k * t'' < B) (hσ_target : σ₁ (p ^ j₀) ≥ target) :
-    W B (ceilDiv target (σ₁ (p ^ j₀))) (num * p ^ j₀) next ≠ ∅ := by
-  refine Set.nonempty_iff_ne_empty.mp ⟨1, one_mem_P _, ?_, ?_⟩
-  · linarith [Nat.mul_le_mul_left num (Nat.pow_le_pow_right hp.one_lt.le hjk),
+    1 ∈ W B (ceilDiv target (σ₁ (p ^ j₀))) (num * p ^ j₀) next := by
+  simp only [mem_W, one_mem_P, mul_one, sigma_one, true_and]
+  constructor
+  · grind [Nat.mul_le_mul_left num (Nat.pow_le_pow_right hp.one_lt.le hjk),
       Nat.le_mul_of_pos_right (num * p ^ k) ht''_pos]
-  · have hσpj_pos : 0 < σ₁ (p ^ j₀) := sigma_pos _ _ (pow_ne_zero _ hp.pos.ne')
-    simp [ceilDiv, div_le_iff_le_mul_add_pred hσpj_pos]
-    omega
+  · grind [pow_ne_zero, hp.pos]
 
 /-- Walk `expChildren` from `pk₀ = p ^ j₀` looking for a child with a witness, given
 a parent witness `t = p ^ k * t''` (factored at `p` with `t''` coprime to `p`). -/
@@ -446,7 +450,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
     (n k j₀ : Nat) (hn : k - j₀ = n) (hj₀ : 1 ≤ j₀) (hj₀_k : j₀ ≤ k) (hpk_le_m : p ^ k ≤ m)
     {t'' : Nat} (ht''_pos : 1 ≤ t'') (ht''_P : t'' ∈ P next) (hnumt : num * p ^ k * t'' < B)
     (htσ : target ≤ σ₁ (p ^ k) * σ₁ t'') {fuel : Nat} (hfuel : n + 1 ≤ fuel) :
-    ∃ c ∈ expChildren fuel target num next m p (p ^ j₀), W B c.1 c.2.1 c.2.2 ≠ ∅ := by
+    ∃ c ∈ expChildren fuel target num next m p (p ^ j₀), (W B c.1 c.2.1 c.2.2).Nonempty := by
   induction n generalizing j₀ fuel with
   | zero =>
     obtain rfl : j₀ = k := by omega
@@ -454,10 +458,10 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
     by_cases hσ_target : σ₁ (p ^ j₀) ≥ target
     · rw [expChildren_stop (by omega) hpk_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
       exact ⟨_, List.mem_singleton.mpr rfl,
-        one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩
+        ⟨_, one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩⟩
     push Not at hσ_target
     rw [expChildren_step (by omega) hpk_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
-    refine ⟨_, List.mem_cons_self, Set.nonempty_iff_ne_empty.mp ⟨t'', ht''_P, hnumt, ?_⟩⟩
+    refine ⟨_, List.mem_cons_self, ⟨t'', ht''_P, hnumt, ?_⟩⟩
     exact (ceilDiv_le_iff (sigma_pos _ _ (pow_ne_zero _ hp.pos.ne'))).mpr
       (by linarith [mul_comm (σ₁ (p ^ j₀)) (σ₁ t'')])
   | succ n ih =>
@@ -466,7 +470,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
     by_cases hσ_target : σ₁ (p ^ j₀) ≥ target
     · rw [expChildren_stop (by omega) hpj_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
       exact ⟨_, List.mem_singleton.mpr rfl,
-        one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩
+        ⟨_, one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩⟩
     push Not at hσ_target
     rw [expChildren_step (by omega) hpj_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq, ← pow_succ]
     obtain ⟨c, hc, hwit⟩ := ih (j₀ + 1) (by omega) (by omega) (by omega)
@@ -514,7 +518,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
     (hfront_le : front ≤ back + 1)
     (hwc : wheelChildren fuel (m * m) m target num front back lhs rhs acc = some L)
     (t : Nat) (ht2 : 2 ≤ t) (htP : t ∈ P front) (hnumt : num * t < B) (htσ : target ≤ σ₁ t) :
-    ∃ c ∈ L, W B c.1 c.2.1 c.2.2 ≠ ∅ := by
+    ∃ c ∈ L, (W B c.1 c.2.1 c.2.2).Nonempty := by
   have htm : t ≤ m := hmdef ▸ (le_div_iff_mul_le hnum_pos).mpr (by linarith)
   fun_induction wheelChildren fuel (m * m) m target num front back lhs rhs acc generalizing L with
   | case1 | case2 | case5 => cases hwc
@@ -533,7 +537,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
       rw [hq, hrhs', primesProdM1_succ_front hfront_b, mul_left_comm,
         Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
     by_cases hdvd : nth Nat.Prime front ∣ t
-    · obtain ⟨k, t'', hk_pos, hpk_t, _, ht''_pos, _, hcoprime⟩ :=
+    · obtain ⟨k, t'', hk_pos, hpk_t, ht''_pos, _, hcoprime⟩ :=
         exists_factor_decomp hp_prime hdvd (by omega)
       have hpk_le_m : nth Nat.Prime front ^ k ≤ m :=
         (le_of_dvd (by omega) ⟨t'', hpk_t.symm⟩).trans htm
@@ -596,9 +600,9 @@ private theorem child_witness_to_parent {B target num minIdx i k : Nat}
 private theorem witness_to_child {B target num minIdx : Nat} {cs : List (Nat × Nat × Nat)}
     (h : children B target num minIdx = some cs) {t : Nat}
     (ht : t ∈ W B target num minIdx) (h1 : t ≠ 1) :
-    ∃ c ∈ cs, W B c.1 c.2.1 c.2.2 ≠ ∅ := by
+    ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
   rcases Nat.eq_zero_or_pos num with rfl | hnum_pos
-  · grind [children, wheelChildren_zero_no_some]
+  · grind [children]
   · rw [children] at h
     split at h
     · rename_i hminIdx_lt
@@ -614,11 +618,10 @@ private theorem witness_to_child {B target num minIdx : Nat} {cs : List (Nat × 
 theorem children_spec {B target num minIdx : Nat} {cs : List (Nat × Nat × Nat)}
     (h : children B target num minIdx = some cs) :
     (∃ t ∈ W B target num minIdx, t ≠ 1) ↔
-      ∃ c ∈ cs, W B c.1 c.2.1 c.2.2 ≠ ∅ := by
+      ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
   refine ⟨fun ⟨t, ht, h1⟩ => witness_to_child h ht h1, ?_⟩
-  rintro ⟨c, hc, hwit⟩
+  rintro ⟨c, hc, t', ht'⟩
   obtain ⟨i, k, hmi, hk, _, hceq⟩ := mem_children h hc
-  obtain ⟨t', ht'⟩ := Set.nonempty_iff_ne_empty.mpr hwit
   rw [hceq] at ht'
   obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hk ht'
   exact ⟨_, hw, hne⟩
@@ -645,13 +648,13 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
       by_cases h1 : t = 1
       · grind [sigma_one]
       obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
-      grind
+      grind [Set.not_nonempty_iff_eq_empty]
     · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
 
 /-- `step = some false` ⟹ some node on the stack has a nonempty witness set. -/
 theorem step_false {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
     (h : step B fuel stack = some false) :
-    ∃ node ∈ stack, W B node.1 node.2.1 node.2.2 ≠ ∅ := sorry
+    ∃ node ∈ stack, (W B node.1 node.2.1 node.2.2).Nonempty := sorry
 
 /-- A `some true` answer of `highlyAbundantLcm?` on `(lcmRange n, σ₁ (lcmRange n))`
 certifies that `lcm (1..n)` is highly abundant. -/
