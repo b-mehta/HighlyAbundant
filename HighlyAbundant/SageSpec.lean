@@ -403,11 +403,7 @@ private theorem expChildren_step
     expChildren fuel target num next m p pk =
       (ceilDiv target ((pk * p - 1) / (p - 1)), num * pk, next) ::
       expChildren (fuel - 1) target num next m p (pk * p) := by
-  cases fuel with
-  | zero => omega
-  | succ fuel =>
-    simp only [expChildren, if_neg (by omega : ¬ pk > m),
-      if_neg (by omega : ¬ (pk * p - 1) / (p - 1) ≥ target), Nat.add_sub_cancel]
+  fun_induction expChildren with grind
 
 /-- One step of `expChildren` when `pk ≤ m` and `σ(pk) ≥ target` (final child). -/
 private theorem expChildren_stop
@@ -416,10 +412,7 @@ private theorem expChildren_stop
     (hsig_ge : (pk * p - 1) / (p - 1) ≥ target) :
     expChildren fuel target num next m p pk =
       [(ceilDiv target ((pk * p - 1) / (p - 1)), num * pk, next)] := by
-  cases fuel with
-  | zero => omega
-  | succ fuel =>
-    simp only [expChildren, if_neg (by omega : ¬ pk > m), if_pos hsig_ge]
+  fun_induction expChildren with grind
 
 /-- Every entry of `expChildren ... (p ^ k₀)` (for prime `p`, `k₀ ≥ 1`) has the
 prime-power form for some `k ≥ k₀` with `p ^ k ≤ m`. -/
