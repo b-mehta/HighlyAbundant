@@ -484,9 +484,8 @@ private theorem mem_wheelChildren {fuel m2 m target num front back lhs rhs : Nat
     {acc : List (Nat × Nat × Nat)} {L : List (Nat × Nat × Nat)}
     (h : wheelChildren fuel m2 m target num front back lhs rhs acc = some L)
     {c : Nat × Nat × Nat} (hc : c ∈ L) :
-    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ (nth Nat.Prime i) ^ k ≤ m ∧
-      c = (ceilDiv target (σ₁ ((nth Nat.Prime i) ^ k)),
-        num * (nth Nat.Prime i) ^ k, i + 1) := by
+    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ nth Nat.Prime i ^ k ≤ m ∧
+      c = (ceilDiv target (σ₁ ((nth Nat.Prime i) ^ k)), num * nth Nat.Prime i ^ k, i + 1) := by
   fun_induction wheelChildren fuel m2 m target num front back lhs rhs acc generalizing L with
   | case1 | case2 | case5 => cases h
   | case3 => grind
@@ -542,8 +541,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
       have hpk_le_m : nth Nat.Prime front ^ k ≤ m :=
         (le_of_dvd (by omega) ⟨t'', hpk_t.symm⟩).trans htm
       have htσ' : target ≤ σ₁ ((nth Nat.Prime front) ^ k) * σ₁ t'' := by
-        rwa [← isMultiplicative_sigma.map_mul_of_coprime
-          (hcoprime.pow_left k), hpk_t]
+        rwa [← isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k), hpk_t]
       have ht''_P : t'' ∈ P (front + 1) :=
         mem_P_succ_of_coprime_decomp hp_prime le_rfl htP.2 hpk_t ht''_pos hcoprime
       obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (front + 1) (k - 1) k 1
@@ -566,8 +564,8 @@ private theorem mem_children {B target num minIdx : Nat} {cs : List (Nat × Nat 
         num * (nth Nat.Prime i) ^ k, i + 1) := by
   rw [children] at h
   split at h
-  · exact (mem_wheelChildren h hc).resolve_left (by simp)
-  · cases h
+  · grind [mem_wheelChildren h hc]
+  · grind
 
 /-- If `t'` is a witness of the child `(⌈target / σ₁(p ^ k)⌉, num * p ^ k, i+1)`
 where `p = nth Nat.Prime i`, then `p ^ k * t'` is a non-trivial witness of the
