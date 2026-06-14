@@ -64,7 +64,9 @@ Only `children_spec` and `step_true` are used; the full root is never evaluated.
 
 set_option linter.mathlibStandardSet true
 
-open Nat
+open Nat Finset ArithmeticFunction
+
+attribute [grind .] sigma_pos
 
 namespace Sage
 
@@ -130,17 +132,19 @@ private lemma mem_P_succ_of_coprime_decomp {t t' p k front : Nat}
       (hp_min q hq (hpk_t ▸ dvd_mul_of_dvd_right hqd _))
       fun hqp => hp_prime.coprime_iff_not_dvd.mp hcoprime (hqp ▸ hqd))
 
+open omega
+
 /-- After factoring `t = p^k * t'` with `k ≥ 1`, `p` prime, and `Coprime p t'`, the prime
 factors of `t` are those of `t'` plus `{p}`. -/
 private lemma card_primeFactors_of_coprime_decomp {t t' p k : Nat} (hp_prime : p.Prime)
     (hk : 1 ≤ k) (hpk_t : p ^ k * t' = t) (hcoprime : Nat.Coprime p t') :
-    t.primeFactors.card = t'.primeFactors.card + 1 := by
+    #t.primeFactors = #t'.primeFactors + 1 := by
   have hp_not_t' : p ∉ t'.primeFactors := fun h =>
     hp_prime.coprime_iff_not_dvd.mp hcoprime (mem_primeFactors.mp h).2.1
-  rw [← hpk_t, Nat.Coprime.primeFactors_mul (hcoprime.pow_left k),
-    primeFactors_pow p (by omega : k ≠ 0), hp_prime.primeFactors,
-    Finset.card_union_of_disjoint (Finset.disjoint_singleton_left.mpr hp_not_t'),
-    Finset.card_singleton, Nat.add_comm]
+  rw [← hpk_t, (hcoprime.pow_left k).primeFactors_mul,
+    primeFactors_pow p (by lia), hp_prime.primeFactors,
+    card_union_of_disjoint (disjoint_singleton_left.mpr hp_not_t'),
+    card_singleton, Nat.add_comm]
 
 /-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
 @[grind .] private theorem one_mem_P (j : Nat) : 1 ∈ P j := by
@@ -268,7 +272,7 @@ private theorem sigma_bound_window (t front B : Nat) (ht : 1 ≤ t) (hP : t ∈ 
     calc σ₁ t * primesProdM1 front B
         = σ₁ (p ^ k) * (nth Nat.Prime front - 1) *
             (σ₁ t' * primesProdM1 (front + 1) B) := by
-          rw [← hpk_t, ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime
+          rw [← hpk_t, isMultiplicative_sigma.map_mul_of_coprime
             (hcoprime.pow_left k), primesProdM1_succ_front (by omega)]
           ring
       _ ≤ p ^ k * nth Nat.Prime front * (t' * primesProd (front + 1) B) := by gcongr
@@ -432,7 +436,7 @@ private lemma one_witnesses_stop {B num target next p k j₀ t'' : Nat}
   refine Set.nonempty_iff_ne_empty.mp ⟨1, one_mem_P _, ?_, ?_⟩
   · linarith [Nat.mul_le_mul_left num (Nat.pow_le_pow_right hp.one_lt.le hjk),
       Nat.le_mul_of_pos_right (num * p ^ k) ht''_pos]
-  · have hσpj_pos : 0 < σ₁ (p ^ j₀) := ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hp.pos.ne')
+  · have hσpj_pos : 0 < σ₁ (p ^ j₀) := sigma_pos _ _ (pow_ne_zero _ hp.pos.ne')
     simp [ceilDiv, div_le_iff_le_mul_add_pred hσpj_pos]
     omega
 
@@ -454,7 +458,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
     push Not at hσ_target
     rw [expChildren_step (by omega) hpk_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
     refine ⟨_, List.mem_cons_self, Set.nonempty_iff_ne_empty.mp ⟨t'', ht''_P, hnumt, ?_⟩⟩
-    exact (ceilDiv_le_iff (ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hp.pos.ne'))).mpr
+    exact (ceilDiv_le_iff (sigma_pos _ _ (pow_ne_zero _ hp.pos.ne'))).mpr
       (by linarith [mul_comm (σ₁ (p ^ j₀)) (σ₁ t'')])
   | succ n ih =>
     have hpj_le_m : p ^ j₀ ≤ m := (Nat.pow_le_pow_right hp.one_lt.le hj₀_k).trans hpk_le_m
@@ -534,7 +538,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
       have hpk_le_m : nth Nat.Prime front ^ k ≤ m :=
         (le_of_dvd (by omega) ⟨t'', hpk_t.symm⟩).trans htm
       have htσ' : target ≤ σ₁ ((nth Nat.Prime front) ^ k) * σ₁ t'' := by
-        rwa [← ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime
+        rwa [← isMultiplicative_sigma.map_mul_of_coprime
           (hcoprime.pow_left k), hpk_t]
       have ht''_P : t'' ∈ P (front + 1) :=
         mem_P_succ_of_coprime_decomp hp_prime le_rfl htP.2 hpk_t ht''_pos hcoprime
@@ -584,8 +588,8 @@ private theorem child_witness_to_parent {B target num minIdx i k : Nat}
         (prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
       exact (nth_strictMono infinite_setOf_prime).monotone hmi
     · exact ((nth_strictMono infinite_setOf_prime).monotone (by omega)).trans (ht'P q hqPrime h2)
-  · rw [ArithmeticFunction.isMultiplicative_sigma.map_mul_of_coprime hcop, mul_comm]
-    exact (le_ceilDiv_mul (ArithmeticFunction.sigma_pos _ _ (pow_ne_zero _ hpPrime.pos.ne'))).trans
+  · rw [isMultiplicative_sigma.map_mul_of_coprime hcop, mul_comm]
+    exact (le_ceilDiv_mul (sigma_pos _ _ (pow_ne_zero _ hpPrime.pos.ne'))).trans
       (Nat.mul_le_mul_right _ ht'σ)
 
 /-- A non-trivial witness of the parent gives a witness for some child in `cs`. -/
@@ -639,7 +643,7 @@ theorem step_true {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
     · rw [Set.eq_empty_iff_forall_notMem]
       intro t htW
       by_cases h1 : t = 1
-      · grind [ArithmeticFunction.sigma_one]
+      · grind [sigma_one]
       obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
       grind
     · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
