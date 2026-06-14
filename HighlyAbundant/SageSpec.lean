@@ -307,7 +307,7 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
 
 /-- At a wheel `.tooLarge` state with `back + 1 < 49`, the witness `t` with
 `t ≤ m`, `t ∈ P front`, `target ≤ σ₁ t` gives `False`. -/
-private theorem extend_tooLarge_contradiction
+@[grind .] private theorem extend_tooLarge_contradiction
     {m target front back lhs rhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back)
@@ -331,7 +331,7 @@ private theorem extend_tooLarge_contradiction
 
 /-- At a wheel `.tooLarge` empty-window state with `front < 49`, the witness `t`
 with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
-private theorem extend_tooLarge_empty_contradiction
+@[grind .] private theorem extend_tooLarge_empty_contradiction
     {m front back lhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back) (hfront_lt : front < 49)
     (hempty : back + 1 = front)
@@ -343,20 +343,14 @@ private theorem extend_tooLarge_empty_contradiction
   linarith [Nat.lt_of_mul_lt_mul_left hbig, minFac_le (by omega : 0 < t)]
 
 /-- If `t` is a witness, `extend` cannot return `.tooLarge`. -/
-private theorem extend_ne_tooLarge_of_witness (fuel m target front t : Nat) (ht2 : 2 ≤ t)
+@[grind .] private theorem extend_ne_tooLarge_of_witness (fuel m target front t : Nat) (ht2 : 2 ≤ t)
     (htP : t ∈ P front) (htm : t ≤ m) (htσ : target ≤ σ₁ t)
     (back lhs rhs : Nat) (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back) (hfront : front ≤ back + 1) :
     extend fuel (m * m) front back lhs rhs ≠ .tooLarge := by
   fun_induction extend fuel (m * m) front back lhs rhs with
   | case1 | case2 | case5 | case8 => simp
-  | case3 _ _ _ _ _ _ hb1 _ _ hbig =>
-    exact fun _ =>
-      extend_tooLarge_contradiction hlhs hrhs hfront hb1 (by omega) hbig ht2 htP htm htσ
-  | case4 _ _ _ _ hf _ hb1 _ _ _ ih => grind
-  | case6 _ _ _ _ _ hf1 _ _ hbig =>
-    exact fun _ => extend_tooLarge_empty_contradiction hlhs hf1 (by omega) hbig ht2 htP htm
-  | case7 _ _ _ _ _ hf1 _ _ _ ih => grind
+  | case3 | case4 | case6 | case7 => grind
 
 /-! ### Window invariants -/
 
@@ -529,9 +523,7 @@ private theorem wheelChildren_witness {B num m target : Nat} (hmdef : m = B / nu
   have htm : t ≤ m := hmdef ▸ (le_div_iff_mul_le hnum_pos).mpr (by linarith)
   fun_induction wheelChildren fuel (m * m) m target num front back lhs rhs acc generalizing L with
   | case1 | case2 | case5 => cases hwc
-  | case3 front _ _ _ _ _ hext =>
-    exact absurd hext (extend_ne_tooLarge_of_witness 50 m target front t ht2 htP htm htσ
-      _ _ _ hlhs hrhs hfront_le)
+  | case3 => grind
   | case4 front back lhs rhs acc _ b lhs' rhs' hext hp _ =>
     rename_i hrec
     have hq : primesRArray.get front = nth Nat.Prime front := primesRArray_get_eq_nth front hp
