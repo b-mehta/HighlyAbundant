@@ -366,8 +366,7 @@ private theorem extend_window_invariant (fuel m target front back lhs rhs b lhs'
   | case1 | case5 | case8 => simp at heq
   | case2 _ _ _ _ hf _ => obtain ⟨rfl, rfl, rfl⟩ := heq; exact ⟨hlhs, hrhs, le_refl _, hf⟩
   | case3 | case6 => cases heq
-  | case4 _ _ _ _ hf _ hb1 _ _ _ ih => grind
-  | case7 _ _ _ _ _ hf1 _ _ _ ih => grind
+  | case4 | case7 => grind
 
 /-! ### Degenerate case: `lhs = 0` -/
 
