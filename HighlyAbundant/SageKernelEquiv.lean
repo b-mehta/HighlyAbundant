@@ -5,6 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.SageKernel
+import Mathlib.Data.Nat.Log
 
 /-!
 # Equivalence of kernel-friendly and ordinary decider functions
@@ -16,6 +17,11 @@ agrees with the corresponding definition in `HighlyAbundant.Sage`.
 namespace Sage
 
 theorem ceilDivK_eq_ceilDiv : ceilDivK = ceilDiv := rfl
+
+theorem appendK_eq_append {α : Type _} (xs ys : List α) : appendK xs ys = xs ++ ys := by
+  induction xs with
+  | nil => rfl
+  | cons x _ ih => exact congrArg (x :: ·) ih
 
 private theorem extendK_succ (n m2 front back lhs rhs : Nat) :
     extendK (n + 1) m2 front back lhs rhs =
@@ -32,8 +38,8 @@ private theorem extendK_succ (n m2 front back lhs rhs : Nat) :
           let lhs' := lhs * q
           if lhs' > m2 then .tooLarge else extendK n m2 front front lhs' (rhs * (q - 1))
         else .exhaustedTable := by
-  simp only [extendK, Bool.rec_eq, Nat.ble_eq, Nat.blt_eq, Nat.lt_succ_iff,
-    Nat.succ_le_succ_iff]
+  simp only [extendK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
+    Nat.succ_le_succ_iff, ← Nat.not_le, ite_not]
   rfl
 
 theorem extendK_eq_extend : extendK = extend := by
@@ -52,7 +58,7 @@ private theorem expChildrenK_succ (n target num next m p pk : Nat) :
         let child := (ceilDiv target spk, num * pk, next)
         if spk ≥ target then [child]
         else child :: expChildrenK n target num next m p (pk * p) := by
-  simp only [expChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.blt_eq]
+  simp only [expChildrenK, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
   rfl
 
 theorem expChildrenK_eq_expChildren : expChildrenK = expChildren := by
@@ -76,7 +82,7 @@ private theorem wheelChildrenK_succ (n m2 m target num front back lhs rhs : Nat)
             (expChildren (m + 1) target num (front + 1) m p p ++ acc)
         else none := by
   simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    extendK_eq_extend, expChildrenK_eq_expChildren]
+    extendK_eq_extend, expChildrenK_eq_expChildren, appendK_eq_append]
   cases extend 50 m2 front back lhs rhs <;> rfl
 
 theorem wheelChildrenK_eq_wheelChildren : wheelChildrenK = wheelChildren := by
@@ -99,7 +105,8 @@ private theorem stepK_succ_cons (B n target num minIdx : Nat)
       if target ≤ 1 then
         if num < B then some false else stepK B n rest
       else (children B target num minIdx).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
-  simp only [stepK, Bool.rec_eq, Nat.ble_eq, Nat.blt_eq, childrenK_eq_children]
+  simp only [stepK, Bool.rec_eq, Nat.ble_eq, childrenK_eq_children, appendK_eq_append,
+    ← Nat.not_le, ite_not]
 
 theorem stepK_eq_step : stepK = step := by
   funext B fuel stack
@@ -121,5 +128,23 @@ theorem highlyAbundantLcmK_eq_highlyAbundantLcm :
   funext B sL
   simp only [highlyAbundantLcmK?, highlyAbundantLcm?, Bool.rec_eq, Nat.ble_eq,
     stepK_eq_step]
+
+/-- `(lcmRange n, σ₁ (lcmRange n))` computed as
+`(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n` in the table.
+For `#eval` use to supply `(B, sL)` to `highlyAbundantLcm?`; the formal proof
+goes through `lcmRange` directly, so this equivalence is not used. -/
+def lcmData (n : ℕ) : ℕ × ℕ :=
+  (primes.toList.takeWhile (· ≤ n)).foldl
+    (fun (acc : ℕ × ℕ) p =>
+      let e := Nat.log p n
+      (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
+
+elab "quickRfl" : tactic => Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
+#eval lcmData 64
+-- (1182266884102822267511361600, 8469504822020624477061120000)
+-- (9419588158802421600, 61155010116845568000)
+
+set_option diagnostics true in
+example : stepK 5354228880 2000 [(28078202880, 1, 0)] == some true := by quickRfl
 
 end Sage

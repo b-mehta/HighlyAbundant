@@ -17,6 +17,11 @@ definitions lives in `HighlyAbundant.SageKernelEquiv`.
 
 namespace Sage
 
+/-- Kernel-friendly list append using `List.rec` directly, avoiding the
+brecOn/match_1 machinery that `List.append` would unfold. -/
+noncomputable def appendK {α : Type _} (xs ys : List α) : List α :=
+  xs.rec ys fun x _ ih ↦ x :: ih
+
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
 def ceilDivK (a b : Nat) : Nat := ((a.add b).sub 1).div b
 
@@ -30,12 +35,12 @@ noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel 
       ((front.ble 48).rec .exhaustedTable <|
         let q := primesRArray.get front
         let lhs' := lhs.mul q
-        (m2.blt lhs').rec (r front lhs' (rhs.mul (q.sub 1))) .tooLarge)
+        (lhs'.ble m2).rec .tooLarge (r front lhs' (rhs.mul (q.sub 1))))
       ((rhs.ble lhs).rec
         ((back.ble 47).rec .exhaustedTable <|
           let q := primesRArray.get back.succ
           let lhs' := lhs.mul q
-          (m2.blt lhs').rec (r back.succ lhs' (rhs.mul (q.sub 1))) .tooLarge)
+          (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub 1))))
         (.window back lhs rhs))
 
 /-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
@@ -43,11 +48,10 @@ noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel 
 noncomputable def expChildrenK (fuel target num next m p : Nat) :
     Nat → List (Nat × Nat × Nat) :=
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
-    (m.blt pk).rec
+    (pk.ble m).rec []
       (let spk := ((pk.mul p).sub 1).div (p.sub 1)
        let child := (ceilDivK target spk, num.mul pk, next)
        (target.ble spk).rec (child :: r (pk.mul p)) [child])
-      []
 
 /-- Iterate `extend` from `front` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
@@ -61,7 +65,7 @@ noncomputable def wheelChildrenK (fuel m2 m target num : Nat) :
         (front.ble 48).rec none <|
           let p := primesRArray.get front
           r front.succ b (lhs'.div p) (rhs'.div (p.sub 1))
-            (expChildrenK (m.add 1) target num front.succ m p p ++ acc))
+            (appendK (expChildrenK (m.add 1) target num front.succ m p p) acc))
 
 /-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
 `(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
@@ -84,8 +88,8 @@ noncomputable def stepK (B : Nat) : Nat → List (Nat × Nat × Nat) → Option 
       let num := node.2.1
       let minIdx := node.2.2
       (target.ble 1).rec
-        ((childrenK B target num minIdx).rec none (fun cs ↦ r (cs ++ rest)))
-        ((num.blt B).rec (r rest) (some false))
+        ((childrenK B target num minIdx).rec none (fun cs ↦ r (appendK cs rest)))
+        ((B.ble num).rec (some false) (r rest))
 
 /-- Decide whether no `m` with `1 ≤ m < B` has `sL ≤ σ m`. With
 `(B, sL) = (lcm (1..n), σ (lcm (1..n)))`, `some true` certifies that
