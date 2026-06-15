@@ -316,13 +316,13 @@ private theorem primesProd_le_t (t front : Nat) (ht : 1 ≤ t) (hP : t ∈ P fro
 /-- At a wheel `.tooLarge` state with `back + 1 < 49`, the witness `t` with
 `t ≤ m`, `t ∈ P front`, `target ≤ σ₁ t` gives `False`. -/
 @[grind .] private theorem extend_tooLarge_contra
-    {m target front back lhs rhs : Nat} {t : Nat}
+    {m target front back lhs rhs t : ℕ}
     (hlhs : lhs = m * primesProd front back)
     (hrhs : rhs = target * primesProdM1 front back)
     (hfront : front ≤ back + 1)
     (hback_lt : back + 1 < 49)
     (hsmall : lhs < rhs)
-    (hbig : lhs * primesRArray.get (back + 1) > m * m)
+    (hbig : m * m < lhs * primesRArray.get (back + 1))
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) (htσ : target ≤ σ₁ t) : False := by
   rw [primesRArray_get_eq_nth _ hback_lt] at hbig
   rcases lt_or_ge t.primeFactors.card (back + 2 - front) with hcard | hcard
@@ -343,7 +343,7 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
     {m front back lhs : Nat} {t : Nat}
     (hlhs : lhs = m * primesProd front back) (hfront_lt : front < 49)
     (hempty : back + 1 = front)
-    (hbig : lhs * primesRArray.get front > m * m)
+    (hbig : m * m < lhs * primesRArray.get front)
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) : False := by
   rw [primesProd_empty (by omega : back < front), mul_one] at hlhs
   rw [primesRArray_get_eq_nth _ hfront_lt, hlhs, mul_comm m m] at hbig
@@ -405,7 +405,7 @@ private theorem expChildren_step
 private theorem expChildren_stop
     {fuel target num next m p pk : Nat}
     (hfuel : 1 ≤ fuel) (hpk_le_m : pk ≤ m)
-    (hsig_ge : (pk * p - 1) / (p - 1) ≥ target) :
+    (hsig_le : target ≤ (pk * p - 1) / (p - 1)) :
     expChildren fuel target num next m p pk =
       [(ceilDiv target ((pk * p - 1) / (p - 1)), num * pk, next)] := by
   fun_induction expChildren with grind
@@ -422,11 +422,11 @@ private theorem mem_expChildren {fuel target num next m p k₀ : Nat}
   | succ fuel ih =>
     rw [expChildren] at hc
     have hspk_eq : (p ^ k₀ * p - 1) / (p - 1) = σ₁ (p ^ k₀) := sigma_pow_expChildren_eq hp
-    by_cases hpm : p ^ k₀ > m
+    by_cases hpm : m < p ^ k₀
     · grind
-    by_cases hge : (p ^ k₀ * p - 1) / (p - 1) ≥ target
+    by_cases hle : target ≤ (p ^ k₀ * p - 1) / (p - 1)
     · grind
-    simp only [if_neg hpm, if_neg hge, List.mem_cons] at hc
+    simp only [if_neg hpm, if_neg hle, List.mem_cons] at hc
     rcases hc with rfl | hc
     · grind
     · rw [← pow_succ] at hc
@@ -436,7 +436,7 @@ private theorem mem_expChildren {fuel target num next m p k₀ : Nat}
 the child `(ceilDiv target σ(p ^ j₀), num*p ^ j₀, next)` has `1` as a witness. -/
 private lemma one_witnesses_stop {B num target next p k j₀ t'' : Nat}
     (hp : p.Prime) (hjk : j₀ ≤ k) (ht''_pos : 1 ≤ t'')
-    (hnumt : num * p ^ k * t'' < B) (hσ_target : σ₁ (p ^ j₀) ≥ target) :
+    (hnumt : num * p ^ k * t'' < B) (hσ_target : target ≤ σ₁ (p ^ j₀)) :
     1 ∈ W B (ceilDiv target (σ₁ (p ^ j₀))) (num * p ^ j₀) next := by
   simp only [mem_W, one_mem_P, mul_one, sigma_one, true_and]
   constructor
@@ -455,7 +455,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
   | zero =>
     obtain rfl : j₀ = k := by omega
     have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
-    by_cases hσ_target : σ₁ (p ^ j₀) ≥ target
+    by_cases hσ_target : target ≤ σ₁ (p ^ j₀)
     · rw [expChildren_stop (by omega) hpk_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
       exact ⟨_, List.mem_singleton.mpr rfl,
         ⟨_, one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩⟩
@@ -467,7 +467,7 @@ private theorem expChildren_witness_walk {B num target m p : Nat} (hp : p.Prime)
   | succ n ih =>
     have hpj_le_m : p ^ j₀ ≤ m := (Nat.pow_le_pow_right hp.one_lt.le hj₀_k).trans hpk_le_m
     have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
-    by_cases hσ_target : σ₁ (p ^ j₀) ≥ target
+    by_cases hσ_target : target ≤ σ₁ (p ^ j₀)
     · rw [expChildren_stop (by omega) hpj_le_m (h_sig_eq.symm ▸ hσ_target), h_sig_eq]
       exact ⟨_, List.mem_singleton.mpr rfl,
         ⟨_, one_witnesses_stop hp hj₀_k ht''_pos hnumt hσ_target⟩⟩
