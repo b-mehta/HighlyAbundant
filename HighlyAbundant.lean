@@ -3,6 +3,8 @@ import HighlyAbundant.ClimbLadder
 import HighlyAbundant.HA256
 import HighlyAbundant.PrepareLadder
 import HighlyAbundant.Sage
+import HighlyAbundant.SageKernel
+import HighlyAbundant.SageKernelEquiv
 import HighlyAbundant.SageSpec
 import HighlyAbundant.Prime.PowMod
 import HighlyAbundant.Prime.Pratt
