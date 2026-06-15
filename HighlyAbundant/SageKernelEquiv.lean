@@ -44,4 +44,82 @@ theorem extendK_eq_extend : extendK = extend := by
     rw [extend, extendK_succ]
     simp only [ih]
 
+private theorem expChildrenK_succ (n target num next m p pk : Nat) :
+    expChildrenK (n + 1) target num next m p pk =
+      if pk > m then []
+      else
+        let spk := (pk * p - 1) / (p - 1)
+        let child := (ceilDiv target spk, num * pk, next)
+        if spk ≥ target then [child]
+        else child :: expChildrenK n target num next m p (pk * p) := by
+  simp only [expChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.blt_eq]
+  rfl
+
+theorem expChildrenK_eq_expChildren : expChildrenK = expChildren := by
+  funext fuel target num next m p pk
+  induction fuel generalizing pk with
+  | zero => rfl
+  | succ n ih =>
+    rw [expChildren, expChildrenK_succ]
+    simp only [ih]
+
+private theorem wheelChildrenK_succ (n m2 m target num front back lhs rhs : Nat)
+    (acc : List (Nat × Nat × Nat)) :
+    wheelChildrenK (n + 1) m2 m target num front back lhs rhs acc =
+      match extend 50 m2 front back lhs rhs with
+      | .exhaustedTable => none
+      | .tooLarge => some acc
+      | .window b lhs' rhs' =>
+        if front < 49 then
+          let p := primesRArray.get front
+          wheelChildrenK n m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
+            (expChildren (m + 1) target num (front + 1) m p p ++ acc)
+        else none := by
+  simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
+    extendK_eq_extend, expChildrenK_eq_expChildren]
+  cases extend 50 m2 front back lhs rhs <;> rfl
+
+theorem wheelChildrenK_eq_wheelChildren : wheelChildrenK = wheelChildren := by
+  funext fuel m2 m target num front back lhs rhs acc
+  induction fuel generalizing front back lhs rhs acc with
+  | zero => rfl
+  | succ n ih =>
+    rw [wheelChildren, wheelChildrenK_succ]
+    cases extend 50 m2 front back lhs rhs <;> simp only [ih]
+
+theorem childrenK_eq_children : childrenK = children := by
+  funext B target num minIdx
+  simp only [childrenK, children, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
+    wheelChildrenK_eq_wheelChildren]
+  rfl
+
+private theorem stepK_succ_cons (B n target num minIdx : Nat)
+    (rest : List (Nat × Nat × Nat)) :
+    stepK B (n + 1) ((target, num, minIdx) :: rest) =
+      if target ≤ 1 then
+        if num < B then some false else stepK B n rest
+      else (children B target num minIdx).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
+  simp only [stepK, Bool.rec_eq, Nat.ble_eq, Nat.blt_eq, childrenK_eq_children]
+
+theorem stepK_eq_step : stepK = step := by
+  funext B fuel stack
+  induction fuel generalizing stack with
+  | zero => rfl
+  | succ n ih =>
+    cases stack with
+    | nil => rfl
+    | cons head tail =>
+      obtain ⟨target, num, minIdx⟩ := head
+      rw [stepK_succ_cons, step.eq_def]
+      simp only [ih]
+      split
+      · rfl
+      · cases children B target num minIdx <;> rfl
+
+theorem highlyAbundantLcmK_eq_highlyAbundantLcm :
+    highlyAbundantLcmK? = highlyAbundantLcm? := by
+  funext B sL
+  simp only [highlyAbundantLcmK?, highlyAbundantLcm?, Bool.rec_eq, Nat.ble_eq,
+    stepK_eq_step]
+
 end Sage
