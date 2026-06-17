@@ -175,7 +175,7 @@ def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
 
 /-- Upper bound on nodes visited by `step`. Experimentally minimal for
 `highlyAbundantLcm? B sL ≠ none` on `lcm (1..n)` for `n ≤ 172`. -/
-def searchFuel : Nat := 32000000
+def searchFuel : Nat := 8000000
 
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read
