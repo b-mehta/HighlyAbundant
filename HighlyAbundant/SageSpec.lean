@@ -88,24 +88,6 @@ def W (B g a minIdx : ℕ) : Set ℕ :=
     t ∈ W B g a minIdx ↔ t ∈ P minIdx ∧ a * t < B ∧ g ≤ σ₁ t :=
   Iff.rfl
 
-/-- `(lcmRange n, σ₁ (lcmRange n))` computed as
-`(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n` in the table.
-For `#eval` use to supply `(B, sL)` to `highlyAbundantLcm?`; the formal proof
-goes through `lcmRange` directly, so this equivalence is not used. -/
-def lcmData (n : ℕ) : ℕ × ℕ :=
-  (primes.toList.takeWhile (· ≤ n)).foldl
-    (fun (acc : ℕ × ℕ) p =>
-      let e := log p n
-      (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
-
-#eval lcmData 23
--- (5354228880, 28078202880)
-set_option maxRecDepth 10000 in
-#reduce step 5354228880 2000 [(28078202880, 1, 0)]
-
-
-#exit
-
 /-! ### The `primes` table -/
 
 private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
@@ -646,6 +628,31 @@ theorem highlyAbundantLcm_correct {n : ℕ}
   simp only [hB, if_false] at h
   have hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅ :=
     step_true h (σ₁ (lcmRange n), 1, 0) List.mem_cons_self
+  by_contra! hcontra
+  have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
+  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]
+  rwa [hW] at hmW
+
+/-- Partial-verification entry point: certify `lcm (1..n)` is highly abundant from
+per-child kernel evaluations. The root `step` is never evaluated; instead, expand the
+root via `children` and check each child's subtree separately with its own `step`. -/
+theorem highlyAbundantLcm_correct_partial {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hsL : 2 ≤ σ₁ (lcmRange n))
+    (hch : children (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, step (lcmRange n) searchFuel [c] = some true) :
+    IsHighlyAbundant (lcmRange n) := by
+  intro m hm₀ hm_lt
+  have hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅ := by
+    rw [Set.eq_empty_iff_forall_notMem]
+    intro t ht
+    obtain rfl | h1 := eq_or_ne t 1
+    · obtain ⟨_, _, hle⟩ := ht
+      simp at hle
+      omega
+    · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
+      have hW_c := step_true (hcs c hc) c List.mem_cons_self
+      rw [hW_c] at hwc
+      exact hwc.ne_empty rfl
   by_contra! hcontra
   have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
   have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]

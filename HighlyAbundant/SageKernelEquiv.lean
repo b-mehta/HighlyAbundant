@@ -5,6 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.SageKernel
+import HighlyAbundant.SageSpec
 import Mathlib.Data.Nat.Log
 
 /-!
@@ -141,10 +142,18 @@ def lcmData (n : ℕ) : ℕ × ℕ :=
 
 elab "quickRfl" : tactic => Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
 #eval lcmData 64
--- (1182266884102822267511361600, 8469504822020624477061120000)
--- (9419588158802421600, 61155010116845568000)
 
-set_option diagnostics true in
+/-- Kernel-flavoured partial verification: take the K-versions of `children` and
+`step` to drive `highlyAbundantLcm_correct_partial`. -/
+theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hsL : 2 ≤ σ₁ (lcmRange n))
+    (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, stepK (lcmRange n) searchFuel [c] = some true) :
+    IsHighlyAbundant (lcmRange n) := by
+  refine highlyAbundantLcm_correct_partial (cs := cs) hsL ?_ ?_
+  · rwa [childrenK_eq_children] at hch
+  · intro c hc; rw [← stepK_eq_step]; exact hcs c hc
+
 example : stepK 5354228880 2000 [(28078202880, 1, 0)] == some true := by quickRfl
 
 end Sage
