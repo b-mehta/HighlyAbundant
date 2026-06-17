@@ -85,12 +85,10 @@ an index `≥ 49`. -/
 noncomputable def stepK (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool :=
   fun fuel ↦ fuel.rec (fun _ ↦ none) fun _ r stack ↦
     stack.rec (some true) fun node rest _ ↦
-      let target := node.1
-      let num := node.2.1
-      let minIdx := node.2.2
-      (target.ble (nat_lit 1)).rec
-        ((childrenK B target num minIdx).rec none (fun cs ↦ r (appendK cs rest)))
-        ((B.ble num).rec (some false) (r rest))
+      node.rec fun target rest1 ↦ rest1.rec fun num minIdx ↦
+        (target.ble (nat_lit 1)).rec
+          ((childrenK B target num minIdx).rec none (fun cs ↦ r (appendK cs rest)))
+          ((B.ble num).rec (some false) (r rest))
 
 /-- Decide whether no `m` with `1 ≤ m < B` has `sL ≤ σ m`. With
 `(B, sL) = (lcm (1..n), σ (lcm (1..n)))`, `some true` certifies that
