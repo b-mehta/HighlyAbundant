@@ -15,8 +15,10 @@ namespace Sage
 elab "quickRfl" : tactic =>
   Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
 
+-- searchFuel = 6.4M is insufficient for this specific n; bump to 8M.
+-- TODO: composition with `highlyAbundantLcm?` will need a fuel-bridging lemma.
 theorem stepK_lcm_125 :
-    stepK 52573842877942565273243107104095419458814459401768000 searchFuel
+    stepK 52573842877942565273243107104095419458814459401768000 8000000
       [(440841516948592182764054142045278420379874885632000000, 1, 0)] == some true := by quickRfl
 
 end Sage
