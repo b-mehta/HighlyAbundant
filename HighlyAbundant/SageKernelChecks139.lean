@@ -11,6 +11,9 @@ import Lean.Elab.Tactic.Basic
 
 namespace Sage
 
+
+set_option maxRecDepth 10000
+set_option maxHeartbeats 400000
 elab "quickRfl" : tactic =>
   Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
 
