@@ -17,7 +17,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean-action@v1
+      - name: Install Lean
+        uses: leanprover/lean-action@v1
+        with:
+          build: false
+      - name: Build with bumped stack
+        shell: bash
         env:
           LAKE_NO_PARALLEL: "1"
           LEAN_NUM_THREADS: "1"
+        run: |
+          ulimit -s unlimited
+          lake exe cache get || true
+          lake build
