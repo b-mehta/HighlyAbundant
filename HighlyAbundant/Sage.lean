@@ -26,39 +26,39 @@ def primes : Array Nat := #[
     227]
 
 def primesRArray : Lean.RArray Nat :=
-  .branch 24
-    (.branch 12
-      (.branch 6
-        (.branch 3
-          (.branch 1 (.leaf 2) (.branch 2 (.leaf 3) (.leaf 5)))
-          (.branch 4 (.leaf 7) (.branch 5 (.leaf 11) (.leaf 13))))
-        (.branch 9
-          (.branch 7 (.leaf 17) (.branch 8 (.leaf 19) (.leaf 23)))
-          (.branch 10 (.leaf 29) (.branch 11 (.leaf 31) (.leaf 37)))))
-      (.branch 18
-        (.branch 15
-          (.branch 13 (.leaf 41) (.branch 14 (.leaf 43) (.leaf 47)))
-          (.branch 16 (.leaf 53) (.branch 17 (.leaf 59) (.leaf 61))))
-        (.branch 21
-          (.branch 19 (.leaf 67) (.branch 20 (.leaf 71) (.leaf 73)))
-          (.branch 22 (.leaf 79) (.branch 23 (.leaf 83) (.leaf 89))))))
-    (.branch 36
-      (.branch 30
-        (.branch 27
-          (.branch 25 (.leaf 97) (.branch 26 (.leaf 101) (.leaf 103)))
-          (.branch 28 (.leaf 107) (.branch 29 (.leaf 109) (.leaf 113))))
-        (.branch 33
-          (.branch 31 (.leaf 127) (.branch 32 (.leaf 131) (.leaf 137)))
-          (.branch 34 (.leaf 139) (.branch 35 (.leaf 149) (.leaf 151)))))
-      (.branch 42
-        (.branch 39
-          (.branch 37 (.leaf 157) (.branch 38 (.leaf 163) (.leaf 167)))
-          (.branch 40 (.leaf 173) (.branch 41 (.leaf 179) (.leaf 181))))
-        (.branch 45
-          (.branch 43 (.leaf 191) (.branch 44 (.leaf 193) (.leaf 197)))
-          (.branch 47
-            (.branch 46 (.leaf 199) (.leaf 211))
-            (.branch 48 (.leaf 223) (.leaf 227))))))
+  .branch (nat_lit 24)
+    (.branch (nat_lit 12)
+      (.branch (nat_lit 6)
+        (.branch (nat_lit 3)
+          (.branch (nat_lit 1) (.leaf (nat_lit 2)) (.branch (nat_lit 2) (.leaf (nat_lit 3)) (.leaf (nat_lit 5))))
+          (.branch (nat_lit 4) (.leaf (nat_lit 7)) (.branch (nat_lit 5) (.leaf (nat_lit 11)) (.leaf (nat_lit 13)))))
+        (.branch (nat_lit 9)
+          (.branch (nat_lit 7) (.leaf (nat_lit 17)) (.branch (nat_lit 8) (.leaf (nat_lit 19)) (.leaf (nat_lit 23))))
+          (.branch (nat_lit 10) (.leaf (nat_lit 29)) (.branch (nat_lit 11) (.leaf (nat_lit 31)) (.leaf (nat_lit 37))))))
+      (.branch (nat_lit 18)
+        (.branch (nat_lit 15)
+          (.branch (nat_lit 13) (.leaf (nat_lit 41)) (.branch (nat_lit 14) (.leaf (nat_lit 43)) (.leaf (nat_lit 47))))
+          (.branch (nat_lit 16) (.leaf (nat_lit 53)) (.branch (nat_lit 17) (.leaf (nat_lit 59)) (.leaf (nat_lit 61)))))
+        (.branch (nat_lit 21)
+          (.branch (nat_lit 19) (.leaf (nat_lit 67)) (.branch (nat_lit 20) (.leaf (nat_lit 71)) (.leaf (nat_lit 73))))
+          (.branch (nat_lit 22) (.leaf (nat_lit 79)) (.branch (nat_lit 23) (.leaf (nat_lit 83)) (.leaf (nat_lit 89)))))))
+    (.branch (nat_lit 36)
+      (.branch (nat_lit 30)
+        (.branch (nat_lit 27)
+          (.branch (nat_lit 25) (.leaf (nat_lit 97)) (.branch (nat_lit 26) (.leaf (nat_lit 101)) (.leaf (nat_lit 103))))
+          (.branch (nat_lit 28) (.leaf (nat_lit 107)) (.branch (nat_lit 29) (.leaf (nat_lit 109)) (.leaf (nat_lit 113)))))
+        (.branch (nat_lit 33)
+          (.branch (nat_lit 31) (.leaf (nat_lit 127)) (.branch (nat_lit 32) (.leaf (nat_lit 131)) (.leaf (nat_lit 137))))
+          (.branch (nat_lit 34) (.leaf (nat_lit 139)) (.branch (nat_lit 35) (.leaf (nat_lit 149)) (.leaf (nat_lit 151))))))
+      (.branch (nat_lit 42)
+        (.branch (nat_lit 39)
+          (.branch (nat_lit 37) (.leaf (nat_lit 157)) (.branch (nat_lit 38) (.leaf (nat_lit 163)) (.leaf (nat_lit 167))))
+          (.branch (nat_lit 40) (.leaf (nat_lit 173)) (.branch (nat_lit 41) (.leaf (nat_lit 179)) (.leaf (nat_lit 181)))))
+        (.branch (nat_lit 45)
+          (.branch (nat_lit 43) (.leaf (nat_lit 191)) (.branch (nat_lit 44) (.leaf (nat_lit 193)) (.leaf (nat_lit 197))))
+          (.branch (nat_lit 47)
+            (.branch (nat_lit 46) (.leaf (nat_lit 199)) (.leaf (nat_lit 211)))
+            (.branch (nat_lit 48) (.leaf (nat_lit 223)) (.leaf (nat_lit 227)))))))
 
 theorem primesRArray_get_eq_primes_get (i : Nat) (hi : i < 49) :
     primesRArray.get i = primes[i] := by
