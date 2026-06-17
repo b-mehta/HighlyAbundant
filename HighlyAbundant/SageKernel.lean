@@ -23,7 +23,7 @@ noncomputable def appendK {α : Type _} (xs ys : List α) : List α :=
   xs.rec ys fun x _ ih ↦ x :: ih
 
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
-def ceilDivK (a b : Nat) : Nat := ((a.add b).sub 1).div b
+def ceilDivK (a b : Nat) : Nat := ((a.add b).sub (nat_lit 1)).div b
 
 /-- Grow a prime window from `back` forward, threading `lhs = m * ∏ primes[i]`
 and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
@@ -32,15 +32,15 @@ and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the l
 noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel :=
   fuel.rec (fun _ _ _ ↦ .exhaustedTable) fun _ r back lhs rhs ↦
     (front.ble back).rec
-      ((front.ble 48).rec .exhaustedTable <|
+      ((front.ble (nat_lit 48)).rec .exhaustedTable <|
         let q := primesRArray.get front
         let lhs' := lhs.mul q
-        (lhs'.ble m2).rec .tooLarge (r front lhs' (rhs.mul (q.sub 1))))
+        (lhs'.ble m2).rec .tooLarge (r front lhs' (rhs.mul (q.sub (nat_lit 1)))))
       ((rhs.ble lhs).rec
-        ((back.ble 47).rec .exhaustedTable <|
+        ((back.ble (nat_lit 47)).rec .exhaustedTable <|
           let q := primesRArray.get back.succ
           let lhs' := lhs.mul q
-          (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub 1))))
+          (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
         (.window back lhs rhs))
 
 /-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
@@ -49,7 +49,7 @@ noncomputable def expChildrenK (fuel target num next m p : Nat) :
     Nat → List (Nat × Nat × Nat) :=
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
     (pk.ble m).rec []
-      (let spk := ((pk.mul p).sub 1).div (p.sub 1)
+      (let spk := ((pk.mul p).sub (nat_lit 1)).div (p.sub (nat_lit 1))
        let child := (ceilDivK target spk, num.mul pk, next)
        (target.ble spk).rec (child :: r (pk.mul p)) [child])
 
@@ -58,14 +58,14 @@ noncomputable def expChildrenK (fuel target num next m p : Nat) :
 noncomputable def wheelChildrenK (fuel m2 m target num : Nat) :
     Nat → Nat → Nat → Nat → List (Nat × Nat × Nat) → Option (List (Nat × Nat × Nat)) :=
   fuel.rec (fun _ _ _ _ _ ↦ none) fun _ r front back lhs rhs acc ↦
-    (extendK 50 m2 front back lhs rhs).rec
+    (extendK (nat_lit 50) m2 front back lhs rhs).rec
       none
       (some acc)
       (fun b lhs' rhs' ↦
-        (front.ble 48).rec none <|
+        (front.ble (nat_lit 48)).rec none <|
           let p := primesRArray.get front
-          r front.succ b (lhs'.div p) (rhs'.div (p.sub 1))
-            (appendK (expChildrenK (m.add 1) target num front.succ m p p) acc))
+          r front.succ b (lhs'.div p) (rhs'.div (p.sub (nat_lit 1)))
+            (appendK (expChildrenK m.succ target num front.succ m p p) acc))
 
 /-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
 `(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
@@ -73,10 +73,11 @@ noncomputable def wheelChildrenK (fuel m2 m target num : Nat) :
 `≥ 49`. -/
 noncomputable def childrenK (B target num minIdx : Nat) :
     Option (List (Nat × Nat × Nat)) :=
-  (minIdx.ble 48).rec none <|
+  (minIdx.ble (nat_lit 48)).rec none <|
     let p0 := primesRArray.get minIdx
     let m := B.div num
-    wheelChildrenK 50 (m.mul m) m target num minIdx minIdx (p0.mul m) (target.mul (p0.sub 1)) []
+    wheelChildrenK (nat_lit 50) (m.mul m) m target num minIdx minIdx (p0.mul m)
+      (target.mul (p0.sub (nat_lit 1))) []
 
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read
@@ -87,7 +88,7 @@ noncomputable def stepK (B : Nat) : Nat → List (Nat × Nat × Nat) → Option 
       let target := node.1
       let num := node.2.1
       let minIdx := node.2.2
-      (target.ble 1).rec
+      (target.ble (nat_lit 1)).rec
         ((childrenK B target num minIdx).rec none (fun cs ↦ r (appendK cs rest)))
         ((B.ble num).rec (some false) (r rest))
 
@@ -95,6 +96,6 @@ noncomputable def stepK (B : Nat) : Nat → List (Nat × Nat × Nat) → Option 
 `(B, sL) = (lcm (1..n), σ (lcm (1..n)))`, `some true` certifies that
 `lcm (1..n)` is highly abundant. -/
 noncomputable def highlyAbundantLcmK? (B sL : Nat) : Option Bool :=
-  (B.ble 1).rec (stepK B searchFuel [(sL, 1, 0)]) (some true)
+  (B.ble (nat_lit 1)).rec (stepK B searchFuel [(sL, nat_lit 1, nat_lit 0)]) (some true)
 
 end Sage
