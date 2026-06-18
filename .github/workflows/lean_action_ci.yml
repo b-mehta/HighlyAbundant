@@ -21,16 +21,11 @@ jobs:
         uses: leanprover/lean-action@v1
         with:
           build: false
-      - name: Build with bumped stack
+      - name: Build
         shell: bash
         env:
           LAKE_NO_PARALLEL: "1"
           LEAN_NUM_THREADS: "1"
         run: |
-          echo "ulimit -s before: $(ulimit -s)"
-          ulimit -s unlimited
-          echo "ulimit -s after: $(ulimit -s)"
-          echo "bash exec ulimit -s: $(bash -c 'ulimit -s')"
-          cat /proc/self/limits | grep -i stack
           lake exe cache get || true
           lake build

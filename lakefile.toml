@@ -3,8 +3,6 @@ version = "0.1.0"
 keywords = ["math"]
 defaultTargets = ["HighlyAbundant"]
 
-weakLeanArgs = ["--tstack=4194304"]
-
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
 autoImplicit = false
