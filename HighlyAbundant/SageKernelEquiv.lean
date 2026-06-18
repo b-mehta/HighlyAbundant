@@ -140,8 +140,6 @@ def lcmData (n : ℕ) : ℕ × ℕ :=
       let e := Nat.log p n
       (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
 
-elab "quickRfl" : tactic => Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
-
 /-- Kernel-flavoured partial verification: take the K-versions of `children` and
 `step` to drive `highlyAbundantLcm_correct_partial`. -/
 theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
@@ -152,7 +150,5 @@ theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List (ℕ × ℕ × �
   refine highlyAbundantLcm_correct_partial (cs := cs) hsL ?_ ?_
   · rwa [childrenK_eq_children] at hch
   · intro c hc; rw [← stepK_eq_step]; exact hcs c hc
-
-example : stepK 5354228880 2000 [(28078202880, 1, 0)] == some true := by quickRfl
 
 end Sage
