@@ -4,16 +4,18 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.PartialCerts
-import HighlyAbundant.SageKernelEquiv
+import HighlyAbundant.WCertsTactic
 import HighlyAbundant.LcmRangeProofs
 
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 169)`
 
-CI probe: same structure as `HACompose125`. Tests whether the root-level
-partial form scales to n=169 (244 children, heaviest with target ~10^74) or
-whether the recursive split is mandatory at this scale.
+The root-level partial form (one big `stepK` per child of the root) does NOT
+fit in CI's 7 GB — empirically the heaviest root-children have subtree sizes
+of 200k–870k nodes (vs. n=125's 133k which fit). So we use `w_certs` with
+recursive expansion: indices 5–17 (the children with subtree size > 100k) are
+expanded one level via `childrenK`, and their `W = ∅` is built from their
+grandchildren as leaf certs combined via `W_eq_empty_of_partialK`.
 -/
 
 namespace Sage
@@ -266,7 +268,20 @@ private def kids169 : List (Nat × Nat × Nat) := [
 ]
 
 private theorem hcs_lcm_169 :
-    StepCerts 41640927904370300154508936603455936348626591748630593262827592445686864000 searchFuel kids169 := by
-  partial_certs
+    WCerts 41640927904370300154508936603455936348626591748630593262827592445686864000 kids169 := by
+  w_certs [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+
+private theorem childrenK_lcm_169 :
+    childrenK 41640927904370300154508936603455936348626591748630593262827592445686864000
+      374867757601140118512603512682984851689582369732924776330622402560000000000 1 0 = some kids169 := by
+  decide +kernel +revert
+
+/-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
+path with one-level expansion on the 13 heaviest root-children. -/
+theorem isHighlyAbundant_lcmRange_169 : IsHighlyAbundant (lcmRange 169) := by
+  apply highlyAbundantLcm_correct_partialK_W (cs := kids169)
+  · rw [sigma_lcmRange_169]; norm_num
+  · rw [sigma_lcmRange_169, lcmRange_169]; exact childrenK_lcm_169
+  · rw [lcmRange_169]; exact hcs_lcm_169
 
 end Sage
