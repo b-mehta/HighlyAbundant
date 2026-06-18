@@ -25,23 +25,54 @@ open Nat ArithmeticFunction
 
 namespace Sage
 
+/-- `List` form of `lcmRange n`: kernel reduces over `List.foldr Nat.lcm 1`. -/
+def lcmRangeList (n : ℕ) : ℕ := ((List.range' 1 n).map id).foldr Nat.lcm 1
+
+/-- Primes `≤ n` as a `List`: kernel reduces over `List.filter`. -/
+def primesLEList (n : ℕ) : List ℕ := (List.range (n + 1)).filter Nat.Prime
+
+/-- `List` form of `σ₁ (lcmRange n)` via the prime-power factorization. -/
+def sigmaLcmRangeList (n : ℕ) : ℕ :=
+  ((primesLEList n).map (fun p ↦ (p ^ (p.log n + 1) - 1) / (p - 1))).foldr (· * ·) 1
+
+lemma lcmRange_eq_lcmRangeList (n : ℕ) : lcmRange n = lcmRangeList n := by
+  rw [lcmRange, lcmRangeList, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
+  change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
+  simp only [Nat.add_sub_cancel]
+  induction List.range' 1 n with
+  | nil => rfl
+  | cons a l ih => rw [List.map_cons, List.foldr_cons, List.foldr_cons, ih, lcm_eq_nat_lcm]
+
+lemma primesLEList_nodup (n : ℕ) : (primesLEList n).Nodup :=
+  List.nodup_range.filter _
+
+lemma primesLEList_toFinset (n : ℕ) : (primesLEList n).toFinset = Nat.primesLE n := by
+  ext p
+  simp [primesLEList, Nat.primesLE, Nat.primesBelow]
+
 /-- σ₁ on `Nat.lcmUpto n` expanded via the prime-power factorization. -/
 private lemma sigma_lcmUpto_eq (n : ℕ) :
-    σ₁ (Nat.lcmUpto n) =
-      ∏ p ∈ Nat.primesLE n, (p ^ (p.log n + 1) - 1) / (p - 1) := by
-  rw [Nat.lcmUpto_eq_prod_pow_log,
-    isMultiplicative_sigma.map_prod _ _ (fun p hp q hq hpq ↦
-      show (p^(p.log n)).Coprime (q^(q.log n)) from
-        (Nat.Coprime.pow_left _ ((Nat.coprime_primes
-          (prime_of_mem_primesLE hp) (prime_of_mem_primesLE hq)).mpr hpq)).pow_right _),
+    σ₁ (Nat.lcmUpto n) = sigmaLcmRangeList n := by
+  have hcop : ∀ p ∈ Nat.primesLE n, ∀ q ∈ Nat.primesLE n, p ≠ q →
+      (p^(p.log n)).Coprime (q^(q.log n)) := fun p hp q hq hpq ↦
+    (Nat.Coprime.pow_left _ ((Nat.coprime_primes
+      (prime_of_mem_primesLE hp) (prime_of_mem_primesLE hq)).mpr hpq)).pow_right _
+  rw [Nat.lcmUpto_eq_prod_pow_log, isMultiplicative_sigma.map_prod _ _ hcop,
     Finset.prod_congr rfl
-      (fun p hp ↦ sigma_one_apply_prime_pow' (prime_of_mem_primesLE hp))]
+      (fun p hp ↦ sigma_one_apply_prime_pow' (prime_of_mem_primesLE hp)),
+    ← primesLEList_toFinset, List.prod_toFinset _ (primesLEList_nodup _)]
+  rfl
+
+/-- Boilerplate for closing `lcmRange n = <literal>`. -/
+private lemma lcmRange_aux (n : ℕ) {L : ℕ} (h : lcmRangeList n = L) : lcmRange n = L := by
+  rw [lcmRange_eq_lcmRangeList]; exact h
 
 /-- Boilerplate for closing `σ₁ (lcmRange n) = <literal>`. -/
 private lemma sigma_lcmRange_aux (n : ℕ) {sL : ℕ}
-    (h : ∏ p ∈ Nat.primesLE n, (p ^ (p.log n + 1) - 1) / (p - 1) = sL) :
+    (h : sigmaLcmRangeList n = sL) :
     σ₁ (lcmRange n) = sL := by
-  rw [show lcmRange n = Nat.lcmUpto n from rfl, sigma_lcmUpto_eq]; exact h
+  have : lcmRange n = Nat.lcmUpto n := rfl
+  rw [this, sigma_lcmUpto_eq]; exact h
 
 /-! ### Prime powers below `64` -/
 
