@@ -198,6 +198,93 @@ elab "w_certs" "[" idxs:num,* "]" : tactic =>
     let idxArr := idxs.getElems.map (·.getNat)
     closeWCertsGoal g idxArr
 
+/-! ### Auto-heuristic recursive expansion -/
+
+/-- Count nodes visited by `step` to assess subtree size; bounded by `fuel`. -/
+private def subtreeSize (B : Nat) (fuel : Nat) (c : Nat × Nat × Nat) : Nat :=
+  go fuel [c] 0
+where
+  go : Nat → List (Nat × Nat × Nat) → Nat → Nat
+    | 0, _, acc => acc
+    | _, [], acc => acc
+    | fuel + 1, (target, num, minIdx) :: rest, acc =>
+      if target ≤ 1 then
+        if num < B then acc else go fuel rest (acc + 1)
+      else match children B target num minIdx with
+        | none => acc
+        | some cs => go fuel (cs ++ rest) (acc + 1)
+
+/-- Build the `W B c.1 c.2.1 c.2.2 = ∅` witness recursively: if `c`'s subtree
+size is ≤ `threshold`, generate a leaf kernel cert; otherwise expand one level
+via `Sage.children` and recurse on each grandchild. The recursion bottoms out
+when every leaf node's subtree fits the threshold. -/
+private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
+    (c : Expr) (threshold : Nat) : MetaM Expr := do
+  let (t, n, m) ← tupleNats c
+  let size := subtreeSize Bval 200_000_000 (t, n, m)
+  if size ≤ threshold then
+    buildLeafWWitness ce B fuel c
+  else
+    let some grandchildren := Sage.children Bval t n m
+      | throwError "Sage.children returned none for ({t}, {n}, {m})"
+    let grandchildExprs := grandchildren.toArray.map fun (a, b, d) => tupleExpr a b d
+    -- Recursively build each grandchild's W = ∅ witness.
+    let grandchildWitnesses ← grandchildExprs.mapM
+      (fun gc => buildWWitnessAuto ce B fuel Bval gc threshold)
+    -- Chain the grandchild witnesses into `WCerts B grandchildren`.
+    let mut xsExpr := ce.nilExpr
+    let mut grandchildrenChain := mkApp (mkConst ``Sage.w_certs_nil) B
+    for w in grandchildWitnesses.reverse, x in grandchildExprs.reverse do
+      grandchildrenChain := mkAppN (mkConst ``Sage.w_certs_cons)
+        #[B, x, xsExpr, w, grandchildrenChain]
+      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy x xsExpr
+    -- Apply `W_eq_empty_of_partialK` to combine.
+    let tExpr := mkNatLit t
+    let nExpr := mkNatLit n
+    let mExpr := mkNatLit m
+    let bleApp := mkApp2 (mkConst ``Nat.ble) (mkNatLit 2) tExpr
+    let boolTy := mkConst ``Bool
+    let trueExpr := mkConst ``Bool.true
+    let bleType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
+    let bleValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
+    let bleName ← mkAuxLemma [] bleType bleValue
+    let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr (mkConst bleName)
+    let childrenKApp := mkAppN (mkConst ``Sage.childrenK) #[B, tExpr, nExpr, mExpr]
+    let optListTy := mkApp (mkConst ``Option [.zero])
+      (mkApp (mkConst ``List [.zero]) ce.tripleTy)
+    let someGrandchildren := mkApp2 (mkConst ``Option.some [.zero])
+      (mkApp (mkConst ``List [.zero]) ce.tripleTy) xsExpr
+    let hchType := mkApp3 (mkConst ``Eq [.succ .zero]) optListTy childrenKApp someGrandchildren
+    let hchValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optListTy someGrandchildren
+    let hchName ← mkAuxLemma [] hchType hchValue
+    return mkAppN (mkConst ``Sage.W_eq_empty_of_partialK)
+      #[B, tExpr, nExpr, mExpr, xsExpr, twoLeT, mkConst hchName, grandchildrenChain]
+
+/-- Close a `WCerts B kids` goal using the auto-heuristic: each child is
+expanded as deep as needed for every leaf node's subtree to fit the threshold. -/
+private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := do
+  let target ← g.getType
+  match_expr target with
+  | Sage.WCerts B kidsExpr =>
+    let some Bval := B.nat? | throwError "B not a literal"
+    let kids ← listElemsW kidsExpr
+    let ce := mkCommonExprs
+    let fuel := mkConst ``Sage.searchFuel
+    let witnesses ← kids.mapM (fun c => buildWWitnessAuto ce B fuel Bval c threshold)
+    let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
+    let mut xsExpr := ce.nilExpr
+    for w in witnesses.reverse, x in kids.reverse do
+      chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
+      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy x xsExpr
+    g.assign chain
+  | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
+
+/-- Close a goal `Sage.WCerts B <kids>` using the auto-heuristic: any child
+whose subtree exceeds `threshold` nodes is expanded one level, recursing
+until every leaf cert fits. Example: `w_certs_auto 100000`. -/
+elab "w_certs_auto" sz:num : tactic =>
+  liftMetaFinishingTactic fun g => closeWCertsGoalAuto g sz.getNat
+
 /-! ### Sanity tests -/
 
 /-- The 9 children of n=8's root (B=840, sL=2880). Used by the sanity tests below. -/
