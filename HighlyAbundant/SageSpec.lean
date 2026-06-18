@@ -651,6 +651,25 @@ theorem W_eq_empty_of_partial {B g a minIdx : ℕ} {cs : List (ℕ × ℕ × ℕ
     rw [hcs c hc] at hwc
     exact hwc.ne_empty rfl
 
+/-- If the root witness set is empty, `lcm(1..n)` is highly abundant. -/
+theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
+    (hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅) :
+    IsHighlyAbundant (lcmRange n) := by
+  intro m hm₀ hm_lt
+  by_contra! hcontra
+  have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
+  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]
+  rwa [hW] at hmW
+
+/-- Partial-verification entry point taking `W = ∅` for each root child. Used
+when individual subtrees are evaluated recursively rather than via `step`. -/
+theorem highlyAbundantLcm_correct_partial_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hsL : 2 ≤ σ₁ (lcmRange n))
+    (hch : children (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, W (lcmRange n) c.1 c.2.1 c.2.2 = ∅) :
+    IsHighlyAbundant (lcmRange n) :=
+  isHighlyAbundant_of_root_W_eq_empty (W_eq_empty_of_partial hsL hch hcs)
+
 /-- Partial-verification entry point: certify `lcm (1..n)` is highly abundant from
 per-child kernel evaluations. The root `step` is never evaluated; instead, expand the
 root via `children` and check each child's subtree separately with its own `step`. -/
@@ -658,22 +677,8 @@ theorem highlyAbundantLcm_correct_partial {n : ℕ} {cs : List (ℕ × ℕ × �
     (hsL : 2 ≤ σ₁ (lcmRange n))
     (hch : children (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, step (lcmRange n) searchFuel [c] = some true) :
-    IsHighlyAbundant (lcmRange n) := by
-  intro m hm₀ hm_lt
-  have hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅ := by
-    rw [Set.eq_empty_iff_forall_notMem]
-    intro t ht
-    obtain rfl | h1 := eq_or_ne t 1
-    · obtain ⟨_, _, hle⟩ := ht
-      simp at hle
-      omega
-    · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
-      have hW_c := step_true (hcs c hc) c List.mem_cons_self
-      rw [hW_c] at hwc
-      exact hwc.ne_empty rfl
-  by_contra! hcontra
-  have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
-  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]
-  rwa [hW] at hmW
+    IsHighlyAbundant (lcmRange n) :=
+  highlyAbundantLcm_correct_partial_W hsL hch
+    (fun c hc => step_true (hcs c hc) c List.mem_cons_self)
 
 end Sage
