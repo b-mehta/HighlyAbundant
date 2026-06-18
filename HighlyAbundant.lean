@@ -10,9 +10,7 @@ import HighlyAbundant.SageKernel
 import HighlyAbundant.SageKernelEquiv
 import HighlyAbundant.HACompose89
 import HighlyAbundant.HACompose125
--- HACompose169 needs multi-level recursive expansion (one-level isn't enough —
--- heaviest grandchildren still hit 194k subtree size). Tracked in task list.
--- import HighlyAbundant.HACompose169
+import HighlyAbundant.HACompose169
 import HighlyAbundant.WCertsTactic
 import HighlyAbundant.SageSpec
 import HighlyAbundant.Prime.PowMod

@@ -12,10 +12,9 @@ import HighlyAbundant.LcmRangeProofs
 
 The root-level partial form (one big `stepK` per child of the root) does NOT
 fit in CI's 7 GB — empirically the heaviest root-children have subtree sizes
-of 200k–870k nodes (vs. n=125's 133k which fit). So we use `w_certs` with
-recursive expansion: indices 5–17 (the children with subtree size > 100k) are
-expanded one level via `childrenK`, and their `W = ∅` is built from their
-grandchildren as leaf certs combined via `W_eq_empty_of_partialK`.
+of 200k–870k nodes (vs. n=125's 133k which fit). We use `w_certs_auto 100000`:
+any node whose subtree exceeds 100k stepK iterations is expanded one level via
+`childrenK`, recursing until every leaf cert fits the budget.
 -/
 
 namespace Sage
@@ -269,7 +268,7 @@ private def kids169 : List (Nat × Nat × Nat) := [
 
 private theorem hcs_lcm_169 :
     WCerts 41640927904370300154508936603455936348626591748630593262827592445686864000 kids169 := by
-  w_certs [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]
+  w_certs_auto 100000
 
 private theorem childrenK_lcm_169 :
     childrenK 41640927904370300154508936603455936348626591748630593262827592445686864000
@@ -277,7 +276,8 @@ private theorem childrenK_lcm_169 :
   decide +kernel +revert
 
 /-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
-path with one-level expansion on the 13 heaviest root-children. -/
+path. The `w_certs_auto 100000` heuristic decides per node whether to give the
+kernel a direct subtree search or to split via `childrenK`. -/
 theorem isHighlyAbundant_lcmRange_169 : IsHighlyAbundant (lcmRange 169) := by
   apply highlyAbundantLcm_correct_partialK_W (cs := kids169)
   · rw [sigma_lcmRange_169]; norm_num
