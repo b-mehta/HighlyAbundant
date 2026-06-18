@@ -198,4 +198,19 @@ elab "w_certs" "[" idxs:num,* "]" : tactic =>
     let idxArr := idxs.getElems.map (·.getNat)
     closeWCertsGoal g idxArr
 
+/-! ### Sanity tests -/
+
+/-- The 9 children of n=8's root (B=840, sL=2880). Used by the sanity tests below. -/
+private def kids_test_n8 : List (Nat × Nat × Nat) :=
+  [(960, 2, 1), (412, 4, 1), (192, 8, 1), (93, 16, 1), (46, 32, 1), (23, 64, 1),
+   (12, 128, 1), (6, 256, 1), (3, 512, 1)]
+
+/-- Leaf path: all 9 children get a direct kernel cert. -/
+private example : WCerts 840 kids_test_n8 := by w_certs
+
+/-- Recursive path: child #5 (target=23) is "expanded" through its grandchildren.
+For n=8 every cert is cheap, so the index choice doesn't matter — just exercises
+the recursive code path. -/
+private example : WCerts 840 kids_test_n8 := by w_certs [5]
+
 end Sage
