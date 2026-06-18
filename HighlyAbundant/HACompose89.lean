@@ -7,6 +7,7 @@ Authors: Bhavik Mehta
 import HighlyAbundant.PartialCerts
 import HighlyAbundant.SageKernelEquiv
 import HighlyAbundant.LcmRangeProofs
+import HighlyAbundant.WCertsTactic
 
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 89)`
@@ -158,6 +159,15 @@ private def kids89 : List (ℕ × ℕ × ℕ) := [
 private theorem hcs_lcm_89 :
     StepCerts 718766754945489455304472257065075294400 searchFuel kids89 := by
   partial_certs
+
+/-- Side-by-side W-based proof using the auto-heuristic — exercises
+`w_certs_auto` on a real heavy case. Threshold 5000 forces recursive expansion
+on the heavier root-children (n=89's heaviest subtree is ~37k) so the recursive
+codepath actually runs; with a high threshold it would be all-leaves and
+indistinguishable from plain `w_certs`. -/
+private theorem hcs_lcm_89_W :
+    WCerts 718766754945489455304472257065075294400 kids89 := by
+  w_certs_auto 5000
 
 private theorem childrenK_lcm_89 :
     childrenK 718766754945489455304472257065075294400
