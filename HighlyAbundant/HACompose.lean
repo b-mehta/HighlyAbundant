@@ -33,7 +33,7 @@ private lemma stepK_eq_of_beq {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
 
 theorem isHighlyAbundant_lcmRange_64 : IsHighlyAbundant (lcmRange 64) := by
   apply highlyAbundantLcm_correct (n := 64)
-  rw [highlyAbundantLcm?, lcmRange_64, sigma_lcmRange_64]
+  rw [highlyAbundantLcm?, sigma_lcmRange_64, lcmRange_64]
   simp only [show ¬ (1182266884102822267511361600 ≤ 1 : Prop) from by norm_num, if_false]
   rw [← stepK_eq_step]
   exact stepK_eq_of_beq stepK_lcm_64
