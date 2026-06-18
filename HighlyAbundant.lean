@@ -10,6 +10,7 @@ import HighlyAbundant.SageKernel
 import HighlyAbundant.SageKernelEquiv
 import HighlyAbundant.HACompose89
 import HighlyAbundant.HACompose125
+import HighlyAbundant.HACompose169
 import HighlyAbundant.SageSpec
 import HighlyAbundant.Prime.PowMod
 import HighlyAbundant.Prime.Pratt
