@@ -151,4 +151,24 @@ theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List (ℕ × ℕ × �
   · rwa [childrenK_eq_children] at hch
   · intro c hc; rw [← stepK_eq_step]; exact hcs c hc
 
+/-- Kernel-flavoured `W = ∅` recursive split: same as `W_eq_empty_of_partial`
+but with `childrenK` in place of `children`. -/
+theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hg : 2 ≤ g)
+    (hch : childrenK B g a minIdx = some cs)
+    (hcs : ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅) :
+    W B g a minIdx = ∅ := by
+  refine W_eq_empty_of_partial hg ?_ hcs
+  rwa [childrenK_eq_children] at hch
+
+/-- Kernel-flavoured W-based partial verification: takes `W = ∅` for each root
+child, allowing the metaprogram to recursively expand heavy children. -/
+theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hsL : 2 ≤ σ₁ (lcmRange n))
+    (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, W (lcmRange n) c.1 c.2.1 c.2.2 = ∅) :
+    IsHighlyAbundant (lcmRange n) := by
+  refine highlyAbundantLcm_correct_partial_W (cs := cs) hsL ?_ hcs
+  rwa [childrenK_eq_children] at hch
+
 end Sage
