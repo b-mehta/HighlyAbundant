@@ -141,7 +141,6 @@ def lcmData (n : ℕ) : ℕ × ℕ :=
       (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
 
 elab "quickRfl" : tactic => Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
-#eval lcmData 64
 
 /-- Kernel-flavoured partial verification: take the K-versions of `children` and
 `step` to drive `highlyAbundantLcm_correct_partial`. -/
