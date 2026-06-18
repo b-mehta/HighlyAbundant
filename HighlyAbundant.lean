@@ -10,7 +10,9 @@ import HighlyAbundant.SageKernel
 import HighlyAbundant.SageKernelEquiv
 import HighlyAbundant.HACompose89
 import HighlyAbundant.HACompose125
-import HighlyAbundant.HACompose169
+-- HACompose169 OOMs even on CI — re-enable once recursive split is wired up
+-- import HighlyAbundant.HACompose169
+import HighlyAbundant.WCertsTactic
 import HighlyAbundant.SageSpec
 import HighlyAbundant.Prime.PowMod
 import HighlyAbundant.Prime.Pratt
