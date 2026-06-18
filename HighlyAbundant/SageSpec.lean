@@ -633,6 +633,24 @@ theorem highlyAbundantLcm_correct {n : ℕ}
   have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]
   rwa [hW] at hmW
 
+/-- Recursive partial step: a non-trivial node's witness set is empty if all its
+children's witness sets are empty. Used to bottom-up build `W = ∅` proofs for nodes
+whose direct `step` evaluation would be too expensive. -/
+theorem W_eq_empty_of_partial {B g a minIdx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hg : 2 ≤ g)
+    (hch : children B g a minIdx = some cs)
+    (hcs : ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅) :
+    W B g a minIdx = ∅ := by
+  rw [Set.eq_empty_iff_forall_notMem]
+  intro t ht
+  obtain rfl | h1 := eq_or_ne t 1
+  · obtain ⟨_, _, hle⟩ := ht
+    simp at hle
+    omega
+  · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
+    rw [hcs c hc] at hwc
+    exact hwc.ne_empty rfl
+
 /-- Partial-verification entry point: certify `lcm (1..n)` is highly abundant from
 per-child kernel evaluations. The root `step` is never evaluated; instead, expand the
 root via `children` and check each child's subtree separately with its own `step`. -/
