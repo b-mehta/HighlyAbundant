@@ -214,23 +214,24 @@ where
         | none => acc
         | some cs => go fuel (cs ++ rest) (acc + 1)
 
-/-- Build the `W B c.1 c.2.1 c.2.2 = ∅` witness recursively: if `c`'s subtree
-size is ≤ `threshold`, generate a leaf kernel cert; otherwise expand one level
-via `Sage.children` and recurse on each grandchild. The recursion bottoms out
-when every leaf node's subtree fits the threshold. -/
+/-- Build the `W B (t,n,m) = ∅` witness recursively: if the `(t, n, m)` node's
+subtree size is ≤ `threshold`, generate a leaf kernel cert; otherwise expand
+one level via `Sage.children` and recurse on each grandchild. The Nat triple
+is threaded directly so the recursion never calls `whnf` to re-extract Nats
+from an Expr we built from those same Nats one level up. -/
 private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
-    (c : Expr) (threshold : Nat) : MetaM Expr := do
-  let (t, n, m) ← tupleNats c
+    (t n m : Nat) (threshold : Nat) : MetaM Expr := do
   let size := subtreeSize Bval 200_000_000 (t, n, m)
   if size ≤ threshold then
-    buildLeafWWitness ce B fuel c
+    buildLeafWWitness ce B fuel (tupleExpr t n m)
   else
     let some grandchildren := Sage.children Bval t n m
       | throwError "Sage.children returned none for ({t}, {n}, {m})"
-    let grandchildExprs := grandchildren.toArray.map fun (a, b, d) => tupleExpr a b d
-    -- Recursively build each grandchild's W = ∅ witness.
-    let grandchildWitnesses ← grandchildExprs.mapM
-      (fun gc => buildWWitnessAuto ce B fuel Bval gc threshold)
+    let grandchildren := grandchildren.toArray
+    let grandchildExprs := grandchildren.map fun (a, b, d) => tupleExpr a b d
+    -- Recursively build each grandchild's W = ∅ witness, threading Nats directly.
+    let grandchildWitnesses ← grandchildren.mapM
+      fun (a, b, d) => buildWWitnessAuto ce B fuel Bval a b d threshold
     -- Chain the grandchild witnesses into `WCerts B grandchildren`.
     let mut xsExpr := ce.nilExpr
     let mut grandchildrenChain := mkApp (mkConst ``Sage.w_certs_nil) B
@@ -270,7 +271,10 @@ private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := d
     let kids ← listElemsW kidsExpr
     let ce := mkCommonExprs
     let fuel := mkConst ``Sage.searchFuel
-    let witnesses ← kids.mapM (fun c => buildWWitnessAuto ce B fuel Bval c threshold)
+    -- Extract Nats from each kid once at the root; recursion threads Nats directly.
+    let kidNats ← kids.mapM tupleNats
+    let witnesses ← kidNats.mapM
+      fun (t, n, m) => buildWWitnessAuto ce B fuel Bval t n m threshold
     let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
     let mut xsExpr := ce.nilExpr
     for w in witnesses.reverse, x in kids.reverse do
