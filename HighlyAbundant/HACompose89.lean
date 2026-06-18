@@ -155,10 +155,9 @@ private def kids89 : List (ℕ × ℕ × ℕ) := [
   (5, 680564733841876926926749214863536422912, 1)
 ]
 
-partial_certs stepK_lcm_89
-  base 718766754945489455304472257065075294400
-  fuel searchFuel
-  children kids89
+private theorem hcs_lcm_89 :
+    StepCerts 718766754945489455304472257065075294400 searchFuel kids89 := by
+  partial_certs
 
 private theorem childrenK_lcm_89 :
     childrenK 718766754945489455304472257065075294400
@@ -170,6 +169,6 @@ theorem isHighlyAbundant_lcmRange_89 : IsHighlyAbundant (lcmRange 89) := by
   apply highlyAbundantLcm_correct_partialK (cs := kids89)
   · rw [sigma_lcmRange_89]; norm_num
   · rw [sigma_lcmRange_89, lcmRange_89]; exact childrenK_lcm_89
-  · rw [lcmRange_89]; exact stepK_lcm_89_dispatch
+  · rw [lcmRange_89]; exact hcs_lcm_89
 
 end Sage

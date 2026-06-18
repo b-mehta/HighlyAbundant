@@ -4,45 +4,42 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import Lean.Elab.Command
+import Lean.Elab.Tactic
 import HighlyAbundant.SageKernel
 
 /-!
-# Metaprogram: generate per-child `stepK` certificates and dispatch
+# `partial_certs` tactic
 
-For a fully-determined `def kids : List (Nat × Nat × Nat) := [...]`, the command
+`StepCerts B fuel xs` is an opaque wrapper for `∀ c ∈ xs, stepK B fuel [c] = some true`.
+The two helper lemmas `step_certs_nil` and `step_certs_cons` let a proof of
+`StepCerts B fuel <list literal>` be constructed as a linear chain of applications.
 
-  `partial_certs <prefix> base <B> fuel <fuel> children <kidsName>`
-
-generates, for each `i`-th element `c_i` of `kids`, a top-level theorem
-`<prefix>_c<i> : (stepK B fuel [c_i] == some true) = true` proved by kernel
-reduction (`Lean.reflBoolTrue`). It then generates a dispatch theorem
-`<prefix>_dispatch : ∀ c ∈ kids, stepK B fuel [c] = some true`.
-
-Each per-child cert is a separate top-level declaration, so the kernel
-type-checks them independently and the whnf cache does not accumulate across
-them — the memory-isolation property the partial verification path needs.
+The `partial_certs` tactic closes a goal of the form `StepCerts B fuel kids`
+where `kids` is a concrete list literal. For each `c` in `kids` it adds an
+auxiliary lemma `stepK B fuel [c] = some true` whose value is `Eq.refl` — the
+kernel's type-check is the actual stepK reduction. It then builds the
+`step_certs_cons` / `step_certs_nil` chain by direct `mkAppN`, with no binder
+construction and no unification.
 -/
 
-open Lean Meta Elab Command
+open Lean Meta Elab Tactic
 
 namespace Sage
 
-/-- Assign `Lean.reflBoolTrue` to a goal of the form `(b : Bool) = true`,
-where `b` reduces to `true` by kernel iota. -/
-elab "quickRfl" : tactic =>
-  Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
+/-- `∀ c ∈ xs, stepK B fuel [c] = some true`, wrapped so the kernel doesn't
+descend through the binders during chain construction. -/
+def StepCerts (B fuel : Nat) (xs : List (Nat × Nat × Nat)) : Prop :=
+  ∀ c ∈ xs, stepK B fuel [c] = some true
 
-/-- `(stepK == some true) = true` ↔ `stepK = some true`. -/
-theorem stepK_eq_of_beq {B fuel : Nat} {stack : List (Nat × Nat × Nat)}
-    (h : (stepK B fuel stack == some true) = true) :
-    stepK B fuel stack = some true := by
-  cases hs : stepK B fuel stack with
-  | none => simp [hs] at h
-  | some b =>
-    cases b
-    · simp [hs] at h
-    · rfl
+theorem step_certs_nil (B fuel : Nat) : StepCerts B fuel [] :=
+  fun _ h => nomatch h
+
+theorem step_certs_cons {B fuel : Nat} {x : Nat × Nat × Nat} {xs : List (Nat × Nat × Nat)}
+    (h : stepK B fuel [x] = some true) (hs : StepCerts B fuel xs) :
+    StepCerts B fuel (x :: xs) := fun c hc =>
+  match hc with
+  | .head _ => h
+  | .tail _ hc' => hs c hc'
 
 /-- Walk a fully-reduced `List.cons`/`List.nil` chain and return its elements. -/
 private partial def listElems (e : Expr) : MetaM (Array Expr) := do
@@ -52,56 +49,43 @@ private partial def listElems (e : Expr) : MetaM (Array Expr) := do
     let rest ← listElems tail
     return #[head] ++ rest
   | List.nil _ => return #[]
-  | _ =>
-    throwError "expected concrete `List` literal, got: {← Meta.ppExpr e}"
+  | _ => throwError "expected concrete `List` literal, got: {← Meta.ppExpr e}"
 
-/-- Build the dispatch tactic recursively. After `simp only [kids, …, or_false] at hc`,
-`hc` has type `c = c₀ ∨ c = c₁ ∨ … ∨ c = c_{n-1}`. We unwind one disjunct at a time
-via `cases hc`. -/
-private partial def buildDispatch (i : Nat) (certs : Array Name) :
-    Command.CommandElabM (TSyntax `tactic) := do
-  if i + 1 == certs.size then
-    -- Last cert: `hc : c = c_{n-1}`. Substitute and apply.
-    let certName := mkIdent certs[i]!
-    `(tactic| (subst hc; exact stepK_eq_of_beq $certName))
-  else
-    let certName := mkIdent certs[i]!
-    let inner ← buildDispatch (i + 1) certs
-    `(tactic| cases hc with
-      | inl heq => subst heq; exact stepK_eq_of_beq $certName
-      | inr hc => $inner:tactic)
-
-syntax (name := partialCertsCmd) "partial_certs " ident " base " term:max
-  " fuel " term:max " children " ident : command
-
-@[command_elab partialCertsCmd]
-def elabPartialCerts : CommandElab := fun stx => do
-  match stx with
-  | `(partial_certs $px:ident base $bTerm:term fuel $fTerm:term children $kidsId:ident) => do
-    let kidsName ← liftTermElabM <| realizeGlobalConstNoOverloadWithInfo kidsId
-    let kids ← liftTermElabM <| listElems (mkConst kidsName)
-    let prefix' := px.getId
-    let certNames : Array Name :=
-      (Array.range kids.size).map (fun i => prefix'.appendAfter s!"_c{i}")
-    -- Per-child certs.
-    for i in [:kids.size] do
-      let cStx ← liftTermElabM <| PrettyPrinter.delab kids[i]!
-      let thmNameStx := mkIdent certNames[i]!
-      let cmd ← `(command|
-        theorem $thmNameStx :
-          Sage.stepK $bTerm $fTerm [$cStx] == some true := by quickRfl)
-      elabCommand cmd
-    -- Dispatch theorem.
-    let dispatchStx := mkIdent (prefix'.appendAfter "_dispatch")
-    let kidsStx := mkIdent kidsName
-    let dispatch ← buildDispatch 0 certNames
-    let cmd ← `(command|
-      theorem $dispatchStx :
-          ∀ c ∈ $kidsStx, Sage.stepK $bTerm $fTerm [c] = some true := by
-        intro c hc
-        simp only [$kidsStx:ident, List.mem_cons, List.not_mem_nil, or_false] at hc
-        $dispatch:tactic)
-    elabCommand cmd
-  | _ => throwError "unexpected syntax"
+/-- Close a goal `Sage.StepCerts B fuel <kids>` where `<kids>` is a concrete list.
+For each element `c` of `<kids>`, an auxiliary lemma asserting
+`stepK B fuel [c] = some true` is added; its value is `Eq.refl (some true)`, so
+the kernel's type-check is exactly the kernel reduction of `stepK B fuel [c]`.
+The dispatch is a linear chain of `step_certs_cons` ending in `step_certs_nil`. -/
+elab "partial_certs" : tactic =>
+  liftMetaFinishingTactic fun g => do
+    let target ← g.getType
+    match_expr target with
+    | Sage.StepCerts B fuel kidsExpr =>
+      let kids ← listElems kidsExpr
+      let nat := mkConst ``Nat
+      let tripleTy := mkApp2 (mkConst ``Prod [.zero, .zero]) nat
+        (mkApp2 (mkConst ``Prod [.zero, .zero]) nat nat)
+      let optBool := mkApp (mkConst ``Option [.zero]) (mkConst ``Bool)
+      let someTrue :=
+        mkApp2 (mkConst ``Option.some [.zero]) (mkConst ``Bool) (mkConst ``Bool.true)
+      let nilExpr := mkApp (mkConst ``List.nil [.zero]) tripleTy
+      let certValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optBool someTrue
+      -- One auxiliary lemma per child.
+      let mut certNames : Array Name := #[]
+      for c in kids do
+        let singletonC := mkApp3 (mkConst ``List.cons [.zero]) tripleTy c nilExpr
+        let stepKApp := mkAppN (mkConst ``Sage.stepK) #[B, fuel, singletonC]
+        let certType := mkApp3 (mkConst ``Eq [.succ .zero]) optBool stepKApp someTrue
+        let auxName ← mkAuxLemma [] certType certValue
+        certNames := certNames.push auxName
+      -- Build the chain right-to-left: nil, then prepend each `step_certs_cons`.
+      let mut chain := mkAppN (mkConst ``Sage.step_certs_nil) #[B, fuel]
+      let mut xsExpr := nilExpr
+      for cert in certNames.reverse, x in kids.reverse do
+        chain := mkAppN (mkConst ``Sage.step_certs_cons)
+          #[B, fuel, x, xsExpr, mkConst cert, chain]
+        xsExpr := mkApp3 (mkConst ``List.cons [.zero]) tripleTy x xsExpr
+      g.assign chain
+    | _ => throwError "expected `StepCerts B fuel xs`, got: {← Meta.ppExpr target}"
 
 end Sage
