@@ -300,4 +300,9 @@ For n=8 every cert is cheap, so the index choice doesn't matter — just exercis
 the recursive code path. -/
 private example : WCerts 840 kids_test_n8 := by w_certs [5]
 
+/-- Auto-heuristic path: threshold 50 — any child with subtree > 50 nodes is
+expanded recursively. Just exercises the auto codepath; n=8 children are all
+small so this picks up a few recursions deep. -/
+private example : WCerts 840 kids_test_n8 := by w_certs_auto 50
+
 end Sage
