@@ -10,6 +10,11 @@ import HighlyAbundant.SageKernel
 import HighlyAbundant.SageKernelEquiv
 import HighlyAbundant.HACompose89
 import HighlyAbundant.HACompose125
+import HighlyAbundant.HACompose127
+import HighlyAbundant.HACompose128
+import HighlyAbundant.HACompose131
+import HighlyAbundant.HACompose137
+import HighlyAbundant.HACompose139
 import HighlyAbundant.HACompose169
 import HighlyAbundant.WCertsTactic
 import HighlyAbundant.SageSpec
