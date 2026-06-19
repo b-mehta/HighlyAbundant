@@ -269,7 +269,7 @@ private def kids169 : List (Nat × Nat × Nat) := [
 set_option maxHeartbeats 1000000 in
 private theorem hcs_lcm_169 :
     WCerts 41640927904370300154508936603455936348626591748630593262827592445686864000 kids169 := by
-  w_certs_auto 10000
+  w_certs_auto 500000
 
 private theorem childrenK_lcm_169 :
     childrenK 41640927904370300154508936603455936348626591748630593262827592445686864000
