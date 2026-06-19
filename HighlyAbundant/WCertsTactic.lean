@@ -10,8 +10,8 @@ import HighlyAbundant.SageKernelEquiv
 /-!
 # `WCerts` and the `w_certs` tactic
 
-`WCerts B xs := ∀ c ∈ xs, W B c.1 c.2.1 c.2.2 = ∅` — the witness-set version
-of `StepCerts`. Used to compose leaf-level kernel certificates with the
+`WCerts B xs := ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅` — the witness-set
+version of `StepCerts`. Used to compose leaf-level kernel certificates with the
 recursive-split lemma `W_eq_empty_of_partialK` for heavy children.
 
 Two forms:
@@ -25,16 +25,16 @@ open Lean Meta Elab Tactic
 
 namespace Sage
 
-/-- `∀ c ∈ xs, W B c.1 c.2.1 c.2.2 = ∅`, wrapped opaquely so the kernel doesn't
-descend through the binders during chain construction. -/
-def WCerts (B : Nat) (xs : List (Nat × Nat × Nat)) : Prop :=
-  ∀ c ∈ xs, W B c.1 c.2.1 c.2.2 = ∅
+/-- `∀ c ∈ xs, W B c.target c.num c.minIdx = ∅`, wrapped opaquely so the kernel
+doesn't descend through the binders during chain construction. -/
+def WCerts (B : Nat) (xs : List SageNode) : Prop :=
+  ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅
 
 theorem w_certs_nil (B : Nat) : WCerts B [] :=
   fun _ h => nomatch h
 
-theorem w_certs_cons {B : Nat} {x : Nat × Nat × Nat} {xs : List (Nat × Nat × Nat)}
-    (h : W B x.1 x.2.1 x.2.2 = ∅) (hs : WCerts B xs) :
+theorem w_certs_cons {B : Nat} {x : SageNode} {xs : List SageNode}
+    (h : W B x.target x.num x.minIdx = ∅) (hs : WCerts B xs) :
     WCerts B (x :: xs) := fun c hc =>
   match hc with
   | .head _ => h
@@ -43,11 +43,12 @@ theorem w_certs_cons {B : Nat} {x : Nat × Nat × Nat} {xs : List (Nat × Nat ×
 /-- Convert a singleton-stack `stepK = some true` to `W = ∅` for the same node.
 The leaf-level cert produced by kernel reduction lands here, then enters the
 `w_certs_cons` chain. -/
-theorem W_eq_empty_of_stepK_singleton {B fuel : ℕ} {c : Nat × Nat × Nat}
+theorem W_eq_empty_of_stepK_singleton {B fuel : ℕ} {c : SageNode}
     (h : stepK B fuel [c] = some true) :
-    W B c.1 c.2.1 c.2.2 = ∅ := by
+    W B c.target c.num c.minIdx = ∅ := by
   rw [stepK_eq_step] at h
-  exact step_true h c List.mem_cons_self
+  simpa [List.map_cons, List.map_nil, fromSageNode]
+    using step_true h (fromSageNode c) List.mem_cons_self
 
 /-- Walk a fully-reduced `List.cons`/`List.nil` chain and return its elements. -/
 private partial def listElemsW (e : Expr) : MetaM (Array Expr) := do
@@ -59,53 +60,43 @@ private partial def listElemsW (e : Expr) : MetaM (Array Expr) := do
   | List.nil _ => return #[]
   | _ => throwError "expected concrete `List` literal, got: {← Meta.ppExpr e}"
 
-/-- Extract the three `Nat` values from a `(Nat × Nat × Nat)` literal Expr. -/
-private def tupleNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
+/-- Extract the three `Nat` values from a `SageNode` literal Expr. -/
+private def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
   let c ← whnf c
   match_expr c with
-  | Prod.mk _ _ tExpr rest =>
-    let some t := tExpr.nat? | throwError "child target not a literal"
-    let rest ← whnf rest
-    match_expr rest with
-    | Prod.mk _ _ nExpr mExpr =>
-      let some n := nExpr.nat? | throwError "child num not a literal"
-      let some m := mExpr.nat? | throwError "child minIdx not a literal"
-      return (t, n, m)
-    | _ => throwError "child rest not a `Prod.mk`"
-  | _ => throwError "child not a `Prod.mk`"
+  | Sage.SageNode.mk tExpr nExpr mExpr =>
+    let some t := tExpr.nat? | throwError "node target not a literal"
+    let some n := nExpr.nat? | throwError "node num not a literal"
+    let some m := mExpr.nat? | throwError "node minIdx not a literal"
+    return (t, n, m)
+  | _ => throwError "child not a `SageNode.mk`"
 
-/-- Build a `(Nat × Nat × Nat)` Expr from three `Nat`s. -/
-private def tupleExpr (t n m : Nat) : Expr :=
-  let nat := mkConst ``Nat
-  let prodNN := mkApp2 (mkConst ``Prod [.zero, .zero]) nat nat
-  mkApp4 (mkConst ``Prod.mk [.zero, .zero]) nat prodNN
-    (mkNatLit t)
-    (mkApp4 (mkConst ``Prod.mk [.zero, .zero]) nat nat (mkNatLit n) (mkNatLit m))
+/-- Build a `SageNode` Expr from three `Nat`s. -/
+private def nodeExpr (t n m : Nat) : Expr :=
+  mkApp3 (mkConst ``Sage.SageNode.mk) (mkNatLit t) (mkNatLit n) (mkNatLit m)
 
 /-- Common Exprs cached for chain construction. -/
 private structure CommonExprs where
-  nat : Expr
-  tripleTy : Expr
+  nodeTy : Expr
   optBool : Expr
   someTrue : Expr
   nilExpr : Expr
   certValue : Expr
 
 private def mkCommonExprs : CommonExprs :=
-  let nat := mkConst ``Nat
-  let tripleTy := mkApp2 (mkConst ``Prod [.zero, .zero]) nat
-    (mkApp2 (mkConst ``Prod [.zero, .zero]) nat nat)
+  let nodeTy := mkConst ``Sage.SageNode
   let optBool := mkApp (mkConst ``Option [.zero]) (mkConst ``Bool)
   let someTrue :=
     mkApp2 (mkConst ``Option.some [.zero]) (mkConst ``Bool) (mkConst ``Bool.true)
-  let nilExpr := mkApp (mkConst ``List.nil [.zero]) tripleTy
+  let nilExpr := mkApp (mkConst ``List.nil [.zero]) nodeTy
   let certValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optBool someTrue
-  { nat, tripleTy, optBool, someTrue, nilExpr, certValue }
+  { nodeTy, optBool, someTrue, nilExpr, certValue }
 
-/-- Build a leaf `W B c.1 c.2.1 c.2.2 = ∅` witness for child `c`: kernel-reduce
-`stepK B searchFuel [c] = some true`, then apply `W_eq_empty_of_stepK_singleton`. -/
+/-- Build a leaf `W B c.target c.num c.minIdx = ∅` witness for child `c`:
+kernel-reduce `stepK B searchFuel [c] = some true`, then apply
+`W_eq_empty_of_stepK_singleton`. -/
 private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
-  let singletonC := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy c ce.nilExpr
+  let singletonC := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy c ce.nilExpr
   let stepKApp := mkAppN (mkConst ``Sage.stepK) #[B, fuel, singletonC]
   let certType := mkApp3 (mkConst ``Eq [.succ .zero]) ce.optBool stepKApp ce.someTrue
   let auxName ← mkAuxLemma [] certType ce.certValue
@@ -121,23 +112,24 @@ private def buildWCertsChain (ce : CommonExprs) (B fuel : Expr) (kids : Array Ex
   let mut xsExpr := ce.nilExpr
   for w in witnesses.reverse, x in kids.reverse do
     chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
-    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy x xsExpr
+    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
   return chain
 
-/-- Build a recursive-expansion `W B c.1 c.2.1 c.2.2 = ∅` witness for a child `c`:
-compute its children via `Sage.children`, build leaf certs on the grandchildren,
-and combine via `W_eq_empty_of_partialK`. -/
+/-- Build a recursive-expansion `W B c.target c.num c.minIdx = ∅` witness for a
+child `c`: compute its children via `Sage.children` (spec form), translate to
+`SageNode` literals, build leaf certs on the grandchildren, and combine via
+`W_eq_empty_of_partialK`. -/
 private def buildExpandedWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
-  let (t, n, m) ← tupleNats c
+  let (t, n, m) ← nodeNats c
   let some Bval := B.nat? | throwError "B not a literal"
-  -- Compute grandchildren via Sage.children at the metaprogram level.
+  -- Compute grandchildren via Sage.children (spec form, returns tuples).
   let some grandchildren := Sage.children Bval t n m
     | throwError "Sage.children returned none for ({t}, {n}, {m})"
-  -- Convert grandchildren back to a List literal Expr.
+  -- Convert grandchildren tuples to SageNode literal Exprs.
   let mut xsExpr := ce.nilExpr
-  let grandchildExprs := grandchildren.toArray.map fun (a, b, d) => tupleExpr a b d
+  let grandchildExprs := grandchildren.toArray.map fun (a, b, d) => nodeExpr a b d
   for gx in grandchildExprs.reverse do
-    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy gx xsExpr
+    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy gx xsExpr
   -- Build `WCerts B grandchildren` via leaf chain.
   let grandchildrenWCerts ← buildWCertsChain ce B fuel grandchildExprs
   -- `2 ≤ t` proof: kernel verifies `Nat.ble 2 t = true` via `Eq.refl true`,
@@ -150,13 +142,13 @@ private def buildExpandedWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM E
   let bleValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
   let bleName ← mkAuxLemma [] bleType bleValue
   let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr (mkConst bleName)
-  -- `childrenK B t n m = some grandchildren` — provable by rfl after kernel reduces children.
+  -- `childrenK B t n m = some grandchildren` — provable by rfl after kernel reduces.
   let nExpr := mkNatLit n
   let mExpr := mkNatLit m
   let childrenKApp := mkAppN (mkConst ``Sage.childrenK) #[B, tExpr, nExpr, mExpr]
-  let optListTy := mkApp (mkConst ``Option [.zero]) (mkApp (mkConst ``List [.zero]) ce.tripleTy)
+  let optListTy := mkApp (mkConst ``Option [.zero]) (mkApp (mkConst ``List [.zero]) ce.nodeTy)
   let someGrandchildren := mkApp2 (mkConst ``Option.some [.zero])
-    (mkApp (mkConst ``List [.zero]) ce.tripleTy) xsExpr
+    (mkApp (mkConst ``List [.zero]) ce.nodeTy) xsExpr
   let hchType := mkApp3 (mkConst ``Eq [.succ .zero]) optListTy childrenKApp someGrandchildren
   let hchValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optListTy someGrandchildren
   let hchName ← mkAuxLemma [] hchType hchValue
@@ -182,7 +174,7 @@ private def closeWCertsGoal (g : MVarId) (expandIdxs : Array Nat) : MetaM Unit :
     let mut xsExpr := ce.nilExpr
     for w in witnesses.reverse, x in kids.reverse do
       chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
-      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy x xsExpr
+      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
     g.assign chain
   | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
 
@@ -200,7 +192,9 @@ elab "w_certs" "[" idxs:num,* "]" : tactic =>
 
 /-! ### Auto-heuristic recursive expansion -/
 
-/-- Count nodes visited by `step` to assess subtree size; bounded by `fuel`. -/
+/-- Count nodes visited by `step` to assess subtree size; bounded by `fuel`.
+Operates on `(target, num, minIdx)` Nat triples since this is a metaprogram-side
+compiled helper with no kernel involvement. -/
 private def subtreeSize (B : Nat) (fuel : Nat) (c : Nat × Nat × Nat) : Nat :=
   go fuel [c] 0
 where
@@ -223,12 +217,12 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     (t n m : Nat) (threshold : Nat) : MetaM Expr := do
   let size := subtreeSize Bval 200_000_000 (t, n, m)
   if size ≤ threshold then
-    buildLeafWWitness ce B fuel (tupleExpr t n m)
+    buildLeafWWitness ce B fuel (nodeExpr t n m)
   else
     let some grandchildren := Sage.children Bval t n m
       | throwError "Sage.children returned none for ({t}, {n}, {m})"
     let grandchildren := grandchildren.toArray
-    let grandchildExprs := grandchildren.map fun (a, b, d) => tupleExpr a b d
+    let grandchildExprs := grandchildren.map fun (a, b, d) => nodeExpr a b d
     -- Recursively build each grandchild's W = ∅ witness, threading Nats directly.
     let grandchildWitnesses ← grandchildren.mapM
       fun (a, b, d) => buildWWitnessAuto ce B fuel Bval a b d threshold
@@ -238,7 +232,7 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     for w in grandchildWitnesses.reverse, x in grandchildExprs.reverse do
       grandchildrenChain := mkAppN (mkConst ``Sage.w_certs_cons)
         #[B, x, xsExpr, w, grandchildrenChain]
-      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy x xsExpr
+      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
     -- Apply `W_eq_empty_of_partialK` to combine.
     let tExpr := mkNatLit t
     let nExpr := mkNatLit n
@@ -252,9 +246,9 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr (mkConst bleName)
     let childrenKApp := mkAppN (mkConst ``Sage.childrenK) #[B, tExpr, nExpr, mExpr]
     let optListTy := mkApp (mkConst ``Option [.zero])
-      (mkApp (mkConst ``List [.zero]) ce.tripleTy)
+      (mkApp (mkConst ``List [.zero]) ce.nodeTy)
     let someGrandchildren := mkApp2 (mkConst ``Option.some [.zero])
-      (mkApp (mkConst ``List [.zero]) ce.tripleTy) xsExpr
+      (mkApp (mkConst ``List [.zero]) ce.nodeTy) xsExpr
     let hchType := mkApp3 (mkConst ``Eq [.succ .zero]) optListTy childrenKApp someGrandchildren
     let hchValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optListTy someGrandchildren
     let hchName ← mkAuxLemma [] hchType hchValue
@@ -272,14 +266,14 @@ private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := d
     let ce := mkCommonExprs
     let fuel := mkConst ``Sage.searchFuel
     -- Extract Nats from each kid once at the root; recursion threads Nats directly.
-    let kidNats ← kids.mapM tupleNats
+    let kidNats ← kids.mapM nodeNats
     let witnesses ← kidNats.mapM
       fun (t, n, m) => buildWWitnessAuto ce B fuel Bval t n m threshold
     let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
     let mut xsExpr := ce.nilExpr
     for w in witnesses.reverse, x in kids.reverse do
       chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
-      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.tripleTy x xsExpr
+      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
     g.assign chain
   | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
 
@@ -292,9 +286,9 @@ elab "w_certs_auto" sz:num : tactic =>
 /-! ### Sanity tests -/
 
 /-- The 9 children of n=8's root (B=840, sL=2880). Used by the sanity tests below. -/
-private def kids_test_n8 : List (Nat × Nat × Nat) :=
-  [(960, 2, 1), (412, 4, 1), (192, 8, 1), (93, 16, 1), (46, 32, 1), (23, 64, 1),
-   (12, 128, 1), (6, 256, 1), (3, 512, 1)]
+private def kids_test_n8 : List SageNode :=
+  [⟨960, 2, 1⟩, ⟨412, 4, 1⟩, ⟨192, 8, 1⟩, ⟨93, 16, 1⟩, ⟨46, 32, 1⟩, ⟨23, 64, 1⟩,
+   ⟨12, 128, 1⟩, ⟨6, 256, 1⟩, ⟨3, 512, 1⟩]
 
 /-- Leaf path: all 9 children get a direct kernel cert. -/
 private example : WCerts 840 kids_test_n8 := by w_certs
