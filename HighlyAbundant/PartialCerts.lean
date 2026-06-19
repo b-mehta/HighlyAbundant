@@ -15,9 +15,9 @@ The two helper lemmas `step_certs_nil` and `step_certs_cons` let a proof of
 `StepCerts B fuel <list literal>` be constructed as a linear chain of applications.
 
 The `partial_certs` tactic closes a goal of the form `StepCerts B fuel kids`
-where `kids` is a concrete list literal. For each `c` in `kids` it adds an
-auxiliary lemma `stepK B fuel [c] = some true` whose value is `Eq.refl` — the
-kernel's type-check is the actual stepK reduction. It then builds the
+where `kids` is a concrete `List SageNode` literal. For each `c` in `kids` it
+adds an auxiliary lemma `stepK B fuel [c] = some true` whose value is `Eq.refl`
+— the kernel's type-check is the actual stepK reduction. It then builds the
 `step_certs_cons` / `step_certs_nil` chain by direct `mkAppN`, with no binder
 construction and no unification.
 -/
@@ -28,13 +28,13 @@ namespace Sage
 
 /-- `∀ c ∈ xs, stepK B fuel [c] = some true`, wrapped so the kernel doesn't
 descend through the binders during chain construction. -/
-def StepCerts (B fuel : Nat) (xs : List (Nat × Nat × Nat)) : Prop :=
+def StepCerts (B fuel : Nat) (xs : List SageNode) : Prop :=
   ∀ c ∈ xs, stepK B fuel [c] = some true
 
 theorem step_certs_nil (B fuel : Nat) : StepCerts B fuel [] :=
   fun _ h => nomatch h
 
-theorem step_certs_cons {B fuel : Nat} {x : Nat × Nat × Nat} {xs : List (Nat × Nat × Nat)}
+theorem step_certs_cons {B fuel : Nat} {x : SageNode} {xs : List SageNode}
     (h : stepK B fuel [x] = some true) (hs : StepCerts B fuel xs) :
     StepCerts B fuel (x :: xs) := fun c hc =>
   match hc with
@@ -62,18 +62,16 @@ elab "partial_certs" : tactic =>
     match_expr target with
     | Sage.StepCerts B fuel kidsExpr =>
       let kids ← listElems kidsExpr
-      let nat := mkConst ``Nat
-      let tripleTy := mkApp2 (mkConst ``Prod [.zero, .zero]) nat
-        (mkApp2 (mkConst ``Prod [.zero, .zero]) nat nat)
+      let nodeTy := mkConst ``Sage.SageNode
       let optBool := mkApp (mkConst ``Option [.zero]) (mkConst ``Bool)
       let someTrue :=
         mkApp2 (mkConst ``Option.some [.zero]) (mkConst ``Bool) (mkConst ``Bool.true)
-      let nilExpr := mkApp (mkConst ``List.nil [.zero]) tripleTy
+      let nilExpr := mkApp (mkConst ``List.nil [.zero]) nodeTy
       let certValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optBool someTrue
       -- One auxiliary lemma per child.
       let mut certNames : Array Name := #[]
       for c in kids do
-        let singletonC := mkApp3 (mkConst ``List.cons [.zero]) tripleTy c nilExpr
+        let singletonC := mkApp3 (mkConst ``List.cons [.zero]) nodeTy c nilExpr
         let stepKApp := mkAppN (mkConst ``Sage.stepK) #[B, fuel, singletonC]
         let certType := mkApp3 (mkConst ``Eq [.succ .zero]) optBool stepKApp someTrue
         let auxName ← mkAuxLemma [] certType certValue
@@ -84,7 +82,7 @@ elab "partial_certs" : tactic =>
       for cert in certNames.reverse, x in kids.reverse do
         chain := mkAppN (mkConst ``Sage.step_certs_cons)
           #[B, fuel, x, xsExpr, mkConst cert, chain]
-        xsExpr := mkApp3 (mkConst ``List.cons [.zero]) tripleTy x xsExpr
+        xsExpr := mkApp3 (mkConst ``List.cons [.zero]) nodeTy x xsExpr
       g.assign chain
     | _ => throwError "expected `StepCerts B fuel xs`, got: {← Meta.ppExpr target}"
 
