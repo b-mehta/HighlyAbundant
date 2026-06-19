@@ -13,9 +13,29 @@ These mirror the definitions in `HighlyAbundant.Sage` but are written using
 `Nat.rec`, `Bool.rec`, `Nat.ble`, `Nat.blt`, etc. — primitives the kernel can
 reduce without unfolding `Decidable` instances. Equivalence with the original
 definitions lives in `HighlyAbundant.SageKernelEquiv`.
+
+Search-tree nodes are represented as a flat 3-field `SageNode` struct rather
+than `(Nat × Nat × Nat)`. The kernel destructures a `SageNode` with one
+`SageNode.rec` rather than two nested `Prod.rec`, cutting structural overhead
+during proof checking. The spec form in `HighlyAbundant.Sage` stays on
+`Nat × Nat × Nat`; the equivalence file bridges the two.
 -/
 
 namespace Sage
+
+/-- Flat 3-field representation of a search-tree node. Avoids the nested
+`Prod (Nat × Nat × Nat)` and its two-step `Prod.rec` destructuring. -/
+structure SageNode where
+  target : Nat
+  num : Nat
+  minIdx : Nat
+deriving DecidableEq, Repr
+
+/-- Convert a spec-side `(Nat × Nat × Nat)` to a kernel-side `SageNode`. -/
+def toSageNode (p : Nat × Nat × Nat) : SageNode := ⟨p.1, p.2.1, p.2.2⟩
+
+/-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
+def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.target, n.num, n.minIdx)
 
 /-- Kernel-friendly list append using `List.rec` directly, avoiding the
 brecOn/match_1 machinery that `List.append` would unfold. -/
@@ -43,20 +63,20 @@ noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel 
           (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
         (.window back lhs rhs))
 
-/-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
+/-- Emit children `⟨⌈target / σ(p^k)⌉, num * p^k, next⟩` for `k ≥ 1` with
 `p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`. -/
 noncomputable def expChildrenK (fuel target num next m p : Nat) :
-    Nat → List (Nat × Nat × Nat) :=
+    Nat → List SageNode :=
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
     (pk.ble m).rec []
       (let spk := ((pk.mul p).sub (nat_lit 1)).div (p.sub (nat_lit 1))
-       let child := (ceilDivK target spk, num.mul pk, next)
+       let child : SageNode := ⟨ceilDivK target spk, num.mul pk, next⟩
        (target.ble spk).rec (child :: r (pk.mul p)) [child])
 
 /-- Iterate `extend` from `front` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
 noncomputable def wheelChildrenK (fuel m2 m target num : Nat) :
-    Nat → Nat → Nat → Nat → List (Nat × Nat × Nat) → Option (List (Nat × Nat × Nat)) :=
+    Nat → Nat → Nat → Nat → List SageNode → Option (List SageNode) :=
   fuel.rec (fun _ _ _ _ _ ↦ none) fun _ r front back lhs rhs acc ↦
     (extendK (nat_lit 50) m2 front back lhs rhs).rec
       none
@@ -67,12 +87,12 @@ noncomputable def wheelChildrenK (fuel m2 m target num : Nat) :
           r front.succ b (lhs'.div p) (rhs'.div (p.sub (nat_lit 1)))
             (appendK (expChildrenK m.succ target num front.succ m p p) acc))
 
-/-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
-`(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
+/-- Children of node `⟨target, num, minIdx⟩` with `m = B / num`. Each `c ∈ cs` is
+`⟨⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1⟩` for some `i ≥ minIdx` and
 `k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
 `≥ 49`. -/
 noncomputable def childrenK (B target num minIdx : Nat) :
-    Option (List (Nat × Nat × Nat)) :=
+    Option (List SageNode) :=
   (minIdx.ble (nat_lit 48)).rec none <|
     let p0 := primesRArray.get minIdx
     let m := B.div num
@@ -82,10 +102,10 @@ noncomputable def childrenK (B target num minIdx : Nat) :
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read
 an index `≥ 49`. -/
-noncomputable def stepK (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool :=
+noncomputable def stepK (B : Nat) : Nat → List SageNode → Option Bool :=
   fun fuel ↦ fuel.rec (fun _ ↦ none) fun _ r stack ↦
     stack.rec (some true) fun node rest _ ↦
-      node.rec fun target rest1 ↦ rest1.rec fun num minIdx ↦
+      node.rec fun target num minIdx ↦
         (target.ble (nat_lit 1)).rec
           ((childrenK B target num minIdx).rec none (fun cs ↦ r (appendK cs rest)))
           ((B.ble num).rec (some false) (r rest))
@@ -94,6 +114,6 @@ noncomputable def stepK (B : Nat) : Nat → List (Nat × Nat × Nat) → Option 
 `(B, sL) = (lcm (1..n), σ (lcm (1..n)))`, `some true` certifies that
 `lcm (1..n)` is highly abundant. -/
 noncomputable def highlyAbundantLcmK? (B sL : Nat) : Option Bool :=
-  (B.ble (nat_lit 1)).rec (stepK B searchFuel [(sL, nat_lit 1, nat_lit 0)]) (some true)
+  (B.ble (nat_lit 1)).rec (stepK B searchFuel [⟨sL, nat_lit 1, nat_lit 0⟩]) (some true)
 
 end Sage
