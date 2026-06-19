@@ -11,8 +11,10 @@ import Mathlib.Data.Nat.Log
 /-!
 # Equivalence of kernel-friendly and ordinary decider functions
 
-For each kernel-friendly definition in `HighlyAbundant.SageKernel`, prove it
-agrees with the corresponding definition in `HighlyAbundant.Sage`.
+The kernel form in `HighlyAbundant.SageKernel` represents search-tree nodes as
+`SageNode` while the spec form in `HighlyAbundant.Sage` uses `Nat × Nat × Nat`.
+The two representations are isomorphic via `toSageNode` / `fromSageNode`, and
+each kernel-form definition equals the spec-form definition under that bridge.
 -/
 
 namespace Sage
@@ -56,22 +58,28 @@ private theorem expChildrenK_succ (n target num next m p pk : Nat) :
       if pk > m then []
       else
         let spk := (pk * p - 1) / (p - 1)
-        let child := (ceilDiv target spk, num * pk, next)
+        let child : SageNode := ⟨ceilDiv target spk, num * pk, next⟩
         if spk ≥ target then [child]
         else child :: expChildrenK n target num next m p (pk * p) := by
   simp only [expChildrenK, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
   rfl
 
-theorem expChildrenK_eq_expChildren : expChildrenK = expChildren := by
-  funext fuel target num next m p pk
+theorem expChildrenK_eq_expChildren (fuel target num next m p pk : Nat) :
+    (expChildrenK fuel target num next m p pk).map fromSageNode =
+      expChildren fuel target num next m p pk := by
   induction fuel generalizing pk with
   | zero => rfl
   | succ n ih =>
     rw [expChildren, expChildrenK_succ]
-    simp only [ih]
+    by_cases hm : pk > m
+    · simp [hm]
+    · simp only [hm, if_false]
+      by_cases ht : (pk * p - 1) / (p - 1) ≥ target
+      · simp [ht, List.map_cons, List.map_nil, fromSageNode]
+      · simp [ht, List.map_cons, fromSageNode, ih]
 
 private theorem wheelChildrenK_succ (n m2 m target num front back lhs rhs : Nat)
-    (acc : List (Nat × Nat × Nat)) :
+    (acc : List SageNode) :
     wheelChildrenK (n + 1) m2 m target num front back lhs rhs acc =
       match extend 50 m2 front back lhs rhs with
       | .exhaustedTable => none
@@ -80,55 +88,89 @@ private theorem wheelChildrenK_succ (n m2 m target num front back lhs rhs : Nat)
         if front < 49 then
           let p := primesRArray.get front
           wheelChildrenK n m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
-            (expChildren (m + 1) target num (front + 1) m p p ++ acc)
+            (expChildrenK (m + 1) target num (front + 1) m p p ++ acc)
         else none := by
   simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    extendK_eq_extend, expChildrenK_eq_expChildren, appendK_eq_append]
+    extendK_eq_extend, appendK_eq_append]
   cases extend 50 m2 front back lhs rhs <;> rfl
 
-theorem wheelChildrenK_eq_wheelChildren : wheelChildrenK = wheelChildren := by
-  funext fuel m2 m target num front back lhs rhs acc
+theorem wheelChildrenK_eq_wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
+    (acc : List SageNode) :
+    (wheelChildrenK fuel m2 m target num front back lhs rhs acc).map (·.map fromSageNode) =
+      wheelChildren fuel m2 m target num front back lhs rhs (acc.map fromSageNode) := by
   induction fuel generalizing front back lhs rhs acc with
   | zero => rfl
   | succ n ih =>
     rw [wheelChildren, wheelChildrenK_succ]
-    cases extend 50 m2 front back lhs rhs <;> simp only [ih]
+    cases extend 50 m2 front back lhs rhs with
+    | exhaustedTable => rfl
+    | tooLarge => rfl
+    | window b lhs' rhs' =>
+      by_cases h : front < 49
+      · simp only [h, if_true]
+        rw [ih]
+        congr 1
+        rw [List.map_append, expChildrenK_eq_expChildren]
+      · simp only [h, if_false, Option.map]
 
-theorem childrenK_eq_children : childrenK = children := by
-  funext B target num minIdx
-  simp only [childrenK, children, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    wheelChildrenK_eq_wheelChildren]
-  rfl
+theorem childrenK_eq_children (B target num minIdx : Nat) :
+    (childrenK B target num minIdx).map (·.map fromSageNode) =
+      children B target num minIdx := by
+  simp only [childrenK, children, Bool.rec_eq, Nat.ble_eq, ← Nat.lt_succ_iff]
+  by_cases h : minIdx < 49
+  · simp only [h, ↓reduceIte]
+    exact wheelChildrenK_eq_wheelChildren 50 ((B / num) * (B / num)) (B / num) target num
+      minIdx minIdx (primesRArray.get minIdx * (B / num))
+      (target * (primesRArray.get minIdx - 1)) []
+  · simp only [h, ↓reduceIte, Option.map_none]
 
 private theorem stepK_succ_cons (B n target num minIdx : Nat)
-    (rest : List (Nat × Nat × Nat)) :
-    stepK B (n + 1) ((target, num, minIdx) :: rest) =
+    (rest : List SageNode) :
+    stepK B (n + 1) (⟨target, num, minIdx⟩ :: rest) =
       if target ≤ 1 then
         if num < B then some false else stepK B n rest
-      else (children B target num minIdx).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
-  simp only [stepK, Bool.rec_eq, Nat.ble_eq, childrenK_eq_children, appendK_eq_append,
+      else (childrenK B target num minIdx).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
+  simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append,
     ← Nat.not_le, ite_not]
 
-theorem stepK_eq_step : stepK = step := by
-  funext B fuel stack
-  induction fuel generalizing stack with
+theorem stepK_eq_step (B fuel : Nat) (xs : List SageNode) :
+    stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
+  induction fuel generalizing xs with
   | zero => rfl
   | succ n ih =>
-    cases stack with
+    cases xs with
     | nil => rfl
     | cons head tail =>
       obtain ⟨target, num, minIdx⟩ := head
       rw [stepK_succ_cons, step.eq_def]
-      simp only [ih]
-      split
-      · rfl
-      · cases children B target num minIdx <;> rfl
+      simp only [List.map_cons, fromSageNode]
+      by_cases ht : target ≤ 1
+      · simp only [ht, if_true]
+        by_cases hn : num < B
+        · simp [hn]
+        · simp only [hn, if_false]; exact ih tail
+      · simp only [ht, if_false]
+        have hch := childrenK_eq_children B target num minIdx
+        cases hck : childrenK B target num minIdx with
+        | none =>
+          rw [hck] at hch
+          simp only [Option.map_none] at hch
+          rw [← hch]
+        | some cs =>
+          rw [hck] at hch
+          simp only [Option.map_some] at hch
+          show stepK B n (cs ++ tail) = _
+          rw [← hch]
+          rw [ih, List.map_append]
 
 theorem highlyAbundantLcmK_eq_highlyAbundantLcm :
     highlyAbundantLcmK? = highlyAbundantLcm? := by
   funext B sL
-  simp only [highlyAbundantLcmK?, highlyAbundantLcm?, Bool.rec_eq, Nat.ble_eq,
-    stepK_eq_step]
+  simp only [highlyAbundantLcmK?, highlyAbundantLcm?, Bool.rec_eq, Nat.ble_eq]
+  split
+  · rfl
+  · rw [stepK_eq_step]
+    simp [fromSageNode]
 
 /-- `(lcmRange n, σ₁ (lcmRange n))` computed as
 `(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n` in the table.
@@ -142,33 +184,52 @@ def lcmData (n : ℕ) : ℕ × ℕ :=
 
 /-- Kernel-flavoured partial verification: take the K-versions of `children` and
 `step` to drive `highlyAbundantLcm_correct_partial`. -/
-theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List SageNode}
     (hsL : 2 ≤ σ₁ (lcmRange n))
     (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, stepK (lcmRange n) searchFuel [c] = some true) :
     IsHighlyAbundant (lcmRange n) := by
-  refine highlyAbundantLcm_correct_partial (cs := cs) hsL ?_ ?_
-  · rwa [childrenK_eq_children] at hch
-  · intro c hc; rw [← stepK_eq_step]; exact hcs c hc
+  refine highlyAbundantLcm_correct_partial (cs := cs.map fromSageNode) hsL ?_ ?_
+  · have hch' := childrenK_eq_children (lcmRange n) (σ₁ (lcmRange n)) 1 0
+    rw [hch] at hch'
+    simpa using hch'.symm
+  · intro c' hc'
+    rw [List.mem_map] at hc'
+    obtain ⟨c, hc, rfl⟩ := hc'
+    have := hcs c hc
+    rw [stepK_eq_step] at this
+    simpa using this
 
 /-- Kernel-flavoured `W = ∅` recursive split: same as `W_eq_empty_of_partial`
 but with `childrenK` in place of `children`. -/
-theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List SageNode}
     (hg : 2 ≤ g)
     (hch : childrenK B g a minIdx = some cs)
-    (hcs : ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅) :
+    (hcs : ∀ c ∈ cs, W B c.target c.num c.minIdx = ∅) :
     W B g a minIdx = ∅ := by
-  refine W_eq_empty_of_partial hg ?_ hcs
-  rwa [childrenK_eq_children] at hch
+  refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hg ?_ ?_
+  · have hch' := childrenK_eq_children B g a minIdx
+    rw [hch] at hch'
+    simpa using hch'.symm
+  · intro c' hc'
+    rw [List.mem_map] at hc'
+    obtain ⟨c, hc, rfl⟩ := hc'
+    simpa [fromSageNode] using hcs c hc
 
 /-- Kernel-flavoured W-based partial verification: takes `W = ∅` for each root
 child, allowing the metaprogram to recursively expand heavy children. -/
-theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
     (hsL : 2 ≤ σ₁ (lcmRange n))
     (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, W (lcmRange n) c.1 c.2.1 c.2.2 = ∅) :
+    (hcs : ∀ c ∈ cs, W (lcmRange n) c.target c.num c.minIdx = ∅) :
     IsHighlyAbundant (lcmRange n) := by
-  refine highlyAbundantLcm_correct_partial_W (cs := cs) hsL ?_ hcs
-  rwa [childrenK_eq_children] at hch
+  refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL ?_ ?_
+  · have hch' := childrenK_eq_children (lcmRange n) (σ₁ (lcmRange n)) 1 0
+    rw [hch] at hch'
+    simpa using hch'.symm
+  · intro c' hc'
+    rw [List.mem_map] at hc'
+    obtain ⟨c, hc, rfl⟩ := hc'
+    simpa [fromSageNode] using hcs c hc
 
 end Sage
