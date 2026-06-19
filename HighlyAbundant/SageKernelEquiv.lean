@@ -103,14 +103,10 @@ theorem wheelChildrenK_eq_wheelChildren (fuel m2 m target num front back lhs rhs
   | succ n ih =>
     rw [wheelChildren, wheelChildrenK_succ]
     cases extend 50 m2 front back lhs rhs with
-    | exhaustedTable => rfl
-    | tooLarge => rfl
+    | exhaustedTable | tooLarge => rfl
     | window b lhs' rhs' =>
       by_cases h : front < 49
-      · simp only [h, if_true]
-        rw [ih]
-        congr 1
-        rw [List.map_append, expChildrenK_eq_expChildren]
+      · simp only [h, if_true, ih, List.map_append, expChildrenK_eq_expChildren]
       · simp only [h, if_false, Option.map]
 
 theorem childrenK_eq_children (B target num minIdx : Nat) :
@@ -133,35 +129,36 @@ private theorem stepK_succ_cons (B n target num minIdx : Nat)
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append,
     ← Nat.not_le, ite_not]
 
+/-- Translate a `childrenK = some cs` cert (kernel form, `cs : List SageNode`)
+to the corresponding `children = some (cs.map fromSageNode)` cert (spec form). -/
+private theorem children_of_childrenK {B target num minIdx : Nat} {cs : List SageNode}
+    (hch : childrenK B target num minIdx = some cs) :
+    children B target num minIdx = some (cs.map fromSageNode) := by
+  have := childrenK_eq_children B target num minIdx
+  rw [hch] at this; simpa using this.symm
+
+/-- Translate a `childrenK = none` cert to `children = none`. -/
+private theorem children_of_childrenK_none {B target num minIdx : Nat}
+    (hch : childrenK B target num minIdx = none) :
+    children B target num minIdx = none := by
+  have := childrenK_eq_children B target num minIdx
+  rw [hch] at this; simpa using this.symm
+
 theorem stepK_eq_step (B fuel : Nat) (xs : List SageNode) :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
   induction fuel generalizing xs with
   | zero => rfl
   | succ n ih =>
-    cases xs with
-    | nil => rfl
-    | cons head tail =>
-      obtain ⟨target, num, minIdx⟩ := head
+    match xs with
+    | [] => rfl
+    | ⟨target, num, minIdx⟩ :: rest =>
       rw [stepK_succ_cons, step.eq_def]
       simp only [List.map_cons, fromSageNode]
-      by_cases ht : target ≤ 1
-      · simp only [ht, if_true]
-        by_cases hn : num < B
-        · simp [hn]
-        · simp only [hn, if_false]; exact ih tail
-      · simp only [ht, if_false]
-        have hch := childrenK_eq_children B target num minIdx
-        cases hck : childrenK B target num minIdx with
-        | none =>
-          rw [hck] at hch
-          simp only [Option.map_none] at hch
-          rw [← hch]
-        | some cs =>
-          rw [hck] at hch
-          simp only [Option.map_some] at hch
-          show stepK B n (cs ++ tail) = _
-          rw [← hch]
-          rw [ih, List.map_append]
+      split
+      · split <;> simp [ih]
+      · cases hck : childrenK B target num minIdx with
+        | none => rw [children_of_childrenK_none hck]
+        | some cs => simp [children_of_childrenK hck, ih, List.map_append]
 
 theorem highlyAbundantLcmK_eq_highlyAbundantLcm :
     highlyAbundantLcmK? = highlyAbundantLcm? := by
@@ -189,16 +186,12 @@ theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List SageNode}
     (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, stepK (lcmRange n) searchFuel [c] = some true) :
     IsHighlyAbundant (lcmRange n) := by
-  refine highlyAbundantLcm_correct_partial (cs := cs.map fromSageNode) hsL ?_ ?_
-  · have hch' := childrenK_eq_children (lcmRange n) (σ₁ (lcmRange n)) 1 0
-    rw [hch] at hch'
-    simpa using hch'.symm
-  · intro c' hc'
-    rw [List.mem_map] at hc'
-    obtain ⟨c, hc, rfl⟩ := hc'
-    have := hcs c hc
-    rw [stepK_eq_step] at this
-    simpa using this
+  refine highlyAbundantLcm_correct_partial (cs := cs.map fromSageNode) hsL
+    (children_of_childrenK hch) ?_
+  intro c' hc'
+  rw [List.mem_map] at hc'
+  obtain ⟨c, hc, rfl⟩ := hc'
+  simpa using (stepK_eq_step _ _ _).symm.trans (hcs c hc)
 
 /-- Kernel-flavoured `W = ∅` recursive split: same as `W_eq_empty_of_partial`
 but with `childrenK` in place of `children`. -/
@@ -207,14 +200,12 @@ theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List SageNode}
     (hch : childrenK B g a minIdx = some cs)
     (hcs : ∀ c ∈ cs, W B c.target c.num c.minIdx = ∅) :
     W B g a minIdx = ∅ := by
-  refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hg ?_ ?_
-  · have hch' := childrenK_eq_children B g a minIdx
-    rw [hch] at hch'
-    simpa using hch'.symm
-  · intro c' hc'
-    rw [List.mem_map] at hc'
-    obtain ⟨c, hc, rfl⟩ := hc'
-    simpa [fromSageNode] using hcs c hc
+  refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hg
+    (children_of_childrenK hch) ?_
+  intro c' hc'
+  rw [List.mem_map] at hc'
+  obtain ⟨c, hc, rfl⟩ := hc'
+  simpa [fromSageNode] using hcs c hc
 
 /-- Kernel-flavoured W-based partial verification: takes `W = ∅` for each root
 child, allowing the metaprogram to recursively expand heavy children. -/
@@ -223,13 +214,11 @@ theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
     (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, W (lcmRange n) c.target c.num c.minIdx = ∅) :
     IsHighlyAbundant (lcmRange n) := by
-  refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL ?_ ?_
-  · have hch' := childrenK_eq_children (lcmRange n) (σ₁ (lcmRange n)) 1 0
-    rw [hch] at hch'
-    simpa using hch'.symm
-  · intro c' hc'
-    rw [List.mem_map] at hc'
-    obtain ⟨c, hc, rfl⟩ := hc'
-    simpa [fromSageNode] using hcs c hc
+  refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL
+    (children_of_childrenK hch) ?_
+  intro c' hc'
+  rw [List.mem_map] at hc'
+  obtain ⟨c, hc, rfl⟩ := hc'
+  simpa [fromSageNode] using hcs c hc
 
 end Sage
