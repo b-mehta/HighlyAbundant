@@ -226,7 +226,7 @@ private def kids139 : List SageNode := [
 set_option maxHeartbeats 1000000 in
 private theorem hcs_lcm_139 :
     WCerts 33312720618553145840562713089120360606823375590405920630576000 kids139 := by
-  w_certs_auto 50000
+  w_certs_auto 10000
 
 private theorem childrenK_lcm_139 :
     childrenK 33312720618553145840562713089120360606823375590405920630576000

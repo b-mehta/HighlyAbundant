@@ -4,10 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.PartialCerts
-import HighlyAbundant.SageKernelEquiv
-import HighlyAbundant.LcmRangeProofs
 import HighlyAbundant.WCertsTactic
+import HighlyAbundant.LcmRangeProofs
 
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 89)`
@@ -156,27 +154,19 @@ private def kids89 : List SageNode := [
   ⟨5, 680564733841876926926749214863536422912, 1⟩
 ]
 
+set_option maxHeartbeats 1000000 in
 private theorem hcs_lcm_89 :
-    StepCerts 718766754945489455304472257065075294400 searchFuel kids89 := by
-  partial_certs
-
-/-- Side-by-side W-based proof using the auto-heuristic — exercises
-`w_certs_auto` on a real heavy case. Threshold 5000 forces recursive expansion
-on the heavier root-children (n=89's heaviest subtree is ~37k) so the recursive
-codepath actually runs; with a high threshold it would be all-leaves and
-indistinguishable from plain `w_certs`. -/
-private theorem hcs_lcm_89_W :
     WCerts 718766754945489455304472257065075294400 kids89 := by
-  w_certs_auto 5000
+  w_certs_auto 10000
 
 private theorem childrenK_lcm_89 :
     childrenK 718766754945489455304472257065075294400
       5613947022290351471924330364508569600000 1 0 = some kids89 := by
   decide +kernel +revert
 
-/-- `lcm (1..89)` is highly abundant, proven via the partial-verification path. -/
+/-- `lcm (1..89)` is highly abundant, proven via the W-based partial-verification path. -/
 theorem isHighlyAbundant_lcmRange_89 : IsHighlyAbundant (lcmRange 89) := by
-  apply highlyAbundantLcm_correct_partialK (cs := kids89)
+  apply highlyAbundantLcm_correct_partialK_W (cs := kids89)
   · rw [sigma_lcmRange_89]; norm_num
   · rw [sigma_lcmRange_89, lcmRange_89]; exact childrenK_lcm_89
   · rw [lcmRange_89]; exact hcs_lcm_89

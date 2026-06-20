@@ -4,8 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.PartialCerts
-import HighlyAbundant.SageKernelEquiv
+import HighlyAbundant.WCertsTactic
 import HighlyAbundant.LcmRangeProofs
 
 /-!
@@ -202,9 +201,10 @@ private def kids127 : List SageNode := [
   ⟨5, 6129982163463555433433388108601236734474956488734408704, 1⟩
 ]
 
+set_option maxHeartbeats 1000000 in
 private theorem hcs_lcm_127 :
-    StepCerts 6676878045498705789701874602220118271269436344024536000 searchFuel kids127 := by
-  partial_certs
+    WCerts 6676878045498705789701874602220118271269436344024536000 kids127 := by
+  w_certs_auto 10000
 
 private theorem childrenK_lcm_127 :
     childrenK 6676878045498705789701874602220118271269436344024536000
@@ -213,7 +213,7 @@ private theorem childrenK_lcm_127 :
 
 /-- `lcm (1..127)` is highly abundant, proven via the partial-verification path. -/
 theorem isHighlyAbundant_lcmRange_127 : IsHighlyAbundant (lcmRange 127) := by
-  apply highlyAbundantLcm_correct_partialK (cs := kids127)
+  apply highlyAbundantLcm_correct_partialK_W (cs := kids127)
   · rw [sigma_lcmRange_127]; norm_num
   · rw [sigma_lcmRange_127, lcmRange_127]; exact childrenK_lcm_127
   · rw [lcmRange_127]; exact hcs_lcm_127
