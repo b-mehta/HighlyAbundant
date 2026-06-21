@@ -23,9 +23,8 @@ jobs:
           build: false
       - name: Build
         shell: bash
-        env:
-          LAKE_NO_PARALLEL: "1"
-          LEAN_NUM_THREADS: "1"
+        # Testing: previously set LEAN_NUM_THREADS: "1" (plus a no-op LAKE_NO_PARALLEL: "1")
+        # to force a serial, low-memory build. Dropped to see what happens without it.
         run: |
           lake exe cache get || true
           lake build
