@@ -6,6 +6,7 @@ Authors: Bhavik Mehta
 
 import HighlyAbundant.WCertsTactic
 import HighlyAbundant.LcmRangeProofs
+import HighlyAbundant.SageKernelBeq
 
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 169)`
@@ -272,9 +273,10 @@ private theorem hcs_lcm_169 :
   w_certs_auto 10000
 
 private theorem childrenK_lcm_169 :
-    childrenK 41640927904370300154508936603455936348626591748630593262827592445686864000
-      374867757601140118512603512682984851689582369732924776330622402560000000000 1 0 = some kids169 := by
-  decide +kernel +revert
+    (childrenK 41640927904370300154508936603455936348626591748630593262827592445686864000
+      374867757601140118512603512682984851689582369732924776330622402560000000000 1 0).elim false
+        (fun cs ↦ sageListBeq cs kids169) = true := by
+  quickRfl
 
 /-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
 path. The `w_certs_auto 100000` heuristic decides per node whether to give the
@@ -282,7 +284,7 @@ kernel a direct subtree search or to split via `childrenK`. -/
 theorem isHighlyAbundant_lcmRange_169 : IsHighlyAbundant (lcmRange 169) := by
   apply highlyAbundantLcm_correct_partialK_W (cs := kids169)
   · rw [sigma_lcmRange_169]; norm_num
-  · rw [sigma_lcmRange_169, lcmRange_169]; exact childrenK_lcm_169
+  · rw [sigma_lcmRange_169, lcmRange_169]; exact childrenK_eq_of_beq childrenK_lcm_169
   · rw [lcmRange_169]; exact hcs_lcm_169
 
 end Sage

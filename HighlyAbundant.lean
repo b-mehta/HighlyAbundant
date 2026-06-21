@@ -5,6 +5,7 @@ import HighlyAbundant.LcmRangeProofs
 import HighlyAbundant.PrepareLadder
 import HighlyAbundant.Sage
 import HighlyAbundant.SageKernel
+import HighlyAbundant.SageKernelBeq
 -- SageKernelChecks (monolithic per-n certs) OOMs for n>=89; use partial form instead.
 -- import HighlyAbundant.SageKernelChecks
 import HighlyAbundant.SageKernelEquiv

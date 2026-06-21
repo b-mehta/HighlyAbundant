@@ -6,6 +6,7 @@ Authors: Bhavik Mehta
 
 import HighlyAbundant.WCertsTactic
 import HighlyAbundant.LcmRangeProofs
+import HighlyAbundant.SageKernelBeq
 
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 128)`
@@ -208,15 +209,16 @@ private theorem hcs_lcm_128 :
   w_certs_auto 10000
 
 private theorem childrenK_lcm_128 :
-    childrenK 13353756090997411579403749204440236542538872688049072000
-      113299741048835030278887615719353445993693828874240000000 1 0 = some kids128 := by
-  decide +kernel +revert
+    (childrenK 13353756090997411579403749204440236542538872688049072000
+      113299741048835030278887615719353445993693828874240000000 1 0).elim false
+        (fun cs ↦ sageListBeq cs kids128) = true := by
+  quickRfl
 
 /-- `lcm (1..128)` is highly abundant, proven via the partial-verification path. -/
 theorem isHighlyAbundant_lcmRange_128 : IsHighlyAbundant (lcmRange 128) := by
   apply highlyAbundantLcm_correct_partialK_W (cs := kids128)
   · rw [sigma_lcmRange_128]; norm_num
-  · rw [sigma_lcmRange_128, lcmRange_128]; exact childrenK_lcm_128
+  · rw [sigma_lcmRange_128, lcmRange_128]; exact childrenK_eq_of_beq childrenK_lcm_128
   · rw [lcmRange_128]; exact hcs_lcm_128
 
 end Sage
