@@ -2,6 +2,10 @@ name = "HighlyAbundant"
 version = "0.1.0"
 keywords = ["math"]
 defaultTargets = ["HighlyAbundant"]
+# CI experiment: pass -j 64 (per-process elaboration threads) to lean while the
+# workflow keeps LEAN_NUM_THREADS=1 (serial inter-module scheduling). Tests whether
+# in-file elaboration parallelises — and whether it OOMs the 7G runner.
+moreLeanArgs = ["-j", "64"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`
