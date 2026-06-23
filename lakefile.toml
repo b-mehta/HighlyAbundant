@@ -2,7 +2,7 @@ name = "HighlyAbundant"
 version = "0.1.0"
 keywords = ["math"]
 defaultTargets = ["HighlyAbundant"]
-moreLeanArgs = ["-j", "6"]
+moreLeanArgs = ["-j", "3"]
 
 [leanOptions]
 pp.unicode.fun = true # pretty-prints `fun a ↦ b`

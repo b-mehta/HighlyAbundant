@@ -24,8 +24,8 @@ jobs:
       - name: Build
         shell: bash
         env:
-          # Serial build — parallel module compilation OOMs the runner.
-          LEAN_NUM_THREADS: "1"
+          # EXPERIMENT: 2-way inter-module parallelism (was 1). May OOM the runner.
+          LEAN_NUM_THREADS: "2"
         run: |
           lake exe cache get || true
           lake build
