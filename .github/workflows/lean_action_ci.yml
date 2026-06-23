@@ -24,8 +24,8 @@ jobs:
       - name: Build
         shell: bash
         env:
-          # 2-way module parallelism; higher OOMs the runner.
-          LEAN_NUM_THREADS: "2"
+          # EXPERIMENT: 3-way module parallelism (with HACompose169 split). May OOM.
+          LEAN_NUM_THREADS: "3"
         run: |
           lake exe cache get || true
           lake build
