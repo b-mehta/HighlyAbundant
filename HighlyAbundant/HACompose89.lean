@@ -13,11 +13,10 @@ import HighlyAbundant.SageKernelBeq
 
 The monolithic `stepK <B> searchFuel [(σ₁ B, 1, 0)]` for `B = lcmRange 89` does
 not fit comfortably in a 7 GB process. Instead we expand the root via
-`childrenK` into 129 child subtrees and certify each subtree's `stepK` call
-separately. The `partial_certs` command in `HighlyAbundant.PartialCerts`
-generates the 129 per-child certificates (each its own top-level theorem, for
-kernel-state isolation) plus a dispatch theorem.
-`highlyAbundantLcm_correct_partialK` ties them together.
+`childrenK` into its 129 child subtrees and prove each child's witness set is
+empty with `w_certs_auto 10000`: any child whose subtree exceeds 10000 nodes is
+expanded one level via `childrenK`, recursing until every leaf cert fits.
+`highlyAbundantLcm_correct_partialK_W` ties them together.
 -/
 
 namespace Sage

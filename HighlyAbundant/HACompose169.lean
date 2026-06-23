@@ -15,9 +15,10 @@ import HighlyAbundant.HACompose169b
 
 The root-level partial form (one big `stepK` per child of the root) does NOT
 fit in CI's 7 GB — empirically the heaviest root-children have subtree sizes
-of 200k–870k nodes (vs. n=125's 133k which fit). We use `w_certs_auto 100000`:
-any node whose subtree exceeds 100k stepK iterations is expanded one level via
-`childrenK`, recursing until every leaf cert fits the budget.
+of 200k–870k nodes. We use `w_certs_auto 10000`: any node whose subtree exceeds
+10000 nodes is expanded one level via `childrenK`, recursing until every leaf
+cert fits the budget. The children are split across `HACompose169a`/`169b` so
+the kernel work runs as two parallel modules.
 -/
 
 namespace Sage
@@ -35,7 +36,7 @@ private theorem childrenK_lcm_169 :
   quickRfl
 
 /-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
-path. The `w_certs_auto 100000` heuristic decides per node whether to give the
+path. The `w_certs_auto 10000` heuristic decides per node whether to give the
 kernel a direct subtree search or to split via `childrenK`. -/
 theorem isHighlyAbundant_lcmRange_169 : IsHighlyAbundant (lcmRange 169) := by
   apply highlyAbundantLcm_correct_partialK_W (cs := kids169)

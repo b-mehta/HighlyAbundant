@@ -285,7 +285,7 @@ private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := d
 
 /-- Close a goal `Sage.WCerts B <kids>` using the auto-heuristic: any child
 whose subtree exceeds `threshold` nodes is expanded one level, recursing
-until every leaf cert fits. Example: `w_certs_auto 100000`. -/
+until every leaf cert fits. Example: `w_certs_auto 10000`. -/
 elab "w_certs_auto" sz:num : tactic =>
   liftMetaFinishingTactic fun g => closeWCertsGoalAuto g sz.getNat
 

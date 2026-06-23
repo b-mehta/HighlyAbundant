@@ -11,10 +11,8 @@ import HighlyAbundant.SageKernelBeq
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 125)`
 
-Same structure as `HACompose89`; tests whether `partial_certs` scales to 175
-children. The heaviest single child needs >4.7 GB locally; pushed here for CI
-to confirm if a clean 7 GB runner can do it as-is, or if the recursive split is
-mandatory.
+Same structure as `HACompose89`; the root has 175 children, certified with
+`w_certs_auto 10000`.
 -/
 
 namespace Sage
