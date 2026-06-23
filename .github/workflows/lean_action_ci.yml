@@ -24,8 +24,8 @@ jobs:
       - name: Build
         shell: bash
         env:
-          # EXPERIMENT: 3-way inter-module parallelism. May OOM the runner.
-          LEAN_NUM_THREADS: "3"
+          # 2-way module parallelism; higher OOMs the runner.
+          LEAN_NUM_THREADS: "2"
         run: |
           lake exe cache get || true
           lake build
