@@ -10,7 +10,7 @@ import Mathlib.NumberTheory.Chebyshev
 /-!
 # Literal values of `lcmRange n` and `σ₁ (lcmRange n)`
 
-For each `n` that `SageKernelChecks` targets, this file pins
+For each `n` proved highly abundant in the `HACompose<n>` files, this file pins
 `lcmRange n` and `σ₁ (lcmRange n)` to their literal natural numbers.
 
 `lcmRange n = <literal>` reduces cleanly in the kernel via `decide +kernel`.
