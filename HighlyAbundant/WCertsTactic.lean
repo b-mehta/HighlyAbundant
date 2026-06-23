@@ -40,6 +40,13 @@ theorem w_certs_cons {B : Nat} {x : SageNode} {xs : List SageNode}
   | .head _ => h
   | .tail _ hc' => hs c hc'
 
+/-- Combine certificates for two sublists, so a heavy `WCerts B kids` proof can be
+split across files (each proving `WCerts B` for an in-order slice) and built in
+parallel, then recombined via `kids = xs ++ ys`. -/
+theorem w_certs_append {B : Nat} {xs ys : List SageNode}
+    (hx : WCerts B xs) (hy : WCerts B ys) : WCerts B (xs ++ ys) := fun c hc =>
+  (List.mem_append.1 hc).elim (hx c) (hy c)
+
 /-- Convert a singleton-stack `stepK = some true` to `W = ∅` for the same node.
 The leaf-level cert produced by kernel reduction lands here, then enters the
 `w_certs_cons` chain. -/
