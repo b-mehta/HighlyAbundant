@@ -4,15 +4,14 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.PartialCerts
 import HighlyAbundant.SageKernelEquiv
 
 /-!
 # `WCerts` and the `w_certs` tactic
 
-`WCerts B xs := ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅` — the witness-set
-version of `StepCerts`. Used to compose leaf-level kernel certificates with the
-recursive-split lemma `W_eq_empty_of_partialK` for heavy children.
+`WCerts B xs := ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅`. Used to compose
+leaf-level kernel certificates with the recursive-split lemma
+`W_eq_empty_of_partialK` for heavy children.
 
 Two forms:
 - `w_certs` — every child gets a leaf cert (kernel-reduce `stepK [c] = some true`).
