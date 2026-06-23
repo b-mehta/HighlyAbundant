@@ -2,9 +2,6 @@ name = "HighlyAbundant"
 version = "0.1.0"
 keywords = ["math"]
 defaultTargets = ["HighlyAbundant"]
-# CI experiment: pass -j N (per-process elaboration threads) to lean while the
-# workflow keeps LEAN_NUM_THREADS=1 (serial inter-module scheduling). -j 64 gave
-# ~8% off the heavy modules with no OOM; testing whether a smaller N matches it.
 moreLeanArgs = ["-j", "6"]
 
 [leanOptions]

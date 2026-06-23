@@ -24,8 +24,7 @@ jobs:
       - name: Build
         shell: bash
         env:
-          # Load-bearing: serialises the build to one thread. Parallel module
-          # compilation OOMs the runner on the heavy HACompose targets (exit 143).
+          # Serial build — parallel module compilation OOMs the runner.
           LEAN_NUM_THREADS: "1"
         run: |
           lake exe cache get || true
