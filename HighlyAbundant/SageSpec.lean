@@ -40,7 +40,7 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 12. `wheelChildren` and `children`: `mem_wheelChildren`, `wheelChildren_acc_subset`,
     `wheelChildren_witness`, `mem_children`, `child_witness_to_parent`,
     `witness_to_child`, `children_spec`.
-13. Step correctness and top-level result: `step_true`, `step_false`,
+13. Step correctness and top-level result: `step_true`,
     `highlyAbundantLcm_correct`.
 
 ## Partial verification
@@ -611,10 +611,13 @@ theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
       grind [Set.not_nonempty_iff_eq_empty]
     · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
 
+/- `step_false` (the dual of `step_true`) is currently unused and only `sorry`-proved;
+commented out until something needs it.
 /-- `step = some false` ⟹ some node on the stack has a nonempty witness set. -/
 theorem step_false {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
     (h : step B fuel stack = some false) :
     ∃ node ∈ stack, (W B node.1 node.2.1 node.2.2).Nonempty := sorry
+-/
 
 /-- A `some true` answer of `highlyAbundantLcm?` on `(lcmRange n, σ₁ (lcmRange n))`
 certifies that `lcm (1..n)` is highly abundant. -/
