@@ -24,8 +24,8 @@ jobs:
       - name: Build
         shell: bash
         env:
-          # 3 modules in parallel (with the HACompose169 split); more risks OOM.
-          LEAN_NUM_THREADS: "3"
+          # EXPERIMENT: 2-way + 169 recombined to one file (two theorems, intra-module -j).
+          LEAN_NUM_THREADS: "2"
         run: |
           lake exe cache get || true
           lake build
