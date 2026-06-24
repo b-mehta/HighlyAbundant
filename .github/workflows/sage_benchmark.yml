@@ -1,0 +1,23 @@
+name: Sage HA Benchmark
+
+on:
+  push:
+    paths:
+      - 'scripts/ha169_benchmark.sage'
+      - '.github/workflows/sage_benchmark.yml'
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SageMath
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sagemath
+      - name: Sage version
+        run: sage --version
+      - name: Run benchmark
+        run: sage scripts/ha169_benchmark.sage
