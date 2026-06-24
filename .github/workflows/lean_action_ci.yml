@@ -2,6 +2,9 @@ name: Lean Action CI
 
 on:
   push:
+    paths-ignore:
+      - 'scripts/ha169_benchmark.sage'
+      - '.github/workflows/sage_benchmark.yml'
   pull_request:
   workflow_dispatch:
 
