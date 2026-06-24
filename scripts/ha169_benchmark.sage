@@ -1,6 +1,6 @@
 import os
 import time
-os.environ["SAGE_NUM_THREADS"] = '4'
+os.environ["SAGE_NUM_THREADS"] = '1'
 
 print(f'Using {os.environ["SAGE_NUM_THREADS"]} threads')
 
