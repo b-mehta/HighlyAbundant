@@ -8,17 +8,18 @@ import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageKernelBeq
 
 /-!
-# `WCerts` and the `w_certs` tactic
+# `WCerts`, the `w_certs_auto` tactic, and `ha_lcm_compose`
 
-`WCerts B xs := ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅`. Used to compose
-leaf-level kernel certificates with the recursive-split lemma
-`W_eq_empty_of_partialK` for heavy children.
+`WCerts B xs := ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅`. Built by composing
+leaf-level kernel certificates (`stepK [c] = some true`) with the recursive-split
+lemma `W_eq_empty_of_partialK` for heavy children.
 
-Two forms:
-- `w_certs` — every child gets a leaf cert (kernel-reduce `stepK [c] = some true`).
-- `w_certs [i₁, i₂, …]` — children at those indices are expanded one level via
-  `childrenK`, and their `W = ∅` is built recursively (leaf certs on the
-  grandchildren combined via `W_eq_empty_of_partialK`).
+- `w_certs_auto <threshold>` — closes `WCerts B kids`: any child whose subtree
+  exceeds `threshold` nodes is expanded one level via `childrenK`, recursing until
+  every leaf cert fits.
+- `ha_lcm_compose eB eg <threshold>` — closes `IsHighlyAbundant (lcmRange n)`
+  directly: emits the root children as an auxiliary `kids` def, builds the `WCerts`
+  proof via the same auto heuristic, and combines with the `childrenK` cert.
 -/
 
 open Lean Meta Elab Tactic
@@ -109,93 +110,6 @@ private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr 
   let auxName ← mkAuxLemma [] certType ce.certValue
   let stepKWitness := mkConst auxName
   return mkApp4 (mkConst ``Sage.W_eq_empty_of_stepK_singleton) B fuel c stepKWitness
-
-/-- Build a `WCerts B kids` proof by chaining `w_certs_cons` over leaf witnesses.
-Returns the proof Expr. -/
-private def buildWCertsChain (ce : CommonExprs) (B fuel : Expr) (kids : Array Expr) :
-    MetaM Expr := do
-  let witnesses ← kids.mapM (buildLeafWWitness ce B fuel)
-  let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
-  let mut xsExpr := ce.nilExpr
-  for w in witnesses.reverse, x in kids.reverse do
-    chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
-    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
-  return chain
-
-/-- Build a recursive-expansion `W B c.target c.num c.minIdx = ∅` witness for a
-child `c`: compute its children via `Sage.children` (spec form), translate to
-`SageNode` literals, build leaf certs on the grandchildren, and combine via
-`W_eq_empty_of_partialK`. -/
-private def buildExpandedWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
-  let (t, n, m) ← nodeNats c
-  let some Bval := B.nat? | throwError "B not a literal"
-  -- Compute grandchildren via Sage.children (spec form, returns tuples).
-  let some grandchildren := Sage.children Bval t n m
-    | throwError "Sage.children returned none for ({t}, {n}, {m})"
-  -- Convert grandchildren tuples to SageNode literal Exprs.
-  let mut xsExpr := ce.nilExpr
-  let grandchildExprs := grandchildren.toArray.map fun (a, b, d) => nodeExpr a b d
-  for gx in grandchildExprs.reverse do
-    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy gx xsExpr
-  -- Build `WCerts B grandchildren` via leaf chain.
-  let grandchildrenWCerts ← buildWCertsChain ce B fuel grandchildExprs
-  -- `2 ≤ t` proof: kernel verifies `Nat.ble 2 t = true` via `Eq.refl true`,
-  -- then `Nat.le_of_ble_eq_true` lifts to `2 ≤ t`.
-  let tExpr := mkNatLit t
-  let bleApp := mkApp2 (mkConst ``Nat.ble) (mkNatLit 2) tExpr
-  let boolTy := mkConst ``Bool
-  let trueExpr := mkConst ``Bool.true
-  let bleType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
-  let bleValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
-  let bleName ← mkAuxLemma [] bleType bleValue
-  let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr (mkConst bleName)
-  -- `childrenK B t n m = some grandchildren` — provable by rfl after kernel reduces.
-  let nExpr := mkNatLit n
-  let mExpr := mkNatLit m
-  let childrenKApp := mkAppN (mkConst ``Sage.childrenK) #[B, tExpr, nExpr, mExpr]
-  let optListTy := mkApp (mkConst ``Option [.zero]) (mkApp (mkConst ``List [.zero]) ce.nodeTy)
-  let someGrandchildren := mkApp2 (mkConst ``Option.some [.zero])
-    (mkApp (mkConst ``List [.zero]) ce.nodeTy) xsExpr
-  let hchType := mkApp3 (mkConst ``Eq [.succ .zero]) optListTy childrenKApp someGrandchildren
-  let hchValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optListTy someGrandchildren
-  let hchName ← mkAuxLemma [] hchType hchValue
-  let hch := mkConst hchName
-  return mkAppN (mkConst ``Sage.W_eq_empty_of_partialK)
-    #[B, tExpr, nExpr, mExpr, xsExpr, twoLeT, hch, grandchildrenWCerts]
-
-/-- Close a `WCerts B kids` goal with optional expansion of specific child indices. -/
-private def closeWCertsGoal (g : MVarId) (expandIdxs : Array Nat) : MetaM Unit := do
-  let target ← g.getType
-  match_expr target with
-  | Sage.WCerts B kidsExpr =>
-    let kids ← listElemsW kidsExpr
-    let ce := mkCommonExprs
-    let fuel := mkConst ``Sage.searchFuel
-    -- For each child, build the witness — leaf or expanded based on index.
-    let witnesses ← kids.mapIdxM fun i c =>
-      if expandIdxs.contains i then
-        buildExpandedWWitness ce B fuel c
-      else
-        buildLeafWWitness ce B fuel c
-    let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
-    let mut xsExpr := ce.nilExpr
-    for w in witnesses.reverse, x in kids.reverse do
-      chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
-      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
-    g.assign chain
-  | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
-
-/-- Close a goal `Sage.WCerts B <kids>` with every child as a leaf cert. -/
-elab "w_certs" : tactic =>
-  liftMetaFinishingTactic fun g => closeWCertsGoal g #[]
-
-/-- Close a goal `Sage.WCerts B <kids>`; the children at the given indices are
-expanded one level (their `W = ∅` is built from their grandchildren via
-`W_eq_empty_of_partialK`), the rest get a leaf kernel cert. -/
-elab "w_certs" "[" idxs:num,* "]" : tactic =>
-  liftMetaFinishingTactic fun g => do
-    let idxArr := idxs.getElems.map (·.getNat)
-    closeWCertsGoal g idxArr
 
 /-! ### Auto-heuristic recursive expansion -/
 
@@ -392,14 +306,6 @@ elab "ha_lcm_compose" eBStx:term:max egStx:term:max thr:num : tactic => do
 private def kids_test_n8 : List SageNode :=
   [⟨960, 2, 1⟩, ⟨412, 4, 1⟩, ⟨192, 8, 1⟩, ⟨93, 16, 1⟩, ⟨46, 32, 1⟩, ⟨23, 64, 1⟩,
    ⟨12, 128, 1⟩, ⟨6, 256, 1⟩, ⟨3, 512, 1⟩]
-
-/-- Leaf path: all 9 children get a direct kernel cert. -/
-private example : WCerts 840 kids_test_n8 := by w_certs
-
-/-- Recursive path: child #5 (target=23) is "expanded" through its grandchildren.
-For n=8 every cert is cheap, so the index choice doesn't matter — just exercises
-the recursive code path. -/
-private example : WCerts 840 kids_test_n8 := by w_certs [5]
 
 /-- Auto-heuristic path: threshold 50 — any child with subtree > 50 nodes is
 expanded recursively. Just exercises the auto codepath; n=8 children are all
