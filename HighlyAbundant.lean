@@ -51,3 +51,4 @@ import HighlyAbundant.SageSpec
 import HighlyAbundant.Prime.PowMod
 import HighlyAbundant.Prime.Pratt
 import HighlyAbundant.Prime.Prime
+import HighlyAbundant.Characterization
