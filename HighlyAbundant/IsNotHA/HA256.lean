@@ -5,7 +5,6 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
-import HighlyAbundant.Basic
 import Mathlib.Tactic.NormNum.Prime
 
 /-!
