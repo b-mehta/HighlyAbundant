@@ -5,7 +5,6 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
-import HighlyAbundant.LcmRangeConstant
 import HighlyAbundant.IsNotHA.ClimbLadder
 import HighlyAbundant.IsHA.HAComposeSmall
 import HighlyAbundant.IsHA.HACompose67
