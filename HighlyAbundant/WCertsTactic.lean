@@ -5,6 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.SageKernelEquiv
+import HighlyAbundant.SageKernelBeq
 
 /-!
 # `WCerts` and the `w_certs` tactic
@@ -261,6 +262,22 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     return mkAppN (mkConst ``Sage.W_eq_empty_of_partialK)
       #[B, tExpr, nExpr, mExpr, xsExpr, twoLeT, mkConst hchName, grandchildrenChain]
 
+/-- Build a `WCerts B <kidExprs>` proof via the auto-heuristic: each child's
+`W = ∅` witness is built by `buildWWitnessAuto` (expanding as deep as the
+`threshold` requires), then chained with `w_certs_cons`/`w_certs_nil`. The
+`kidNats` array is the `(t, n, m)` triples of `kidExprs`, in the same order. -/
+private def buildWCertsAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
+    (kidExprs : Array Expr) (kidNats : Array (Nat × Nat × Nat)) (threshold : Nat) :
+    MetaM Expr := do
+  let witnesses ← kidNats.mapM
+    fun (t, n, m) => buildWWitnessAuto ce B fuel Bval t n m threshold
+  let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
+  let mut xsExpr := ce.nilExpr
+  for w in witnesses.reverse, x in kidExprs.reverse do
+    chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
+    xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
+  return chain
+
 /-- Close a `WCerts B kids` goal using the auto-heuristic: each child is
 expanded as deep as needed for every leaf node's subtree to fit the threshold. -/
 private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := do
@@ -273,13 +290,7 @@ private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := d
     let fuel := mkConst ``Sage.searchFuel
     -- Extract Nats from each kid once at the root; recursion threads Nats directly.
     let kidNats ← kids.mapM nodeNats
-    let witnesses ← kidNats.mapM
-      fun (t, n, m) => buildWWitnessAuto ce B fuel Bval t n m threshold
-    let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
-    let mut xsExpr := ce.nilExpr
-    for w in witnesses.reverse, x in kids.reverse do
-      chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
-      xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
+    let chain ← buildWCertsAutoChain ce B fuel Bval kids kidNats threshold
     g.assign chain
   | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
 
@@ -288,6 +299,92 @@ whose subtree exceeds `threshold` nodes is expanded one level, recursing
 until every leaf cert fits. Example: `w_certs_auto 10000`. -/
 elab "w_certs_auto" sz:num : tactic =>
   liftMetaFinishingTactic fun g => closeWCertsGoalAuto g sz.getNat
+
+/-! ### One-shot composition tactic `ha_lcm_compose`
+
+Replaces the explicit `kids`-list + `WCerts` + `childrenK` + main-theorem boilerplate
+(as in `HACompose89`) with a single invocation on a goal `IsHighlyAbundant (lcmRange n)`.
+-/
+
+/-- Lambda-free `Bool` predicate hiding the `Option.elim`/`fun cs ↦ …` binder of
+`childrenK_eq_of_beq`'s hypothesis, so the metaprogram can build the cert type
+without constructing a lambda. The kernel unfolds this to the `elim` form. -/
+noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) : Bool :=
+  (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids)
+
+theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
+    (h : childrenKBeqCert B target num minIdx kids = true) :
+    childrenK B target num minIdx = some kids :=
+  childrenK_eq_of_beq h
+
+/-- Bridges the literal-`B`/`g`-phrased certificates produced by `ha_lcm_compose`
+to the `lcmRange n`/`σ₁ (lcmRange n)` form that
+`highlyAbundantLcm_correct_partialK_W` consumes. `subst` hides all motive/binder
+transport, so the tactic only builds a flat application. -/
+theorem ha_lcm_compose_bridge {n B g : ℕ} {cs : List SageNode}
+    (eB : lcmRange n = B) (eg : σ₁ (lcmRange n) = g)
+    (hsL : 2 ≤ g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : WCerts B cs) :
+    IsHighlyAbundant (lcmRange n) := by
+  subst eB eg
+  exact highlyAbundantLcm_correct_partialK_W hsL (childrenKBeqCert_eq_some hch) hcs
+
+/-- `ha_lcm_compose eB eg threshold` closes a goal `IsHighlyAbundant (lcmRange n)`.
+`eB : lcmRange n = B` and `eg : σ₁ (lcmRange n) = g` supply the literals `B`, `g`;
+`threshold` is the `w_certs_auto` subtree-size bound. The root children are
+computed meta-side, emitted as a named auxiliary `def` (`kids`), and three aux
+lemmas (`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and
+combined via `ha_lcm_compose_bridge`. No inline `kids` list appears at the call site. -/
+elab "ha_lcm_compose" eBStx:term:max egStx:term:max thr:num : tactic => do
+  let threshold := thr.getNat
+  let eBexpr ← instantiateMVars (← elabTerm eBStx none)
+  let egexpr ← instantiateMVars (← elabTerm egStx none)
+  let eBty ← instantiateMVars (← inferType eBexpr)
+  let egty ← instantiateMVars (← inferType egexpr)
+  let some (_, lhsB, BExpr) := eBty.eq?
+    | throwError "first argument must prove `lcmRange n = B`, got: {← Meta.ppExpr eBty}"
+  let_expr lcmRange nExpr := lhsB
+    | throwError "first argument's LHS must be `lcmRange n`, got: {← Meta.ppExpr lhsB}"
+  let some Bval := BExpr.nat?
+    | throwError "`B` is not a `Nat` literal: {← Meta.ppExpr BExpr}"
+  let some (_, _, gExpr) := egty.eq?
+    | throwError "second argument must prove `σ₁ (lcmRange n) = g`, got: {← Meta.ppExpr egty}"
+  let some gval := gExpr.nat?
+    | throwError "`g` is not a `Nat` literal: {← Meta.ppExpr gExpr}"
+  liftMetaFinishingTactic fun g => do
+    let ce := mkCommonExprs
+    let fuel := mkConst ``Sage.searchFuel
+    let some rootKidsList := Sage.children Bval gval 1 0
+      | throwError "Sage.children returned none for root ({gval}, 1, 0)"
+    let rootKids := rootKidsList.toArray
+    -- (3) `kids` as a named auxiliary definition (never inlined below).
+    let listTy := mkApp (mkConst ``List [.zero]) ce.nodeTy
+    let mut kidsListExpr := ce.nilExpr
+    for (a, b, d) in rootKids.reverse do
+      kidsListExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy (nodeExpr a b d) kidsListExpr
+    let kidsName ← mkAuxDeclName `kids
+    let kidsE ← mkAuxDefinition kidsName listTy kidsListExpr (compile := false)
+    -- (4) `hcs : WCerts B kids` via the auto chain.
+    let kidExprs := rootKids.map fun (a, b, d) => nodeExpr a b d
+    let chain ← buildWCertsAutoChain ce BExpr fuel Bval kidExprs rootKids threshold
+    let wcertsTy := mkApp2 (mkConst ``Sage.WCerts) BExpr kidsE
+    let hcs := mkConst (← mkAuxLemma [] wcertsTy chain)
+    -- (5) `childrenK` `Bool` cert: `childrenKBeqCert B g 1 0 kids = true` by `Eq.refl`.
+    let boolTy := mkConst ``Bool
+    let trueExpr := mkConst ``Bool.true
+    let cbcApp := mkAppN (mkConst ``Sage.childrenKBeqCert)
+      #[BExpr, gExpr, mkNatLit 1, mkNatLit 0, kidsE]
+    let cbcTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
+    let cbcVal := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
+    let hch := mkConst (← mkAuxLemma [] cbcTy cbcVal)
+    -- (6) `hsL : 2 ≤ g` via `Nat.le_of_ble_eq_true` + a `Nat.ble 2 g = true` cert.
+    let bleApp := mkApp2 (mkConst ``Nat.ble) (mkNatLit 2) gExpr
+    let bleTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
+    let bleVal := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
+    let hsL := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) gExpr
+      (mkConst (← mkAuxLemma [] bleTy bleVal))
+    -- (7) assemble via the bridge (transports literal certs to `lcmRange n` form).
+    g.assign <| mkAppN (mkConst ``Sage.ha_lcm_compose_bridge)
+      #[nExpr, BExpr, gExpr, kidsE, eBexpr, egexpr, hsL, hch, hcs]
 
 /-! ### Sanity tests -/
 
