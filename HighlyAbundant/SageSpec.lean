@@ -354,8 +354,7 @@ private theorem extend_window_invariant {fuel m g front back lhs rhs b lhs' rhs'
     (hfront : front ≤ back + 1)
     (heq : extend fuel (m * m) front back lhs rhs = Wheel.window b lhs' rhs') :
     lhs' = m * primesProd front b ∧ rhs' = g * primesProdM1 front b ∧
-    back ≤ b ∧ front ≤ b := by
-  fun_induction extend with grind
+    back ≤ b ∧ front ≤ b := by fun_induction extend with grind
 
 /-! ### Degenerate case: `lhs = 0` -/
 
@@ -386,8 +385,7 @@ private theorem expChildren_step (hfuel : 1 ≤ fuel) (hpkm : pk ≤ m)
     (hsig_lt : (pk * p - 1) / (p - 1) < g) :
     expChildren fuel g a next m p pk =
       (ceilDiv g ((pk * p - 1) / (p - 1)), a * pk, next) ::
-      expChildren (fuel - 1) g a next m p (pk * p) := by
-  fun_induction expChildren with grind
+      expChildren (fuel - 1) g a next m p (pk * p) := by fun_induction expChildren with grind
 
 /-- One step of `expChildren` when `pk ≤ m` and `σ(pk) ≥ g` (final child). -/
 private theorem expChildren_stop (hfuel : 1 ≤ fuel) (hpkm : pk ≤ m)
@@ -647,12 +645,9 @@ theorem W_eq_empty_of_partial {B g a minIdx : ℕ} {cs : List (ℕ × ℕ × ℕ
   rw [Set.eq_empty_iff_forall_notMem]
   intro t ht
   obtain rfl | h1 := eq_or_ne t 1
-  · obtain ⟨_, _, hle⟩ := ht
-    simp at hle
-    omega
+  · grind [sigma_one]
   · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
-    rw [hcs c hc] at hwc
-    exact hwc.ne_empty rfl
+    grind [Set.not_nonempty_iff_eq_empty]
 
 /-- If the root witness set is empty, `lcm(1..n)` is highly abundant. -/
 theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}

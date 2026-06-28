@@ -72,7 +72,7 @@ private lemma sigma_lcmRange_aux (n : ℕ) {sL : ℕ}
     (h : sigmaLcmRangeList n = sL) :
     σ₁ (lcmRange n) = sL := by
   have : lcmRange n = Nat.lcmUpto n := rfl
-  rw [this, sigma_lcmUpto_eq]; exact h
+  rw [this, sigma_lcmUpto_eq, h]
 
 /-! ### Prime powers below `64` -/
 

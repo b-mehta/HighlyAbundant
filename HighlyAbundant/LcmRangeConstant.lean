@@ -47,8 +47,7 @@ theorem lcmRange_eq_of_no_primePow_mem {m n : ℕ} (hmn : m ≤ n)
 /-- Highly-abundant-ness transfers across a block with no prime power in `(m, n]`. -/
 theorem isHighlyAbundant_lcmRange_of_le {m n : ℕ} (hmn : m ≤ n)
     (h : ∀ q, IsPrimePow q → m < q → n < q) (hm : IsHighlyAbundant (lcmRange m)) :
-    IsHighlyAbundant (lcmRange n) := by
-  rwa [lcmRange_eq_of_no_primePow_mem hmn h] at hm
+    IsHighlyAbundant (lcmRange n) := by rwa [lcmRange_eq_of_no_primePow_mem hmn h] at hm
 
 /-- Transfer `IsHighlyAbundant (lcmRange ·)` along a block given as a finite gap condition on
 `Finset.Ioc m n`. This form is dischargeable by `decide` for concrete `m`, `n`. -/

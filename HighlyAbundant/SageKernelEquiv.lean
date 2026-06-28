@@ -134,15 +134,13 @@ to the corresponding `children = some (cs.map fromSageNode)` cert (spec form). -
 private theorem children_of_childrenK {B target num minIdx : Nat} {cs : List SageNode}
     (hch : childrenK B target num minIdx = some cs) :
     children B target num minIdx = some (cs.map fromSageNode) := by
-  have := childrenK_eq_children B target num minIdx
-  rw [hch] at this; simpa using this.symm
+  simpa [hch] using (childrenK_eq_children B target num minIdx).symm
 
 /-- Translate a `childrenK = none` cert to `children = none`. -/
 private theorem children_of_childrenK_none {B target num minIdx : Nat}
     (hch : childrenK B target num minIdx = none) :
     children B target num minIdx = none := by
-  have := childrenK_eq_children B target num minIdx
-  rw [hch] at this; simpa using this.symm
+  simpa [hch] using (childrenK_eq_children B target num minIdx).symm
 
 theorem stepK_eq_step (B fuel : Nat) (xs : List SageNode) :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
@@ -189,8 +187,7 @@ theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List SageNode}
   refine highlyAbundantLcm_correct_partial (cs := cs.map fromSageNode) hsL
     (children_of_childrenK hch) ?_
   intro c' hc'
-  rw [List.mem_map] at hc'
-  obtain ⟨c, hc, rfl⟩ := hc'
+  obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
   simpa using (stepK_eq_step _ _ _).symm.trans (hcs c hc)
 
 /-- Kernel-flavoured `W = ∅` recursive split: same as `W_eq_empty_of_partial`
@@ -203,8 +200,7 @@ theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List SageNode}
   refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hg
     (children_of_childrenK hch) ?_
   intro c' hc'
-  rw [List.mem_map] at hc'
-  obtain ⟨c, hc, rfl⟩ := hc'
+  obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
   simpa [fromSageNode] using hcs c hc
 
 /-- Kernel-flavoured W-based partial verification: takes `W = ∅` for each root
@@ -217,8 +213,7 @@ theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
   refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL
     (children_of_childrenK hch) ?_
   intro c' hc'
-  rw [List.mem_map] at hc'
-  obtain ⟨c, hc, rfl⟩ := hc'
+  obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
   simpa [fromSageNode] using hcs c hc
 
 end Sage
