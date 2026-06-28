@@ -1,4 +1,5 @@
 import HighlyAbundant.Basic
+import HighlyAbundant.LcmRangeConstant
 import HighlyAbundant.ClimbLadder
 import HighlyAbundant.HA256
 import HighlyAbundant.LcmRangeProofs
