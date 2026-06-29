@@ -11,9 +11,7 @@ import HighlyAbundant.IsHA.SageKernelBeq
 /-!
 # Kernel certificate for `IsHighlyAbundant (lcmRange 125)`
 
-Proved via `ha_lcm_compose`, which expands the root of the Sage search into its
-children, discharges each child's witness set with `w_certs_auto`, and combines
-them through `highlyAbundantLcm_correct_partialK_W`.
+Proof that `lcmRange 125` is highly abundant, closed by the `ha_lcm_compose` tactic.
 -/
 
 namespace Sage
