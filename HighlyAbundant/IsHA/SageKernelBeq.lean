@@ -8,18 +8,18 @@ import HighlyAbundant.IsHA.SageKernel
 import Lean.Elab.Tactic.Basic
 
 /-!
-# Kernel-cheap equality check for child lists
+# Bool-valued equality check for child lists
 
 Proving `childrenK … = some kids` with `decide +kernel` routes the comparison
 through `DecidableEq → Nat.decEq` and the proof-carrying `Eq.rec`/`Eq.ndrec`
-machinery, which the kernel reduces *without* the GMP `Nat` fast-path. On the
-large numbers here that scales catastrophically (n=137: ~1527 s) even though
-reducing `childrenK` itself is cheap (~28 ms).
+machinery, which the kernel reduces without the GMP `Nat` fast-path. On the
+large numbers here that is far slower than reducing `childrenK` itself, even
+though that reduction is cheap.
 
 Instead we compare with a structural `Bool` check built from `Nat.beq` (kernel
-GMP-native) and `Bool.and'` (a single `Bool.rec`, cheaper than `Bool.and`'s
-`match`), discharged by `Lean.reflBoolTrue` via the `quickRfl` tactic. The check
-reduces in milliseconds. `childrenK_eq_of_beq` converts the `Bool` result back to
+GMP-native) and `Bool.and'` (a single `Bool.rec` rather than `Bool.and`'s
+`match`), discharged by `Lean.reflBoolTrue` via the `quickRfl` tactic.
+`childrenK_eq_of_beq` converts the `Bool` result back to
 the propositional equality the correctness lemmas need; it is proved once,
 abstractly, so applying it per-`n` re-runs no kernel reduction.
 
@@ -30,14 +30,14 @@ that use it stay independent of mathlib's elaboration cost.
 namespace Sage
 
 /-- Structural beq on `SageNode` via `Nat.beq` (kernel GMP-native) and `Bool.and'`.
-Deliberately *not* a `BEq` instance: `BEq Nat`/`BEq SageNode` resolve to
+Deliberately not a `BEq` instance: `BEq Nat`/`BEq SageNode` resolve to
 `instBEqOfDecidableEq`, i.e. `fun a b => decide (a = b)`, which drags the whole
 `DecidableEq` machinery back in. -/
 noncomputable def SageNode.beq (a b : SageNode) : Bool :=
   Bool.and' (a.target.beq b.target) (Bool.and' (a.num.beq b.num) (a.minIdx.beq b.minIdx))
 
 /-- Pointwise `SageNode.beq` over two lists, via `List.rec` directly (no equation
-compiler), so the kernel sees only `List.rec` — no `.match_1`/`._f` aux. -/
+compiler), so the kernel sees only `List.rec`, with no `.match_1`/`._f` aux. -/
 noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
   fun xs ↦ xs.rec
     (fun ys ↦ ys.rec true (fun _ _ _ ↦ false))
@@ -70,9 +70,9 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
       rw [he, and'_eq_true] at h
       rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
-/-- Convert the kernel-cheap `Bool` check back to the propositional equality the
+/-- Convert the `Bool` check back to the propositional equality the
 correctness lemmas consume. Abstract over the arguments, so per-`n` application
-re-runs no kernel reduction — the `childrenK` reduction happens once, inside the
+re-runs no kernel reduction: the `childrenK` reduction happens once, inside the
 `quickRfl`-proved hypothesis. -/
 theorem childrenK_eq_of_beq {B target num minIdx : Nat} {kids : List SageNode}
     (h : (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids) = true) :

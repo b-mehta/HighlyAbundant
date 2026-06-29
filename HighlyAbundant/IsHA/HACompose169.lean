@@ -13,9 +13,9 @@ import HighlyAbundant.IsHA.HACompose169b
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 169)`
 
-The root-level partial form (one big `stepK` per child of the root) does NOT
-fit in CI's 7 GB — empirically the heaviest root-children have subtree sizes
-of 200k–870k nodes. We use `w_certs_auto 10000`: any node whose subtree exceeds
+The root-level partial form (one big `stepK` per child of the root) does not
+fit in CI's 7 GB. Empirically the heaviest root-children have subtree sizes
+of 200k to 870k nodes. We use `w_certs_auto 10000`: any node whose subtree exceeds
 10000 nodes is expanded one level via `childrenK`, recursing until every leaf
 cert fits the budget. The children are split across `HACompose169a`/`169b` so
 the kernel work runs as two parallel modules.

@@ -14,10 +14,10 @@ import HighlyAbundant.IsHA.SageKernelBeq
 leaf-level kernel certificates (`stepK [c] = some true`) with the recursive-split
 lemma `W_eq_empty_of_partialK` for heavy children.
 
-- `w_certs_auto <threshold>` — closes `WCerts B kids`: any child whose subtree
+- `w_certs_auto <threshold>` closes `WCerts B kids`: any child whose subtree
   exceeds `threshold` nodes is expanded one level via `childrenK`, recursing until
   every leaf cert fits.
-- `ha_lcm_compose eB eg <threshold>` — closes `IsHighlyAbundant (lcmRange n)`
+- `ha_lcm_compose eB eg <threshold>` closes `IsHighlyAbundant (lcmRange n)`
   directly: emits the root children as an auxiliary `kids` def, builds the `WCerts`
   proof via the same auto heuristic, and combines with the `childrenK` cert.
 -/
@@ -41,7 +41,7 @@ theorem w_certs_cons {B : Nat} {x : SageNode} {xs : List SageNode}
   | .head _ => h
   | .tail _ hc' => hs c hc'
 
-/-- Combine certificates for two sublists, so a heavy `WCerts B kids` proof can be
+/-- Combine certificates for two sublists, so a large `WCerts B kids` proof can be
 split across files (each proving `WCerts B` for an in-order slice) and built in
 parallel, then recombined via `kids = xs ++ ys`. -/
 theorem w_certs_append {B : Nat} {xs ys : List SageNode}
@@ -216,8 +216,9 @@ elab "w_certs_auto" sz:num : tactic =>
 
 /-! ### One-shot composition tactic `ha_lcm_compose`
 
-Replaces the explicit `kids`-list + `WCerts` + `childrenK` + main-theorem boilerplate
-(as in `HACompose89`) with a single invocation on a goal `IsHighlyAbundant (lcmRange n)`.
+Closes a goal `IsHighlyAbundant (lcmRange n)` in one invocation: it emits the root
+children as an aux def, builds the `WCerts` proof, and combines with the
+`childrenK` cert.
 -/
 
 /-- Lambda-free `Bool` predicate hiding the `Option.elim`/`fun cs ↦ …` binder of
@@ -307,9 +308,9 @@ private def kids_test_n8 : List SageNode :=
   [⟨960, 2, 1⟩, ⟨412, 4, 1⟩, ⟨192, 8, 1⟩, ⟨93, 16, 1⟩, ⟨46, 32, 1⟩, ⟨23, 64, 1⟩,
    ⟨12, 128, 1⟩, ⟨6, 256, 1⟩, ⟨3, 512, 1⟩]
 
-/-- Auto-heuristic path: threshold 50 — any child with subtree > 50 nodes is
-expanded recursively. Just exercises the auto codepath; n=8 children are all
-small so this picks up a few recursions deep. -/
+/-- Auto-heuristic path: threshold 50. Any child with subtree > 50 nodes is
+expanded recursively. Exercises the auto codepath; n=8 children are all
+small, so it recurses only a few levels deep. -/
 private example : WCerts 840 kids_test_n8 := by w_certs_auto 50
 
 end Sage

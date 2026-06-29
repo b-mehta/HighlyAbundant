@@ -177,8 +177,8 @@ def lcmData (n : ℕ) : ℕ × ℕ :=
       let e := Nat.log p n
       (acc.1 * p ^ e, acc.2 * ((p ^ (e + 1) - 1) / (p - 1)))) (1, 1)
 
-/-- Kernel-flavoured partial verification: take the K-versions of `children` and
-`step` to drive `highlyAbundantLcm_correct_partial`. -/
+/-- Partial verification using the K-versions of `children` and `step`
+(`childrenK`/`stepK`) to drive `highlyAbundantLcm_correct_partial`. -/
 theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List SageNode}
     (hsL : 2 ≤ σ₁ (lcmRange n))
     (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
@@ -190,8 +190,8 @@ theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List SageNode}
   obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
   simpa using (stepK_eq_step _ _ _).symm.trans (hcs c hc)
 
-/-- Kernel-flavoured `W = ∅` recursive split: same as `W_eq_empty_of_partial`
-but with `childrenK` in place of `children`. -/
+/-- `W = ∅` recursive split phrased with `childrenK`: from `W = ∅` on each child
+of a node, conclude `W = ∅` on the node itself. -/
 theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List SageNode}
     (hg : 2 ≤ g)
     (hch : childrenK B g a minIdx = some cs)
@@ -203,8 +203,8 @@ theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List SageNode}
   obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
   simpa [fromSageNode] using hcs c hc
 
-/-- Kernel-flavoured W-based partial verification: takes `W = ∅` for each root
-child, allowing the metaprogram to recursively expand heavy children. -/
+/-- `W`-based partial verification using `childrenK`: takes `W = ∅` for each root
+child, so the metaprogram can expand large children recursively. -/
 theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
     (hsL : 2 ≤ σ₁ (lcmRange n))
     (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)

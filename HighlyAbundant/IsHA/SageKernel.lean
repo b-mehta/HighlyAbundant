@@ -7,17 +7,17 @@ Authors: Bhavik Mehta
 import HighlyAbundant.IsHA.Sage
 
 /-!
-# Kernel-friendly versions of the decider functions
+# Kernel-reducible versions of the decider functions
 
-These mirror the definitions in `HighlyAbundant.Sage` but are written using
-`Nat.rec`, `Bool.rec`, `Nat.ble`, `Nat.blt`, etc. — primitives the kernel can
-reduce without unfolding `Decidable` instances. Equivalence with the original
+These mirror the definitions in `HighlyAbundant.Sage` but are written using primitives the
+kernel can reduce without unfolding `Decidable` instances: `Nat.rec`, `Bool.rec`, `Nat.ble`,
+`Nat.blt`, and so on. Equivalence with the original
 definitions lives in `HighlyAbundant.SageKernelEquiv`.
 
 Search-tree nodes are represented as a flat 3-field `SageNode` struct rather
 than `(Nat × Nat × Nat)`. The kernel destructures a `SageNode` with one
-`SageNode.rec` rather than two nested `Prod.rec`, cutting structural overhead
-during proof checking. The spec form in `HighlyAbundant.Sage` stays on
+`SageNode.rec` rather than two nested `Prod.rec`; this reduces structural work
+during checking. The spec form in `HighlyAbundant.Sage` stays on
 `Nat × Nat × Nat`; the equivalence file bridges the two.
 -/
 
@@ -37,7 +37,7 @@ def toSageNode (p : Nat × Nat × Nat) : SageNode := ⟨p.1, p.2.1, p.2.2⟩
 /-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
 def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.target, n.num, n.minIdx)
 
-/-- Kernel-friendly list append using `List.rec` directly, avoiding the
+/-- List append via `List.rec` directly, avoiding the
 brecOn/match_1 machinery that `List.append` would unfold. -/
 noncomputable def appendK {α : Type _} (xs ys : List α) : List α :=
   xs.rec ys fun x _ ih ↦ x :: ih

@@ -10,7 +10,7 @@ namespace Sage
 
 /-- Heaviest in-order slice (children 1-10, ~53% of subtree weight) of n=169's
 root children; the rest are in `HACompose169b`. Split so the two halves' `WCerts`
-proofs build in parallel (n=169 was a ~70min serial bottleneck). -/
+proofs build in parallel; n=169 is the heaviest module. -/
 def kids169a : List SageNode := [
   ⟨124955919200380039504201170894328283896527456577641592110207467520000000000, 2, 1⟩,
   ⟨53552536800162874073229073240426407384226052818989253761517486080000000000, 4, 1⟩,

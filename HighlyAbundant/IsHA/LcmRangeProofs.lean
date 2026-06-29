@@ -13,7 +13,7 @@ import Mathlib.NumberTheory.Chebyshev
 For each `n` proved highly abundant in the `HACompose<n>` files, this file pins
 `lcmRange n` and `σ₁ (lcmRange n)` to their literal natural numbers.
 
-`lcmRange n = <literal>` reduces cleanly in the kernel via `decide +kernel`.
+`lcmRange n = <literal>` reduces in the kernel via `decide +kernel`.
 For `σ₁ (lcmRange n) = <literal>`, evaluating `σ₁` directly is infeasible
 (a divisor enumeration over a 70-digit number), so we rewrite through
 `Nat.lcmUpto_eq_prod_pow_log` plus σ₁ multiplicativity to turn the goal
