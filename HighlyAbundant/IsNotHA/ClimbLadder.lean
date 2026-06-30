@@ -4,9 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.PrepareLadder
+import HighlyAbundant.IsNotHA.PrepareLadder
 import HighlyAbundant.SetupPrimes
-import HighlyAbundant.HA256
+import HighlyAbundant.IsNotHA.HA256
 
 theorem chunk1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
 [71, 78];{2: 2, 3: 1, 5: 1, 79: 1};{67: 1, 71: 1},
