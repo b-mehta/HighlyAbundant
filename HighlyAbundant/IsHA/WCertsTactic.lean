@@ -229,12 +229,12 @@ theorem ha_lcm_compose_bridge {n B g : ℕ} {cs : List SageNode}
 computed meta-side, emitted as a named auxiliary `def` (`kids`), and three aux
 lemmas (`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and
 combined via `ha_lcm_compose_bridge`. No inline `kids` list appears at the call site. -/
-elab "ha_lcm_compose" eBStx:term:max egStx:term:max thr:num : tactic => do
+elab "ha_lcm_compose" eBStx:ident egStx:ident thr:num : tactic => do
   let threshold := thr.getNat
-  let eBexpr ← instantiateMVars (← elabTerm eBStx none)
-  let egexpr ← instantiateMVars (← elabTerm egStx none)
-  let eBty ← instantiateMVars (← inferType eBexpr)
-  let egty ← instantiateMVars (← inferType egexpr)
+  let eBexpr := mkConst (← resolveGlobalConstNoOverload eBStx)
+  let egexpr := mkConst (← resolveGlobalConstNoOverload egStx)
+  let eBty ← inferType eBexpr
+  let egty ← inferType egexpr
   let some (_, lhsB, BExpr) := eBty.eq?
     | throwError "first argument must prove `lcmRange n = B`, got: {← Meta.ppExpr eBty}"
   let_expr lcmRange nExpr := lhsB
