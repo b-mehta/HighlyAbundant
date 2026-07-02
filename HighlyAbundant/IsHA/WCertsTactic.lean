@@ -86,29 +86,24 @@ private def nodeExpr (t n m : Nat) : Expr :=
 /-- Common Exprs cached for chain construction. -/
 private structure CommonExprs where
   nodeTy : Expr
-  optBool : Expr
-  someTrue : Expr
   nilExpr : Expr
-  certValue : Expr
+  boolTy : Expr
+  trueExpr : Expr
 
 private def mkCommonExprs : CommonExprs :=
   let nodeTy := mkConst ``Sage.SageNode
-  let optBool := mkApp (mkConst ``Option [.zero]) (mkConst ``Bool)
-  let someTrue :=
-    mkApp2 (mkConst ``Option.some [.zero]) (mkConst ``Bool) (mkConst ``Bool.true)
   let nilExpr := mkApp (mkConst ``List.nil [.zero]) nodeTy
-  let certValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optBool someTrue
-  { nodeTy, optBool, someTrue, nilExpr, certValue }
+  { nodeTy, nilExpr, boolTy := mkConst ``Bool, trueExpr := mkConst ``Bool.true }
 
-/-- Build a leaf `W B c.target c.num c.minIdx = ∅` witness for child `c`:
-kernel-reduce `stepK B searchFuel [c] = some true`, then apply
-`W_eq_empty_of_stepK_singleton`. -/
+/-- Build a leaf `W B c.target c.num c.minIdx = ∅` witness for child `c`: a `Bool`
+cert `stepKSingletonBeqCert B searchFuel c = true` discharged by `Lean.reflBoolTrue`,
+converted to `stepK B searchFuel [c] = some true`, then `W_eq_empty_of_stepK_singleton`. -/
 private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
-  let singletonC := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy c ce.nilExpr
-  let stepKApp := mkAppN (mkConst ``Sage.stepK) #[B, fuel, singletonC]
-  let certType := mkApp3 (mkConst ``Eq [.succ .zero]) ce.optBool stepKApp ce.someTrue
-  let auxName ← mkAuxLemma [] certType ce.certValue
-  let stepKWitness := mkConst auxName
+  let beqApp := mkAppN (mkConst ``Sage.stepKSingletonBeqCert) #[B, fuel, c]
+  let certType := mkApp3 (mkConst ``Eq [.succ .zero]) ce.boolTy beqApp ce.trueExpr
+  let auxName ← mkAuxLemma [] certType Lean.reflBoolTrue
+  let stepKWitness :=
+    mkAppN (mkConst ``Sage.stepK_singleton_of_beqCert) #[B, fuel, c, mkConst auxName]
   return mkApp4 (mkConst ``Sage.W_eq_empty_of_stepK_singleton) B fuel c stepKWitness
 
 /-! ### Auto-heuristic recursive expansion -/
@@ -162,19 +157,15 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     let boolTy := mkConst ``Bool
     let trueExpr := mkConst ``Bool.true
     let bleType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
-    let bleValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
-    let bleName ← mkAuxLemma [] bleType bleValue
+    let bleName ← mkAuxLemma [] bleType Lean.reflBoolTrue
     let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr (mkConst bleName)
-    let childrenKApp := mkAppN (mkConst ``Sage.childrenK) #[B, tExpr, nExpr, mExpr]
-    let optListTy := mkApp (mkConst ``Option [.zero])
-      (mkApp (mkConst ``List [.zero]) ce.nodeTy)
-    let someGrandchildren := mkApp2 (mkConst ``Option.some [.zero])
-      (mkApp (mkConst ``List [.zero]) ce.nodeTy) xsExpr
-    let hchType := mkApp3 (mkConst ``Eq [.succ .zero]) optListTy childrenKApp someGrandchildren
-    let hchValue := mkApp2 (mkConst ``Eq.refl [.succ .zero]) optListTy someGrandchildren
-    let hchName ← mkAuxLemma [] hchType hchValue
+    let cbcApp := mkAppN (mkConst ``Sage.childrenKBeqCert) #[B, tExpr, nExpr, mExpr, xsExpr]
+    let cbcType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
+    let cbcName ← mkAuxLemma [] cbcType Lean.reflBoolTrue
+    let hch := mkAppN (mkConst ``Sage.childrenKBeqCert_eq_some)
+      #[B, tExpr, nExpr, mExpr, xsExpr, mkConst cbcName]
     return mkAppN (mkConst ``Sage.W_eq_empty_of_partialK)
-      #[B, tExpr, nExpr, mExpr, xsExpr, twoLeT, mkConst hchName, grandchildrenChain]
+      #[B, tExpr, nExpr, mExpr, xsExpr, twoLeT, hch, grandchildrenChain]
 
 /-- Build a `WCerts B <kidExprs>` proof via the auto-heuristic: each child's
 `W = ∅` witness is built by `buildWWitnessAuto` (expanding as deep as the
@@ -220,17 +211,6 @@ Closes a goal `IsHighlyAbundant (lcmRange n)` in one invocation: it emits the ro
 children as an aux def, builds the `WCerts` proof, and combines with the
 `childrenK` cert.
 -/
-
-/-- Lambda-free `Bool` predicate hiding the `Option.elim`/`fun cs ↦ …` binder of
-`childrenK_eq_of_beq`'s hypothesis, so the metaprogram can build the cert type
-without constructing a lambda. The kernel unfolds this to the `elim` form. -/
-noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) : Bool :=
-  (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids)
-
-theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
-    (h : childrenKBeqCert B target num minIdx kids = true) :
-    childrenK B target num minIdx = some kids :=
-  childrenK_eq_of_beq h
 
 /-- Bridges the literal-`B`/`g`-phrased certificates produced by `ha_lcm_compose`
 to the `lcmRange n`/`σ₁ (lcmRange n)` form that
@@ -283,20 +263,18 @@ elab "ha_lcm_compose" eBStx:term:max egStx:term:max thr:num : tactic => do
     let chain ← buildWCertsAutoChain ce BExpr fuel Bval kidExprs rootKids threshold
     let wcertsTy := mkApp2 (mkConst ``Sage.WCerts) BExpr kidsE
     let hcs := mkConst (← mkAuxLemma [] wcertsTy chain)
-    -- (5) `childrenK` `Bool` cert: `childrenKBeqCert B g 1 0 kids = true` by `Eq.refl`.
+    -- (5) `childrenK` `Bool` cert: `childrenKBeqCert B g 1 0 kids = true` by `reflBoolTrue`.
     let boolTy := mkConst ``Bool
     let trueExpr := mkConst ``Bool.true
     let cbcApp := mkAppN (mkConst ``Sage.childrenKBeqCert)
       #[BExpr, gExpr, mkNatLit 1, mkNatLit 0, kidsE]
     let cbcTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
-    let cbcVal := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
-    let hch := mkConst (← mkAuxLemma [] cbcTy cbcVal)
+    let hch := mkConst (← mkAuxLemma [] cbcTy Lean.reflBoolTrue)
     -- (6) `hsL : 2 ≤ g` via `Nat.le_of_ble_eq_true` + a `Nat.ble 2 g = true` cert.
     let bleApp := mkApp2 (mkConst ``Nat.ble) (mkNatLit 2) gExpr
     let bleTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
-    let bleVal := mkApp2 (mkConst ``Eq.refl [.succ .zero]) boolTy trueExpr
     let hsL := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) gExpr
-      (mkConst (← mkAuxLemma [] bleTy bleVal))
+      (mkConst (← mkAuxLemma [] bleTy Lean.reflBoolTrue))
     -- (7) assemble via the bridge (transports literal certs to `lcmRange n` form).
     g.assign <| mkAppN (mkConst ``Sage.ha_lcm_compose_bridge)
       #[nExpr, BExpr, gExpr, kidsE, eBexpr, egexpr, hsL, hch, hcs]
