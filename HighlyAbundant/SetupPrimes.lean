@@ -1,4 +1,4 @@
-import HighlyAbundant.IsNotHA.Prime.Prime
+import HighlyAbundant.Prime.Prime
 
 theorem Tactic.Prime.Nat.prime_1009 : Nat.Prime 1009 := by pratt
   [2, 3, 7, (1009, 11, [2, 3, 7])]

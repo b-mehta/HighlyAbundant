@@ -3,10 +3,10 @@ import HighlyAbundant.Characterization
 import HighlyAbundant.IsNotHA.ClimbLadder
 import HighlyAbundant.IsNotHA.HA256
 import HighlyAbundant.IsNotHA.PrepareLadder
-import HighlyAbundant.IsNotHA.SetupPrimes
-import HighlyAbundant.IsNotHA.Prime.PowMod
-import HighlyAbundant.IsNotHA.Prime.Pratt
-import HighlyAbundant.IsNotHA.Prime.Prime
+import HighlyAbundant.SetupPrimes
+import HighlyAbundant.Prime.PowMod
+import HighlyAbundant.Prime.Pratt
+import HighlyAbundant.Prime.Prime
 import HighlyAbundant.IsHA.Sage
 import HighlyAbundant.IsHA.SageKernel
 import HighlyAbundant.IsHA.SageKernelBeq

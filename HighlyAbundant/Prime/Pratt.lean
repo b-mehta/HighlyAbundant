@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.IsNotHA.Prime.PowMod
+import HighlyAbundant.Prime.PowMod
 import Mathlib.NumberTheory.LucasPrimality
 
 def pratt_predicate (p a x : ℕ) : Prop := ∀ q ∈ x.primeFactors, powMod a ((p - 1) / q) p ≠ 1

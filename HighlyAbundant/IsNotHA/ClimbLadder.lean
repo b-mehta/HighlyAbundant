@@ -5,7 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.IsNotHA.PrepareLadder
-import HighlyAbundant.IsNotHA.SetupPrimes
+import HighlyAbundant.SetupPrimes
 import HighlyAbundant.IsNotHA.HA256
 
 theorem chunk1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmRange i) := by ladder

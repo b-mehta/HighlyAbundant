@@ -5,7 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
-import HighlyAbundant.IsNotHA.SetupPrimes
+import HighlyAbundant.SetupPrimes
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Analysis.Normed.Field.Lemmas
 import Mathlib.Data.Int.Star
