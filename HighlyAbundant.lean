@@ -13,6 +13,8 @@ import HighlyAbundant.IsHA.SageKernelBeq
 import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageSpec
 import HighlyAbundant.IsHA.WCertsTactic
+import HighlyAbundant.IsHA.Primes
+import HighlyAbundant.IsHA.SigmaFactor
 import HighlyAbundant.IsHA.LcmRangeProofs
 import HighlyAbundant.IsHA.HAComposeSmall
 import HighlyAbundant.IsHA.HACompose67
