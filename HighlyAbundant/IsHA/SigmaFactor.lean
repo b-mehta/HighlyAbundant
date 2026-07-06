@@ -7,6 +7,8 @@ Authors: Bhavik Mehta
 import HighlyAbundant.Basic
 import HighlyAbundant.IsHA.Primes
 
+open Nat
+
 open ArithmeticFunction Lean Meta Elab Tactic
 
 namespace Sage

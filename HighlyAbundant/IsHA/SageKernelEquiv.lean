@@ -8,6 +8,8 @@ import HighlyAbundant.IsHA.SageKernel
 import HighlyAbundant.IsHA.SageSpec
 import Mathlib.Data.Nat.Log
 
+open Nat
+
 /-!
 # Equivalence of kernel-friendly and ordinary decider functions
 

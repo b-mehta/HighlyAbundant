@@ -8,6 +8,8 @@ import HighlyAbundant.IsNotHA.PrepareLadder
 import HighlyAbundant.SetupPrimes
 import HighlyAbundant.IsNotHA.HA256
 
+open Nat
+
 theorem chunk1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmUpto i) := by ladder
 [71, 78];{2: 2, 3: 1, 5: 1, 79: 1};{67: 1, 71: 1},
 [79, 80];{2: 5, 3: 1, 5: 1, 11: 1};{67: 1, 79: 1},

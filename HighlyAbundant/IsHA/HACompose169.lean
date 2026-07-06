@@ -10,6 +10,8 @@ import HighlyAbundant.IsHA.SageKernelBeq
 import HighlyAbundant.IsHA.HACompose169a
 import HighlyAbundant.IsHA.HACompose169b
 
+open Nat
+
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmUpto 169)`
 

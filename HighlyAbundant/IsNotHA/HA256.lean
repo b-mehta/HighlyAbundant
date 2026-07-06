@@ -31,7 +31,7 @@ open Nat ArithmeticFunction
   set L : ℕ := lcmUpto 256
   set K : ℕ := L / l
   set M : ℕ := m * K with hM
-  have hL₀ : 0 < L := lcmUpto_pos
+  have hL₀ : 0 < L := lcmUpto_pos _
   have hL : L = l * K := by decide +kernel
   have hLK : Nat.gcd l K = 1 := by decide +kernel
   have hMK : Nat.gcd m K = 1 := by decide +kernel

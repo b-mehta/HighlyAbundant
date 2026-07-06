@@ -14,14 +14,11 @@ import Mathlib.NumberTheory.Chebyshev
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
 
-`lcm (1..n)` is mathlib's `Nat.lcmUpto`, re-exported here so it can be named
-without qualification.
+`lcm (1..n)` is mathlib's `Nat.lcmUpto`.
 -/
 open Nat
 
 notation "σ₁" => ArithmeticFunction.sigma 1
-
-export Nat (lcmUpto)
 
 /-- Definition of highly abundant number -/
 def IsHighlyAbundant (N : ℕ) : Prop :=
@@ -79,8 +76,7 @@ lemma Nat.factorization_finsetLcm {α : Type*} {p : ℕ} {s : Finset α} {f : α
     rw [Finset.lcm_insert, lcm_eq_nat_lcm, Nat.factorization_lcm h.1 (by simpa using h.2)]
     simp only [Finset.sup_insert, Finsupp.sup_apply, ih h.2]
 
-@[simp, grind .] lemma lcmUpto_ne_zero {n : ℕ} : lcmUpto n ≠ 0 := by simp [Nat.lcmUpto]
-@[simp, grind .] lemma lcmUpto_pos {n : ℕ} : 0 < lcmUpto n := lcmUpto_ne_zero.bot_lt
+attribute [simp, grind .] Nat.lcmUpto_ne_zero Nat.lcmUpto_pos
 
 lemma dvd_lcmUpto_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmUpto n := by
   apply Finset.dvd_lcm
@@ -127,7 +123,7 @@ lemma factorization_lcmUpto_eq_one {p n : ℕ} (hp : p.Prime) (hpn : p ≤ n) (h
     simp
 
 lemma sq_not_dvd {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) : ¬ p ^ 2 ∣ lcmUpto n := by
-  rw [hp.pow_dvd_iff_le_factorization lcmUpto_ne_zero, not_le]
+  rw [hp.pow_dvd_iff_le_factorization (lcmUpto_ne_zero _), not_le]
   have := factorization_lcmUpto_le_one hp hnp
   lia
 

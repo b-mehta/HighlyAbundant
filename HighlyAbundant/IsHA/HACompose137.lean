@@ -8,6 +8,8 @@ import HighlyAbundant.IsHA.WCertsTactic
 import HighlyAbundant.IsHA.LcmRangeProofs
 import HighlyAbundant.IsHA.SageKernelBeq
 
+open Nat
+
 /-!
 # Kernel certificate for `IsHighlyAbundant (lcmUpto 137)`
 

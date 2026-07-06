@@ -7,6 +7,8 @@ Authors: Bhavik Mehta
 import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageKernelBeq
 
+open Nat
+
 /-!
 # `WCerts`, the `w_certs_auto` tactic, and `ha_lcm_compose`
 

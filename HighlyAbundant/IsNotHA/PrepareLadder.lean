@@ -13,6 +13,8 @@ import Mathlib.Data.Rat.Star
 import Mathlib.Tactic.LinearCombination
 import Mathlib.Tactic.Ring.Compare
 
+open Nat
+
 /-!
 # Helpers for formalising ladders
 -/
@@ -110,7 +112,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
   simp only [List.mem_toFinset]
   intro p hp
   have hpl : p ∈ (lcmUpto i).primeFactors := by
-    rw [Nat.mem_primeFactors_of_ne_zero lcmUpto_ne_zero]
+    rw [Nat.mem_primeFactors_of_ne_zero (lcmUpto_ne_zero _)]
     refine ⟨d.h_divs _ hp, ?_⟩
     exact dvd_lcmUpto_of_le (d.h_divs p hp).ne_zero
       (by have := d.h_divs_lo; grind)
@@ -123,7 +125,7 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
 lemma L_eq {i : ℕ} :
     lcmUpto i = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmUpto i).factorization pki.1) * d.K i := by
   conv_lhs =>
-    rw [← Nat.prod_factorization_pow_eq_self (n := lcmUpto i) lcmUpto_ne_zero, Finsupp.prod,
+    rw [← Nat.prod_factorization_pow_eq_self (n := lcmUpto i) (lcmUpto_ne_zero _), Finsupp.prod,
       Nat.support_factorization]
   rw [← Finset.prod_filter_mul_prod_filter_not (lcmUpto i).primeFactors (· ∈ d.muls.map (·.1)) _]
   change _ * d.K i = _
@@ -138,7 +140,7 @@ lemma L_eq {i : ℕ} :
     simp only [List.mem_toFinset] at hpki
     simp only [List.mem_map, Prod.exists, exists_and_right, exists_eq_right, Finset.mem_filter,
       Nat.mem_primeFactors, ne_eq]
-    refine ⟨⟨(d.h_muls _ hpki), ?_, lcmUpto_ne_zero⟩, _, _, hpki⟩
+    refine ⟨⟨(d.h_muls _ hpki), ?_, lcmUpto_ne_zero _⟩, _, _, hpki⟩
     exact Nat.dvd_of_factorization_pos (by intro h; simp [h] at h₂)
   · simp only [List.mem_toFinset, ne_eq, Nat.pow_eq_one, not_or, and_imp, Prod.forall]
     rintro p₁ k₁ i₁ hpki₁ hp₁ hLp₁ p₂ k₂ i₂ hpki₂ hp₂ hLp₂ rfl
@@ -196,7 +198,7 @@ lemma K_ne_zero {i : ℕ} : d.K i ≠ 0 := by
   rintro hK
   have := d.L_eq (i := i)
   rw [hK, mul_zero] at this
-  exact lcmUpto_ne_zero this
+  exact lcmUpto_ne_zero _ this
 
 lemma sigma_K_ne_zero {i : ℕ} : σ₁ (d.K i) ≠ 0 := by simp [d.K_ne_zero]
 
@@ -212,7 +214,7 @@ lemma prod_coprime_K {f : ℕ × ℕ × ℕ → ℕ} {i : ℕ} :
 
 lemma M_pos {i} (hi : i ∈ Finset.Icc d.lo d.hi) : 0 < d.M i := by
   rw [M]
-  apply Nat.mul_pos (Nat.div_pos (Nat.le_of_dvd (lcmUpto_pos) (d.div_dvd_L hi)) _) _
+  apply Nat.mul_pos (Nat.div_pos (Nat.le_of_dvd (lcmUpto_pos _) (d.div_dvd_L hi)) _) _
   · rw [div_eq]
     simp only [CanonicallyOrderedAdd.prod_pos, List.mem_toFinset]
     intro i hi
