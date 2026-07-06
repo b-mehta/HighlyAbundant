@@ -5,20 +5,54 @@ open ArithmeticFunction Lean Meta Elab Tactic
 
 namespace Sage
 
-/-- `∏ p^k` over a factorization list. -/
-def prodFactor (F : List (ℕ × ℕ)) : ℕ := (F.map (fun pk => pk.1 ^ pk.2)).prod
+/-- `∏ p^k` over a factorization list. Written with `List.rec` directly (rather
+than `List.map`/`List.prod`) so the kernel reduces it through `List.rec` alone. -/
+def prodFactor : List (ℕ × ℕ) → ℕ :=
+  List.rec 1 (fun pk _ r => pk.1 ^ pk.2 * r)
 /-- `∏ (p^(k+1) - 1)/(p - 1)` over a factorization list (the σ₁ closed form). -/
-def sigmaFactor (F : List (ℕ × ℕ)) : ℕ := (F.map (fun pk => (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1))).prod
+def sigmaFactor : List (ℕ × ℕ) → ℕ :=
+  List.rec 1 (fun pk _ r => (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r)
 /-- The primes of a factorization list. -/
-def primesFactor (F : List (ℕ × ℕ)) : List ℕ := F.map Prod.fst
+def primesFactor : List (ℕ × ℕ) → List ℕ :=
+  List.rec [] (fun pk _ r => pk.1 :: r)
 /-- Every prime in `F` passes the trial-division primality check. -/
-noncomputable def allCheckPrime (F : List (ℕ × ℕ)) : Bool := F.all (fun pk => ECCompute.checkPrime pk.1)
+noncomputable def allCheckPrime : List (ℕ × ℕ) → Bool :=
+  List.rec true (fun pk _ r => (ECCompute.checkPrime pk.1).and' r)
 
-lemma forall_prime_of_checkPrime {F : List (ℕ × ℕ)} (h : allCheckPrime F = true) :
-    ∀ pk ∈ F, pk.1.Prime := by
-  unfold allCheckPrime at h
-  intro pk hpk
-  exact ECCompute.checkPrime_true (List.all_eq_true.1 h pk hpk)
+lemma prodFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+    prodFactor (pk :: t) = pk.1 ^ pk.2 * prodFactor t := rfl
+lemma sigmaFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+    sigmaFactor (pk :: t) = (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * sigmaFactor t := rfl
+lemma primesFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+    primesFactor (pk :: t) = pk.1 :: primesFactor t := rfl
+lemma allCheckPrime_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+    allCheckPrime (pk :: t) = (ECCompute.checkPrime pk.1).and' (allCheckPrime t) := rfl
+
+lemma prodFactor_eq (F : List (ℕ × ℕ)) : prodFactor F = (F.map (fun pk => pk.1 ^ pk.2)).prod := by
+  induction F with
+  | nil => rfl
+  | cons pk t ih => rw [prodFactor_cons, ih, List.map_cons, List.prod_cons]
+
+lemma sigmaFactor_eq (F : List (ℕ × ℕ)) :
+    sigmaFactor F = (F.map (fun pk => (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1))).prod := by
+  induction F with
+  | nil => rfl
+  | cons pk t ih => rw [sigmaFactor_cons, ih, List.map_cons, List.prod_cons]
+
+lemma primesFactor_eq (F : List (ℕ × ℕ)) : primesFactor F = F.map Prod.fst := by
+  induction F with
+  | nil => rfl
+  | cons pk t ih => rw [primesFactor_cons, ih, List.map_cons]
+
+lemma forall_prime_of_checkPrime :
+    ∀ {F : List (ℕ × ℕ)}, allCheckPrime F = true → ∀ pk ∈ F, pk.1.Prime
+  | [], _ => by simp
+  | pk :: t, h => by
+    rw [allCheckPrime_cons, Bool.and'_eq_and, Bool.and_eq_true] at h
+    intro qk hqk
+    rcases List.mem_cons.1 hqk with rfl | hmem
+    · exact ECCompute.checkPrime_true h.1
+    · exact forall_prime_of_checkPrime h.2 qk hmem
 
 /-- `σ₁ (∏ p^k) = ∏ (p^(k+1)-1)/(p-1)` when the `p` are distinct primes. -/
 lemma sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ))
@@ -27,7 +61,7 @@ lemma sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ))
   have hpp := forall_prime_of_checkPrime hp
   clear hp
   subst hsig
-  unfold prodFactor sigmaFactor primesFactor at *
+  simp only [prodFactor_eq, sigmaFactor_eq, primesFactor_eq] at hd ⊢
   induction F with
   | nil => simp
   | cons pk t ih =>
@@ -43,7 +77,7 @@ lemma sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ))
       rw [Nat.coprime_primes hpk (hpp qk (List.mem_cons_of_mem _ hqk))]
       exact fun h => absurd (List.mem_map_of_mem hqk) (h ▸ hd1)
     rw [isMultiplicative_sigma.map_mul_of_coprime hcop, sigma_one_apply_prime_pow' hpk,
-      ih hd2 (fun q hq => hpp q (List.mem_cons_of_mem _ hq))]
+      ih (fun q hq => hpp q (List.mem_cons_of_mem _ hq)) hd2]
 
 /-- Bridge from a factorization of `L = lcmRange n` to `σ₁ (lcmRange n)`. -/
 lemma sigma_lcm_bridge {n L sL : ℕ} (F : List (ℕ × ℕ))
