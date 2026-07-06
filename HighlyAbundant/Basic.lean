@@ -9,9 +9,12 @@ import Mathlib.Algebra.GCDMonoid.Nat
 import Mathlib.Algebra.Order.Star.Basic
 import Mathlib.Data.Nat.Cast.Field
 import Mathlib.NumberTheory.ArithmeticFunction.Misc
+import Mathlib.NumberTheory.Chebyshev
 
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
+
+`lcm (1..n)` is mathlib's `Nat.lcmUpto`.
 -/
 open Nat
 
@@ -21,13 +24,10 @@ notation "σ₁" => ArithmeticFunction.sigma 1
 def IsHighlyAbundant (N : ℕ) : Prop :=
   ∀ m > 0, m < N → σ₁ m < σ₁ N
 
-/-- Definition of lcm of the range {1..n} -/
-def lcmRange (n : ℕ) : ℕ := (Finset.Icc 1 n).lcm id
-
-/- a few small examples of lcmRange -/
-example : lcmRange 1 = 1 := rfl
-example : lcmRange 2 = 2 := rfl
-example : lcmRange 6 = 60 := rfl
+/- a few small examples of lcmUpto -/
+example : lcmUpto 1 = 1 := rfl
+example : lcmUpto 2 = 2 := rfl
+example : lcmUpto 6 = 60 := rfl
 
 open ArithmeticFunction
 
@@ -76,21 +76,20 @@ lemma Nat.factorization_finsetLcm {α : Type*} {p : ℕ} {s : Finset α} {f : α
     rw [Finset.lcm_insert, lcm_eq_nat_lcm, Nat.factorization_lcm h.1 (by simpa using h.2)]
     simp only [Finset.sup_insert, Finsupp.sup_apply, ih h.2]
 
-@[simp, grind .] lemma lcmRange_ne_zero {n : ℕ} : lcmRange n ≠ 0 := by simp [lcmRange]
-@[simp, grind .] lemma lcmRange_pos {n : ℕ} : 0 < lcmRange n := lcmRange_ne_zero.bot_lt
+attribute [simp, grind .] Nat.lcmUpto_ne_zero Nat.lcmUpto_pos
 
-lemma dvd_lcmRange_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmRange n := by
+lemma dvd_lcmUpto_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmUpto n := by
   apply Finset.dvd_lcm
   grind
 
-lemma factorization_lcmRange {p n : ℕ} :
-    (lcmRange n).factorization p = Finset.sup (Finset.Icc 1 n) (fun i ↦ i.factorization p) := by
+lemma factorization_lcmUpto_sup {p n : ℕ} :
+    (lcmUpto n).factorization p = Finset.sup (Finset.Icc 1 n) (fun i ↦ i.factorization p) := by
   apply Nat.factorization_finsetLcm
   grind
 
-lemma factorization_lcmRange_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
-    (lcmRange n).factorization p ≤ k := by
-  simp only [factorization_lcmRange, Finset.sup_le_iff, Finset.mem_Icc, and_imp]
+lemma factorization_lcmUpto_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
+    (lcmUpto n).factorization p ≤ k := by
+  simp only [factorization_lcmUpto_sup, Finset.sup_le_iff, Finset.mem_Icc, and_imp]
   intro i hi hin
   suffices ¬ (k + 1 ≤ i.factorization p) by lia
   rw [← hp.pow_dvd_iff_le_factorization (by lia)]
@@ -98,32 +97,32 @@ lemma factorization_lcmRange_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Pri
   have := Nat.le_of_dvd (by lia) h
   lia
 
-lemma factorization_lcmRange_eq {n p k : ℕ} (h : p ^ k ≤ n) (h' : n < p ^ (k + 1)) (hp : p.Prime) :
-    (lcmRange n).factorization p = k := by
+lemma factorization_lcmUpto_eq {n p k : ℕ} (h : p ^ k ≤ n) (h' : n < p ^ (k + 1)) (hp : p.Prime) :
+    (lcmUpto n).factorization p = k := by
   apply le_antisymm
-  · apply factorization_lcmRange_le h' hp
+  · apply factorization_lcmUpto_le h' hp
   · rw [← hp.pow_dvd_iff_le_factorization (by simp)]
-    apply dvd_lcmRange_of_le (pow_ne_zero _ hp.ne_zero) h
+    apply dvd_lcmUpto_of_le (pow_ne_zero _ hp.ne_zero) h
 
-lemma factorization_lcmRange_le_one {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) :
-    (lcmRange n).factorization p ≤ 1 :=
-  factorization_lcmRange_le hnp hp
+lemma factorization_lcmUpto_le_one {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) :
+    (lcmUpto n).factorization p ≤ 1 :=
+  factorization_lcmUpto_le hnp hp
 
 lemma not_dvd_of_lt {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
-    ¬ p ^ (k + 1) ∣ lcmRange n := by
+    ¬ p ^ (k + 1) ∣ lcmUpto n := by
   rw [hp.pow_dvd_iff_le_factorization (by grind)]
-  have := factorization_lcmRange_le h' hp
+  have := factorization_lcmUpto_le h' hp
   lia
 
-lemma factorization_lcmRange_eq_one {p n : ℕ} (hp : p.Prime) (hpn : p ≤ n) (hnp : n < p ^ 2) :
-    (lcmRange n).factorization p = 1 := by
+lemma factorization_lcmUpto_eq_one {p n : ℕ} (hp : p.Prime) (hpn : p ≤ n) (hnp : n < p ^ 2) :
+    (lcmUpto n).factorization p = 1 := by
   apply le_antisymm
-  · apply factorization_lcmRange_le_one hp hnp
+  · apply factorization_lcmUpto_le_one hp hnp
   · rw [← hp.dvd_iff_one_le_factorization]
-    · exact dvd_lcmRange_of_le (by grind) hpn
+    · exact dvd_lcmUpto_of_le (by grind) hpn
     simp
 
-lemma sq_not_dvd {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) : ¬ p ^ 2 ∣ lcmRange n := by
-  rw [hp.pow_dvd_iff_le_factorization lcmRange_ne_zero, not_le]
-  have := factorization_lcmRange_le_one hp hnp
+lemma sq_not_dvd {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) : ¬ p ^ 2 ∣ lcmUpto n := by
+  rw [hp.pow_dvd_iff_le_factorization (lcmUpto_ne_zero _), not_le]
+  have := factorization_lcmUpto_le_one hp hnp
   lia
