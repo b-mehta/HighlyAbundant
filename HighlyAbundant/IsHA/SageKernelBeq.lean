@@ -25,9 +25,14 @@ abstractly, so applying it per-`n` re-runs no kernel reduction.
 
 This file imports only `HighlyAbundant.SageKernel`, so the per-`n` certificates
 that use it stay independent of mathlib's elaboration cost.
+
+The definitions come first, then the proofs relating them back to the `Option`
+forms the correctness lemmas consume.
 -/
 
 namespace Sage
+
+/-! ### Definitions -/
 
 /-- Structural beq on `SageNode` via `Nat.beq` (kernel GMP-native) and `Bool.and'`.
 Deliberately not a `BEq` instance: `BEq Nat`/`BEq SageNode` resolve to
@@ -43,10 +48,24 @@ noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
     (fun ys ↦ ys.rec true (fun _ _ _ ↦ false))
     (fun x _ ih ys ↦ ys.rec false (fun y ys' _ ↦ Bool.and' (SageNode.beq x y) (ih ys')))
 
+/-- Bool-valued form of the leaf certificate `stepK B fuel [c] = some true`, so
+the metaprogram can discharge it with `Lean.reflBoolTrue` on a `Bool = true` goal
+instead of `Eq.refl` on the `Option Bool` goal. -/
+noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
+  (stepK B fuel [c]).elim false (fun b ↦ b)
+
+/-- Lambda-free `Bool` predicate hiding the `Option.elim`/`fun cs ↦ …` binder of
+`childrenK_eq_of_beq`'s hypothesis, so the metaprogram builds the cert type without
+constructing a lambda. The kernel unfolds this to the `elim` form. -/
+noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) : Bool :=
+  (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids)
+
 /-- Discharge a `<bool expr> = true` goal by kernel reduction, via the
 `Lean.reflBoolTrue` certificate. -/
 elab "quickRfl" : tactic =>
   Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
+
+/-! ### Proofs -/
 
 theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b = true) : a = b := by
   unfold SageNode.beq at h
@@ -79,12 +98,6 @@ theorem childrenK_eq_of_beq {B target num minIdx : Nat} {kids : List SageNode}
   | none => rw [hc] at h; simp [Option.elim] at h
   | some cs => rw [hc] at h; simp only [Option.elim] at h; rw [sageListBeq_sound h]
 
-/-- Bool-valued form of the leaf certificate `stepK B fuel [c] = some true`, so
-the metaprogram can discharge it with `Lean.reflBoolTrue` on a `Bool = true` goal
-instead of `Eq.refl` on the `Option Bool` goal. -/
-noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
-  (stepK B fuel [c]).elim false (fun b ↦ b)
-
 /-- Convert the `Bool` leaf cert back to `stepK B fuel [c] = some true`, once and
 abstractly, so per-`c` application re-runs no kernel reduction. -/
 theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
@@ -93,12 +106,6 @@ theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
   cases hc : stepK B fuel [c] with
   | none => rw [hc] at h; simp [Option.elim] at h
   | some b => rw [hc] at h; simp only [Option.elim] at h; rw [h]
-
-/-- Lambda-free `Bool` predicate hiding the `Option.elim`/`fun cs ↦ …` binder of
-`childrenK_eq_of_beq`'s hypothesis, so the metaprogram builds the cert type without
-constructing a lambda. The kernel unfolds this to the `elim` form. -/
-noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) : Bool :=
-  (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids)
 
 theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
     (h : childrenKBeqCert B target num minIdx kids = true) :
