@@ -5,6 +5,7 @@ Authors: Bhavik Mehta
 -/
 import HighlyAbundant.Basic
 import HighlyAbundant.IsHA.Sage
+import HighlyAbundant.IsHA.Primes
 import Mathlib.Data.Nat.Log
 import Mathlib.Data.Nat.Nth
 import Mathlib.Data.Nat.Prime.Nth
@@ -92,7 +93,10 @@ def W (B g a minIdx : ℕ) : Set ℕ :=
 
 private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
     primesRArray.get i.val = nth Nat.Prime i.val := by
-  have hp : ∀ i : Fin 49, Nat.Prime (primesRArray.get i.val) := by decide +kernel
+  have hp : ∀ i : Fin 49, Nat.Prime (primesRArray.get i.val) := by
+    intro i
+    refine checkPrime_true ?_
+    fin_cases i <;> rfl
   rw [← nth_count (hp i)]
   congr 1
   decide +kernel +revert
