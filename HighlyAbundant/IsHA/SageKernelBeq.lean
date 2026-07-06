@@ -48,12 +48,9 @@ noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
 elab "quickRfl" : tactic =>
   Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
 
-theorem and'_eq_true {x y : Bool} : Bool.and' x y = true ↔ x = true ∧ y = true := by
-  cases x <;> cases y <;> simp [Bool.and']
-
 theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b = true) : a = b := by
   unfold SageNode.beq at h
-  rw [and'_eq_true, and'_eq_true] at h
+  simp only [Bool.and'_eq_and, Bool.and_eq_true] at h
   obtain ⟨at_, an, ai⟩ := a
   obtain ⟨bt, bn, bi⟩ := b
   obtain ⟨h1, h2, h3⟩ := h
@@ -67,7 +64,8 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
   | x :: xs, y :: ys, h => by
       have he : sageListBeq (x :: xs) (y :: ys)
           = Bool.and' (SageNode.beq x y) (sageListBeq xs ys) := rfl
-      rw [he, and'_eq_true] at h
+      rw [he] at h
+      simp only [Bool.and'_eq_and, Bool.and_eq_true] at h
       rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
 /-- Convert the `Bool` check back to the propositional equality the
