@@ -17,7 +17,7 @@ def primesFactor : List (ℕ × ℕ) → List ℕ :=
   List.rec [] (fun pk _ r => pk.1 :: r)
 /-- Every prime in `F` passes the trial-division primality check. -/
 noncomputable def allCheckPrime : List (ℕ × ℕ) → Bool :=
-  List.rec true (fun pk _ r => (ECCompute.checkPrime pk.1).and' r)
+  List.rec true (fun pk _ r => (checkPrime pk.1).and' r)
 
 lemma prodFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
     prodFactor (pk :: t) = pk.1 ^ pk.2 * prodFactor t := rfl
@@ -26,7 +26,7 @@ lemma sigmaFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
 lemma primesFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
     primesFactor (pk :: t) = pk.1 :: primesFactor t := rfl
 lemma allCheckPrime_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
-    allCheckPrime (pk :: t) = (ECCompute.checkPrime pk.1).and' (allCheckPrime t) := rfl
+    allCheckPrime (pk :: t) = (checkPrime pk.1).and' (allCheckPrime t) := rfl
 
 lemma prodFactor_eq (F : List (ℕ × ℕ)) : prodFactor F = (F.map (fun pk => pk.1 ^ pk.2)).prod := by
   induction F with
@@ -51,7 +51,7 @@ lemma forall_prime_of_checkPrime :
     rw [allCheckPrime_cons, Bool.and'_eq_and, Bool.and_eq_true] at h
     intro qk hqk
     rcases List.mem_cons.1 hqk with rfl | hmem
-    · exact ECCompute.checkPrime_true h.1
+    · exact checkPrime_true h.1
     · exact forall_prime_of_checkPrime h.2 qk hmem
 
 /-- `σ₁ (∏ p^k) = ∏ (p^(k+1)-1)/(p-1)` when the `p` are distinct primes. -/

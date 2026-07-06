@@ -22,7 +22,7 @@ certificate for the small label primes used by the rank certificates.
   `Nat.Prime n`.
 -/
 
-namespace ECCompute
+namespace Sage
 
 /-- Trial division as a `Bool`-valued fold: `passes x L = true` iff no `i ∈ L` with `i < x`
 divides `x`. -/
@@ -67,7 +67,7 @@ theorem _root_.Nat.prime_of_passes (n : ℕ) (h2 : 2 ≤ n) (h529 : n < 529)
   · omega
 
 /-- Kernel `Bool`: `p` is a prime below `529 = 23²`, certified by trial division by the primes below
-`23` (`ECCompute.passes`). -/
+`23` (`Sage.passes`). -/
 noncomputable def checkPrime (p : ℕ) : Bool :=
   (Nat.ble 2 p).and' ((Nat.ble p 528).and' (passes p [2, 3, 5, 7, 11, 13, 17, 19]))
 
@@ -76,4 +76,4 @@ theorem checkPrime_true {p : ℕ} (h : checkPrime p = true) : p.Prime := by
   obtain ⟨h2, hle, hpass⟩ := h
   exact Nat.prime_of_passes p h2 (by omega) hpass
 
-end ECCompute
+end Sage
