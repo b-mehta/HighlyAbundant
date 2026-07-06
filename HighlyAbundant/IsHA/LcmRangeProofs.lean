@@ -26,21 +26,22 @@ open Nat ArithmeticFunction
 
 namespace Sage
 
-/-- `List` form of `lcmRange n`: kernel reduces over `List.foldr Nat.lcm 1`. -/
-def lcmRangeList (n : ℕ) : ℕ := ((List.range' 1 n).map id).foldr Nat.lcm 1
+/-- Fold form of `lcmRange n`, computing the lcm over `List.foldr Nat.lcm 1`; the
+kernel reduces this cheaply. -/
+def lcmRangeFoldr (n : ℕ) : ℕ := (List.range' 1 n).foldr Nat.lcm 1
 
-lemma lcmRange_eq_lcmRangeList (n : ℕ) : lcmRange n = lcmRangeList n := by
-  rw [lcmRange, lcmRangeList, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
+lemma lcmRange_eq_lcmRangeFoldr (n : ℕ) : lcmRange n = lcmRangeFoldr n := by
+  rw [lcmRange, lcmRangeFoldr, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
   change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
-  simp only [Nat.add_sub_cancel]
+  simp only [Nat.add_sub_cancel, List.map_id]
   induction List.range' 1 n with
   | nil => rfl
-  | cons a l ih => rw [List.map_cons, List.foldr_cons, List.foldr_cons, ih, lcm_eq_nat_lcm]
+  | cons a l ih => rw [List.foldr_cons, List.foldr_cons, ih, lcm_eq_nat_lcm]
 
 /-- Boilerplate for closing `lcmRange n = <literal>`. -/
-private lemma lcmRange_aux (n : ℕ) {L : ℕ} (h : (lcmRangeList n).beq L = true) :
+private lemma lcmRange_aux (n : ℕ) {L : ℕ} (h : (lcmRangeFoldr n).beq L = true) :
     lcmRange n = L := by
-  rw [lcmRange_eq_lcmRangeList]; exact Nat.eq_of_beq_eq_true h
+  rw [lcmRange_eq_lcmRangeFoldr]; exact Nat.eq_of_beq_eq_true h
 
 /-! ### Prime powers below `64` -/
 
