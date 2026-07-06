@@ -17,7 +17,7 @@ lemma `W_eq_empty_of_partialK` for heavy children.
 - `w_certs_auto <threshold>` closes `WCerts B kids`: any child whose subtree
   exceeds `threshold` nodes is expanded one level via `childrenK`, recursing until
   every leaf cert fits.
-- `ha_lcm_compose eB eg <threshold>` closes `IsHighlyAbundant (lcmRange n)`
+- `ha_lcm_compose eB eg <threshold>` closes `IsHighlyAbundant (lcmUpto n)`
   directly: emits the root children as an auxiliary `kids` def, builds the `WCerts`
   proof via the same auto heuristic, and combines with the `childrenK` cert.
 -/
@@ -207,24 +207,24 @@ elab "w_certs_auto" sz:num : tactic =>
 
 /-! ### One-shot composition tactic `ha_lcm_compose`
 
-Closes a goal `IsHighlyAbundant (lcmRange n)` in one invocation: it emits the root
+Closes a goal `IsHighlyAbundant (lcmUpto n)` in one invocation: it emits the root
 children as an aux def, builds the `WCerts` proof, and combines with the
 `childrenK` cert.
 -/
 
 /-- Bridges the literal-`B`/`g`-phrased certificates produced by `ha_lcm_compose`
-to the `lcmRange n`/`σ₁ (lcmRange n)` form that
+to the `lcmUpto n`/`σ₁ (lcmUpto n)` form that
 `highlyAbundantLcm_correct_partialK_W` consumes. `subst` hides all motive/binder
 transport, so the tactic only builds a flat application. -/
 theorem ha_lcm_compose_bridge {n B g : ℕ} {cs : List SageNode}
-    (eB : lcmRange n = B) (eg : σ₁ (lcmRange n) = g)
+    (eB : lcmUpto n = B) (eg : σ₁ (lcmUpto n) = g)
     (hsL : 2 ≤ g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : WCerts B cs) :
-    IsHighlyAbundant (lcmRange n) := by
+    IsHighlyAbundant (lcmUpto n) := by
   subst eB eg
   exact highlyAbundantLcm_correct_partialK_W hsL (childrenKBeqCert_eq_some hch) hcs
 
-/-- `ha_lcm_compose eB eg threshold` closes a goal `IsHighlyAbundant (lcmRange n)`.
-`eB : lcmRange n = B` and `eg : σ₁ (lcmRange n) = g` supply the literals `B`, `g`;
+/-- `ha_lcm_compose eB eg threshold` closes a goal `IsHighlyAbundant (lcmUpto n)`.
+`eB : lcmUpto n = B` and `eg : σ₁ (lcmUpto n) = g` supply the literals `B`, `g`;
 `threshold` is the `w_certs_auto` subtree-size bound. The root children are
 computed meta-side, emitted as a named auxiliary `def` (`kids`), and three aux
 lemmas (`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and
@@ -236,13 +236,13 @@ elab "ha_lcm_compose" eBStx:ident egStx:ident thr:num : tactic => do
   let eBty ← inferType eBexpr
   let egty ← inferType egexpr
   let some (_, lhsB, BExpr) := eBty.eq?
-    | throwError "first argument must prove `lcmRange n = B`, got: {← Meta.ppExpr eBty}"
-  let_expr lcmRange nExpr := lhsB
-    | throwError "first argument's LHS must be `lcmRange n`, got: {← Meta.ppExpr lhsB}"
+    | throwError "first argument must prove `lcmUpto n = B`, got: {← Meta.ppExpr eBty}"
+  let_expr Nat.lcmUpto nExpr := lhsB
+    | throwError "first argument's LHS must be `lcmUpto n`, got: {← Meta.ppExpr lhsB}"
   let some Bval := BExpr.nat?
     | throwError "`B` is not a `Nat` literal: {← Meta.ppExpr BExpr}"
   let some (_, _, gExpr) := egty.eq?
-    | throwError "second argument must prove `σ₁ (lcmRange n) = g`, got: {← Meta.ppExpr egty}"
+    | throwError "second argument must prove `σ₁ (lcmUpto n) = g`, got: {← Meta.ppExpr egty}"
   let some gval := gExpr.nat?
     | throwError "`g` is not a `Nat` literal: {← Meta.ppExpr gExpr}"
   liftMetaFinishingTactic fun g => do
@@ -275,7 +275,7 @@ elab "ha_lcm_compose" eBStx:ident egStx:ident thr:num : tactic => do
     let bleTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
     let hsL := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) gExpr
       (mkConst (← mkAuxLemma [] bleTy Lean.reflBoolTrue))
-    -- (7) assemble via the bridge (transports literal certs to `lcmRange n` form).
+    -- (7) assemble via the bridge (transports literal certs to `lcmUpto n` form).
     g.assign <| mkAppN (mkConst ``Sage.ha_lcm_compose_bridge)
       #[nExpr, BExpr, gExpr, kidsE, eBexpr, egexpr, hsL, hch, hcs]
 

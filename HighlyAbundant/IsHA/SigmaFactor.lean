@@ -79,19 +79,19 @@ lemma sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ))
     rw [isMultiplicative_sigma.map_mul_of_coprime hcop, sigma_one_apply_prime_pow' hpk,
       ih (fun q hq => hpp q (List.mem_cons_of_mem _ hq)) hd2]
 
-/-- Bridge from a factorization of `L = lcmRange n` to `σ₁ (lcmRange n)`. -/
+/-- Bridge from a factorization of `L = lcmUpto n` to `σ₁ (lcmUpto n)`. -/
 lemma sigma_lcm_bridge {n L sL : ℕ} (F : List (ℕ × ℕ))
-    (hL : lcmRange n = L) (hprod : prodFactor F = L)
+    (hL : lcmUpto n = L) (hprod : prodFactor F = L)
     (hp : allCheckPrime F = true) (hd : (primesFactor F).Nodup) (hsig : sigmaFactor F = sL) :
-    σ₁ (lcmRange n) = sL := by
+    σ₁ (lcmUpto n) = sL := by
   rw [hL, ← hprod]
   exact sigma_of_factorization F hp hd hsig
 
-/-- Meta-side factorization of `lcmRange n`: primes `≤ n` with exponent `Nat.log p n`. -/
-def factorLcmRangeMeta (n : ℕ) : List (ℕ × ℕ) :=
+/-- Meta-side factorization of `lcmUpto n`: primes `≤ n` with exponent `Nat.log p n`. -/
+def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
   (List.range (n + 1)).filterMap fun p => if p.Prime then some (p, Nat.log p n) else none
 
-/-- `sigma_lcm hL` proves `σ₁ (lcmRange n) = sL` given `hL : lcmRange n = L`. The
+/-- `sigma_lcm hL` proves `σ₁ (lcmUpto n) = sL` given `hL : lcmUpto n = L`. The
 factorization is computed meta-side; the kernel only verifies `∏ p^k = L`, `∏ σ = sL`
 (via `Nat.beq`/`reflBoolTrue`), primality by trial division, and distinctness. -/
 elab "sigma_lcm" hLStx:ident : tactic => do
@@ -99,17 +99,17 @@ elab "sigma_lcm" hLStx:ident : tactic => do
   let hLexpr := mkConst hLName
   let hLty ← inferType hLexpr
   let some (_, lhs, LExpr) := hLty.eq?
-    | throwError "sigma_lcm: argument must prove `lcmRange n = L`"
-  let_expr lcmRange nExpr := lhs
-    | throwError "sigma_lcm: LHS must be `lcmRange n`"
+    | throwError "sigma_lcm: argument must prove `lcmUpto n = L`"
+  let_expr Nat.lcmUpto nExpr := lhs
+    | throwError "sigma_lcm: LHS must be `lcmUpto n`"
   let some nVal := nExpr.nat? | throwError "sigma_lcm: n not a literal"
   liftMetaFinishingTactic fun g => do
     let some (_, _, sLExpr) := (← g.getType).eq?
-      | throwError "sigma_lcm: goal must be `σ₁ (lcmRange n) = sL`"
+      | throwError "sigma_lcm: goal must be `σ₁ (lcmUpto n) = sL`"
     let natTy := mkConst ``Nat
     let prodTy := mkApp2 (mkConst ``Prod [.zero, .zero]) natTy natTy
     let mut FExpr := mkApp (mkConst ``List.nil [.zero]) prodTy
-    for (p, k) in (factorLcmRangeMeta nVal).reverse do
+    for (p, k) in (factorLcmUptoMeta nVal).reverse do
       let pairE := mkApp4 (mkConst ``Prod.mk [.zero, .zero]) natTy natTy (mkNatLit p) (mkNatLit k)
       FExpr := mkApp3 (mkConst ``List.cons [.zero]) prodTy pairE FExpr
     let factorsE ← mkAuxDefinition (← mkAuxDeclName `factors)

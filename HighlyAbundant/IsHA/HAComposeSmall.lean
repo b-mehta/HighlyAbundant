@@ -9,7 +9,7 @@ import HighlyAbundant.IsHA.LcmRangeProofs
 import HighlyAbundant.IsHA.SageKernelBeq
 
 /-!
-# Kernel certificates for `IsHighlyAbundant (lcmRange n)`, prime powers `n ≤ 64`
+# Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, prime powers `n ≤ 64`
 
 Each theorem is a single `ha_lcm_compose` invocation. These cases are cheap, so
 they share one module; the heavier `n ≥ 67` proofs stay in their own files to
@@ -18,85 +18,85 @@ keep CI module-parallelism.
 
 namespace Sage
 
-theorem isHighlyAbundant_lcmRange_2 : IsHighlyAbundant (lcmRange 2) := by
-  ha_lcm_compose lcmRange_2 sigma_lcmRange_2 10000
+theorem isHighlyAbundant_lcmUpto_2 : IsHighlyAbundant (lcmUpto 2) := by
+  ha_lcm_compose lcmUpto_2 sigma_lcmUpto_2 10000
 
-theorem isHighlyAbundant_lcmRange_3 : IsHighlyAbundant (lcmRange 3) := by
-  ha_lcm_compose lcmRange_3 sigma_lcmRange_3 10000
+theorem isHighlyAbundant_lcmUpto_3 : IsHighlyAbundant (lcmUpto 3) := by
+  ha_lcm_compose lcmUpto_3 sigma_lcmUpto_3 10000
 
-theorem isHighlyAbundant_lcmRange_4 : IsHighlyAbundant (lcmRange 4) := by
-  ha_lcm_compose lcmRange_4 sigma_lcmRange_4 10000
+theorem isHighlyAbundant_lcmUpto_4 : IsHighlyAbundant (lcmUpto 4) := by
+  ha_lcm_compose lcmUpto_4 sigma_lcmUpto_4 10000
 
-theorem isHighlyAbundant_lcmRange_5 : IsHighlyAbundant (lcmRange 5) := by
-  ha_lcm_compose lcmRange_5 sigma_lcmRange_5 10000
+theorem isHighlyAbundant_lcmUpto_5 : IsHighlyAbundant (lcmUpto 5) := by
+  ha_lcm_compose lcmUpto_5 sigma_lcmUpto_5 10000
 
-theorem isHighlyAbundant_lcmRange_7 : IsHighlyAbundant (lcmRange 7) := by
-  ha_lcm_compose lcmRange_7 sigma_lcmRange_7 10000
+theorem isHighlyAbundant_lcmUpto_7 : IsHighlyAbundant (lcmUpto 7) := by
+  ha_lcm_compose lcmUpto_7 sigma_lcmUpto_7 10000
 
-theorem isHighlyAbundant_lcmRange_8 : IsHighlyAbundant (lcmRange 8) := by
-  ha_lcm_compose lcmRange_8 sigma_lcmRange_8 10000
+theorem isHighlyAbundant_lcmUpto_8 : IsHighlyAbundant (lcmUpto 8) := by
+  ha_lcm_compose lcmUpto_8 sigma_lcmUpto_8 10000
 
-theorem isHighlyAbundant_lcmRange_9 : IsHighlyAbundant (lcmRange 9) := by
-  ha_lcm_compose lcmRange_9 sigma_lcmRange_9 10000
+theorem isHighlyAbundant_lcmUpto_9 : IsHighlyAbundant (lcmUpto 9) := by
+  ha_lcm_compose lcmUpto_9 sigma_lcmUpto_9 10000
 
-theorem isHighlyAbundant_lcmRange_11 : IsHighlyAbundant (lcmRange 11) := by
-  ha_lcm_compose lcmRange_11 sigma_lcmRange_11 10000
+theorem isHighlyAbundant_lcmUpto_11 : IsHighlyAbundant (lcmUpto 11) := by
+  ha_lcm_compose lcmUpto_11 sigma_lcmUpto_11 10000
 
-theorem isHighlyAbundant_lcmRange_13 : IsHighlyAbundant (lcmRange 13) := by
-  ha_lcm_compose lcmRange_13 sigma_lcmRange_13 10000
+theorem isHighlyAbundant_lcmUpto_13 : IsHighlyAbundant (lcmUpto 13) := by
+  ha_lcm_compose lcmUpto_13 sigma_lcmUpto_13 10000
 
-theorem isHighlyAbundant_lcmRange_16 : IsHighlyAbundant (lcmRange 16) := by
-  ha_lcm_compose lcmRange_16 sigma_lcmRange_16 10000
+theorem isHighlyAbundant_lcmUpto_16 : IsHighlyAbundant (lcmUpto 16) := by
+  ha_lcm_compose lcmUpto_16 sigma_lcmUpto_16 10000
 
-theorem isHighlyAbundant_lcmRange_17 : IsHighlyAbundant (lcmRange 17) := by
-  ha_lcm_compose lcmRange_17 sigma_lcmRange_17 10000
+theorem isHighlyAbundant_lcmUpto_17 : IsHighlyAbundant (lcmUpto 17) := by
+  ha_lcm_compose lcmUpto_17 sigma_lcmUpto_17 10000
 
-theorem isHighlyAbundant_lcmRange_19 : IsHighlyAbundant (lcmRange 19) := by
-  ha_lcm_compose lcmRange_19 sigma_lcmRange_19 10000
+theorem isHighlyAbundant_lcmUpto_19 : IsHighlyAbundant (lcmUpto 19) := by
+  ha_lcm_compose lcmUpto_19 sigma_lcmUpto_19 10000
 
-theorem isHighlyAbundant_lcmRange_23 : IsHighlyAbundant (lcmRange 23) := by
-  ha_lcm_compose lcmRange_23 sigma_lcmRange_23 10000
+theorem isHighlyAbundant_lcmUpto_23 : IsHighlyAbundant (lcmUpto 23) := by
+  ha_lcm_compose lcmUpto_23 sigma_lcmUpto_23 10000
 
-theorem isHighlyAbundant_lcmRange_25 : IsHighlyAbundant (lcmRange 25) := by
-  ha_lcm_compose lcmRange_25 sigma_lcmRange_25 10000
+theorem isHighlyAbundant_lcmUpto_25 : IsHighlyAbundant (lcmUpto 25) := by
+  ha_lcm_compose lcmUpto_25 sigma_lcmUpto_25 10000
 
-theorem isHighlyAbundant_lcmRange_27 : IsHighlyAbundant (lcmRange 27) := by
-  ha_lcm_compose lcmRange_27 sigma_lcmRange_27 10000
+theorem isHighlyAbundant_lcmUpto_27 : IsHighlyAbundant (lcmUpto 27) := by
+  ha_lcm_compose lcmUpto_27 sigma_lcmUpto_27 10000
 
-theorem isHighlyAbundant_lcmRange_29 : IsHighlyAbundant (lcmRange 29) := by
-  ha_lcm_compose lcmRange_29 sigma_lcmRange_29 10000
+theorem isHighlyAbundant_lcmUpto_29 : IsHighlyAbundant (lcmUpto 29) := by
+  ha_lcm_compose lcmUpto_29 sigma_lcmUpto_29 10000
 
-theorem isHighlyAbundant_lcmRange_31 : IsHighlyAbundant (lcmRange 31) := by
-  ha_lcm_compose lcmRange_31 sigma_lcmRange_31 10000
+theorem isHighlyAbundant_lcmUpto_31 : IsHighlyAbundant (lcmUpto 31) := by
+  ha_lcm_compose lcmUpto_31 sigma_lcmUpto_31 10000
 
-theorem isHighlyAbundant_lcmRange_32 : IsHighlyAbundant (lcmRange 32) := by
-  ha_lcm_compose lcmRange_32 sigma_lcmRange_32 10000
+theorem isHighlyAbundant_lcmUpto_32 : IsHighlyAbundant (lcmUpto 32) := by
+  ha_lcm_compose lcmUpto_32 sigma_lcmUpto_32 10000
 
-theorem isHighlyAbundant_lcmRange_37 : IsHighlyAbundant (lcmRange 37) := by
-  ha_lcm_compose lcmRange_37 sigma_lcmRange_37 10000
+theorem isHighlyAbundant_lcmUpto_37 : IsHighlyAbundant (lcmUpto 37) := by
+  ha_lcm_compose lcmUpto_37 sigma_lcmUpto_37 10000
 
-theorem isHighlyAbundant_lcmRange_41 : IsHighlyAbundant (lcmRange 41) := by
-  ha_lcm_compose lcmRange_41 sigma_lcmRange_41 10000
+theorem isHighlyAbundant_lcmUpto_41 : IsHighlyAbundant (lcmUpto 41) := by
+  ha_lcm_compose lcmUpto_41 sigma_lcmUpto_41 10000
 
-theorem isHighlyAbundant_lcmRange_43 : IsHighlyAbundant (lcmRange 43) := by
-  ha_lcm_compose lcmRange_43 sigma_lcmRange_43 10000
+theorem isHighlyAbundant_lcmUpto_43 : IsHighlyAbundant (lcmUpto 43) := by
+  ha_lcm_compose lcmUpto_43 sigma_lcmUpto_43 10000
 
-theorem isHighlyAbundant_lcmRange_47 : IsHighlyAbundant (lcmRange 47) := by
-  ha_lcm_compose lcmRange_47 sigma_lcmRange_47 10000
+theorem isHighlyAbundant_lcmUpto_47 : IsHighlyAbundant (lcmUpto 47) := by
+  ha_lcm_compose lcmUpto_47 sigma_lcmUpto_47 10000
 
-theorem isHighlyAbundant_lcmRange_49 : IsHighlyAbundant (lcmRange 49) := by
-  ha_lcm_compose lcmRange_49 sigma_lcmRange_49 10000
+theorem isHighlyAbundant_lcmUpto_49 : IsHighlyAbundant (lcmUpto 49) := by
+  ha_lcm_compose lcmUpto_49 sigma_lcmUpto_49 10000
 
-theorem isHighlyAbundant_lcmRange_53 : IsHighlyAbundant (lcmRange 53) := by
-  ha_lcm_compose lcmRange_53 sigma_lcmRange_53 10000
+theorem isHighlyAbundant_lcmUpto_53 : IsHighlyAbundant (lcmUpto 53) := by
+  ha_lcm_compose lcmUpto_53 sigma_lcmUpto_53 10000
 
-theorem isHighlyAbundant_lcmRange_59 : IsHighlyAbundant (lcmRange 59) := by
-  ha_lcm_compose lcmRange_59 sigma_lcmRange_59 10000
+theorem isHighlyAbundant_lcmUpto_59 : IsHighlyAbundant (lcmUpto 59) := by
+  ha_lcm_compose lcmUpto_59 sigma_lcmUpto_59 10000
 
-theorem isHighlyAbundant_lcmRange_61 : IsHighlyAbundant (lcmRange 61) := by
-  ha_lcm_compose lcmRange_61 sigma_lcmRange_61 10000
+theorem isHighlyAbundant_lcmUpto_61 : IsHighlyAbundant (lcmUpto 61) := by
+  ha_lcm_compose lcmUpto_61 sigma_lcmUpto_61 10000
 
-theorem isHighlyAbundant_lcmRange_64 : IsHighlyAbundant (lcmRange 64) := by
-  ha_lcm_compose lcmRange_64 sigma_lcmRange_64 10000
+theorem isHighlyAbundant_lcmUpto_64 : IsHighlyAbundant (lcmUpto 64) := by
+  ha_lcm_compose lcmUpto_64 sigma_lcmUpto_64 10000
 
 end Sage

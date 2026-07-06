@@ -8,21 +8,21 @@ import HighlyAbundant.IsNotHA.PrepareLadder
 import HighlyAbundant.SetupPrimes
 import HighlyAbundant.IsNotHA.HA256
 
-theorem chunk1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmUpto i) := by ladder
 [71, 78];{2: 2, 3: 1, 5: 1, 79: 1};{67: 1, 71: 1},
 [79, 80];{2: 5, 3: 1, 5: 1, 11: 1};{67: 1, 79: 1},
-theorem chunk2 : ∀ i, 97 ≤ i → i ≤ 124 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk2 : ∀ i, 97 ≤ i → i ≤ 124 → ¬ IsHighlyAbundant (lcmUpto i) := by ladder
 [97, 120];{2: 2, 3: 1, 5: 1, 11: 1, 13: 1};{89: 1, 97: 1},
 [113, 124];{2: 1, 5: 1, 7: 1, 163: 1};{101: 1, 113: 1},
-theorem chunk3 : ∀ i, 149 ≤ i → i ≤ 168 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk3 : ∀ i, 149 ≤ i → i ≤ 168 → ¬ IsHighlyAbundant (lcmUpto i) := by ladder
 [149, 156];{2: 1, 5: 1, 13: 1, 157: 1};{137: 1, 149: 1},
 [151, 168];{2: 1, 5: 1, 13: 1, 173: 1};{149: 1, 151: 1},
-theorem chunk4a : ∀ i, 173 ≤ i → i ≤ 255 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk4a : ∀ i, 173 ≤ i → i ≤ 255 → ¬ IsHighlyAbundant (lcmUpto i) := by ladder
 [173, 242];{2: 2, 3: 1, 7: 1, 17: 1, 19: 1};{157: 1, 173: 1},
 [227, 255];{2: 1, 5: 1, 17: 1, 263: 1};{197: 1, 227: 1},
-theorem chunk4b : ∀ i, 256 ≤ i → i ≤ 256 → ¬ IsHighlyAbundant (lcmRange i) := by grind
+theorem chunk4b : ∀ i, 256 ≤ i → i ≤ 256 → ¬ IsHighlyAbundant (lcmUpto i) := by grind
 
-theorem chunk4c : ∀ i, 257 ≤ i → i ≤ 10029542461709537120579603199949529595648 → ¬ IsHighlyAbundant (lcmRange i) := by ladder
+theorem chunk4c : ∀ i, 257 ≤ i → i ≤ 10029542461709537120579603199949529595648 → ¬ IsHighlyAbundant (lcmUpto i) := by ladder
 [257, 306];{2: 1, 3: 1, 5: 1, 7: 1, 307: 1};{251: 1, 257: 1},
 [277, 330];{2: 1, 3: 1, 5: 1, 7: 1, 331: 1};{251: 1, 277: 1},
 [313, 360];{2: 1, 5: 1, 19: 1, 397: 1};{241: 1, 313: 1},
@@ -709,5 +709,5 @@ theorem chunk4c : ∀ i, 257 ≤ i → i ≤ 10029542461709537120579603199949529
 [7944337029096782860800362067724037161237, 8926257085893144928108719936410188064328];{2: 3, 3: 1, 821: 1, 20527128893533: 1, 1469894911640636337981669488885943273785039: 1, 94478871108270260323: 1, 94478871108270260333: 1, 94478871108270260363: 1};{7944337029096782860800362067724037161237: 1, 7944337029096782860800362067724037161073: 1, 7944337029096782860800362067724037160931: 1},
 [8926257085893144928108719936410188064263, 10029542461709537120579603199949529595648];{2: 2, 3: 1, 13: 1, 19: 1, 29: 1, 121767323615725242585919: 1, 67651827478459961098945263081953: 1, 100147603374766473289: 1, 100147603374766473343: 1, 100147603374766473359: 1};{8926257085893144928108719936410188064263: 1, 8926257085893144928108719936410188064207: 1, 8926257085893144928108719936410188064183: 1},
 
-theorem chunk4 : ∀ i, 173 ≤ i → i ≤ 10029542461709537120579603199949529595648 → ¬ IsHighlyAbundant (lcmRange i) := by
+theorem chunk4 : ∀ i, 173 ≤ i → i ≤ 10029542461709537120579603199949529595648 → ¬ IsHighlyAbundant (lcmUpto i) := by
   grind [chunk4a, chunk4b, chunk4c]

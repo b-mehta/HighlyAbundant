@@ -11,7 +11,7 @@ import HighlyAbundant.IsHA.HACompose169a
 import HighlyAbundant.IsHA.HACompose169b
 
 /-!
-# Partial-form kernel certificate for `IsHighlyAbundant (lcmRange 169)`
+# Partial-form kernel certificate for `IsHighlyAbundant (lcmUpto 169)`
 
 The root-level partial form (one big `stepK` per child of the root) does not
 fit in CI's 7 GB. Empirically the heaviest root-children have subtree sizes
@@ -38,10 +38,10 @@ private theorem childrenK_lcm_169 :
 /-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
 path. The `w_certs_auto 10000` heuristic decides per node whether to give the
 kernel a direct subtree search or to split via `childrenK`. -/
-theorem isHighlyAbundant_lcmRange_169 : IsHighlyAbundant (lcmRange 169) := by
+theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
   apply highlyAbundantLcm_correct_partialK_W (cs := kids169)
-  · rw [sigma_lcmRange_169]; norm_num
-  · rw [sigma_lcmRange_169, lcmRange_169]; exact childrenK_eq_of_beq childrenK_lcm_169
-  · rw [lcmRange_169]; exact hcs_lcm_169
+  · rw [sigma_lcmUpto_169]; norm_num
+  · rw [sigma_lcmUpto_169, lcmUpto_169]; exact childrenK_eq_of_beq childrenK_lcm_169
+  · rw [lcmUpto_169]; exact hcs_lcm_169
 
 end Sage

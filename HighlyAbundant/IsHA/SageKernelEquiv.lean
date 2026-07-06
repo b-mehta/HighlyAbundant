@@ -167,10 +167,10 @@ theorem highlyAbundantLcmK_eq_highlyAbundantLcm :
   · rw [stepK_eq_step]
     simp [fromSageNode]
 
-/-- `(lcmRange n, σ₁ (lcmRange n))` computed as
+/-- `(lcmUpto n, σ₁ (lcmUpto n))` computed as
 `(∏ p^{⌊log_p n⌋}, ∏ σ(p^{⌊log_p n⌋}))` over the primes `p ≤ n` in the table.
 For `#eval` use to supply `(B, sL)` to `highlyAbundantLcm?`; the formal proof
-goes through `lcmRange` directly, so this equivalence is not used. -/
+goes through `lcmUpto` directly, so this equivalence is not used. -/
 def lcmData (n : ℕ) : ℕ × ℕ :=
   (primes.toList.takeWhile (· ≤ n)).foldl
     (fun (acc : ℕ × ℕ) p =>
@@ -180,10 +180,10 @@ def lcmData (n : ℕ) : ℕ × ℕ :=
 /-- Partial verification using the K-versions of `children` and `step`
 (`childrenK`/`stepK`) to drive `highlyAbundantLcm_correct_partial`. -/
 theorem highlyAbundantLcm_correct_partialK {n : ℕ} {cs : List SageNode}
-    (hsL : 2 ≤ σ₁ (lcmRange n))
-    (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, stepK (lcmRange n) searchFuel [c] = some true) :
-    IsHighlyAbundant (lcmRange n) := by
+    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, stepK (lcmUpto n) searchFuel [c] = some true) :
+    IsHighlyAbundant (lcmUpto n) := by
   refine highlyAbundantLcm_correct_partial (cs := cs.map fromSageNode) hsL
     (children_of_childrenK hch) ?_
   intro c' hc'
@@ -206,10 +206,10 @@ theorem W_eq_empty_of_partialK {B g a minIdx : ℕ} {cs : List SageNode}
 /-- `W`-based partial verification using `childrenK`: takes `W = ∅` for each root
 child, so the metaprogram can expand large children recursively. -/
 theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
-    (hsL : 2 ≤ σ₁ (lcmRange n))
-    (hch : childrenK (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, W (lcmRange n) c.target c.num c.minIdx = ∅) :
-    IsHighlyAbundant (lcmRange n) := by
+    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, W (lcmUpto n) c.target c.num c.minIdx = ∅) :
+    IsHighlyAbundant (lcmUpto n) := by
   refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL
     (children_of_childrenK hch) ?_
   intro c' hc'

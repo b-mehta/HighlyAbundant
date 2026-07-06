@@ -20,9 +20,9 @@ import HighlyAbundant.IsHA.HACompose139
 import HighlyAbundant.IsHA.HACompose169
 
 /-!
-# Characterization of highly abundant `lcmRange n` for `1 ≤ n ≤ 10 ^ 40`
+# Characterization of highly abundant `lcmUpto n` for `1 ≤ n ≤ 10 ^ 40`
 
-`lcmRange n` is highly abundant iff `n` lies in the explicit set listed in the README.
+`lcmUpto n` is highly abundant iff `n` lies in the explicit set listed in the README.
 -/
 
 open Nat
@@ -30,56 +30,56 @@ open Nat
 /-- Logic core: given all anchor HA facts and all chunk non-HA facts as hypotheses, the
 characterization follows by the block-transfer lemma and arithmetic. -/
 private theorem iff_of_facts {n : ℕ} (hn1 : 1 ≤ n) (hn : n ≤ 10 ^ 40)
-    (h1 : IsHighlyAbundant (lcmRange 1))
-    (h2 : IsHighlyAbundant (lcmRange 2))
-    (h3 : IsHighlyAbundant (lcmRange 3))
-    (h4 : IsHighlyAbundant (lcmRange 4))
-    (h5 : IsHighlyAbundant (lcmRange 5))
-    (h7 : IsHighlyAbundant (lcmRange 7))
-    (h8 : IsHighlyAbundant (lcmRange 8))
-    (h9 : IsHighlyAbundant (lcmRange 9))
-    (h11 : IsHighlyAbundant (lcmRange 11))
-    (h13 : IsHighlyAbundant (lcmRange 13))
-    (h16 : IsHighlyAbundant (lcmRange 16))
-    (h17 : IsHighlyAbundant (lcmRange 17))
-    (h19 : IsHighlyAbundant (lcmRange 19))
-    (h23 : IsHighlyAbundant (lcmRange 23))
-    (h25 : IsHighlyAbundant (lcmRange 25))
-    (h27 : IsHighlyAbundant (lcmRange 27))
-    (h29 : IsHighlyAbundant (lcmRange 29))
-    (h31 : IsHighlyAbundant (lcmRange 31))
-    (h32 : IsHighlyAbundant (lcmRange 32))
-    (h37 : IsHighlyAbundant (lcmRange 37))
-    (h41 : IsHighlyAbundant (lcmRange 41))
-    (h43 : IsHighlyAbundant (lcmRange 43))
-    (h47 : IsHighlyAbundant (lcmRange 47))
-    (h49 : IsHighlyAbundant (lcmRange 49))
-    (h53 : IsHighlyAbundant (lcmRange 53))
-    (h59 : IsHighlyAbundant (lcmRange 59))
-    (h61 : IsHighlyAbundant (lcmRange 61))
-    (h64 : IsHighlyAbundant (lcmRange 64))
-    (h67 : IsHighlyAbundant (lcmRange 67))
-    (h81 : IsHighlyAbundant (lcmRange 81))
-    (h83 : IsHighlyAbundant (lcmRange 83))
-    (h89 : IsHighlyAbundant (lcmRange 89))
-    (h125 : IsHighlyAbundant (lcmRange 125))
-    (h127 : IsHighlyAbundant (lcmRange 127))
-    (h128 : IsHighlyAbundant (lcmRange 128))
-    (h131 : IsHighlyAbundant (lcmRange 131))
-    (h137 : IsHighlyAbundant (lcmRange 137))
-    (h139 : IsHighlyAbundant (lcmRange 139))
-    (h169 : IsHighlyAbundant (lcmRange 169))
-    (c1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmRange i))
-    (c2 : ∀ i, 97 ≤ i → i ≤ 124 → ¬ IsHighlyAbundant (lcmRange i))
-    (c3 : ∀ i, 149 ≤ i → i ≤ 168 → ¬ IsHighlyAbundant (lcmRange i))
+    (h1 : IsHighlyAbundant (lcmUpto 1))
+    (h2 : IsHighlyAbundant (lcmUpto 2))
+    (h3 : IsHighlyAbundant (lcmUpto 3))
+    (h4 : IsHighlyAbundant (lcmUpto 4))
+    (h5 : IsHighlyAbundant (lcmUpto 5))
+    (h7 : IsHighlyAbundant (lcmUpto 7))
+    (h8 : IsHighlyAbundant (lcmUpto 8))
+    (h9 : IsHighlyAbundant (lcmUpto 9))
+    (h11 : IsHighlyAbundant (lcmUpto 11))
+    (h13 : IsHighlyAbundant (lcmUpto 13))
+    (h16 : IsHighlyAbundant (lcmUpto 16))
+    (h17 : IsHighlyAbundant (lcmUpto 17))
+    (h19 : IsHighlyAbundant (lcmUpto 19))
+    (h23 : IsHighlyAbundant (lcmUpto 23))
+    (h25 : IsHighlyAbundant (lcmUpto 25))
+    (h27 : IsHighlyAbundant (lcmUpto 27))
+    (h29 : IsHighlyAbundant (lcmUpto 29))
+    (h31 : IsHighlyAbundant (lcmUpto 31))
+    (h32 : IsHighlyAbundant (lcmUpto 32))
+    (h37 : IsHighlyAbundant (lcmUpto 37))
+    (h41 : IsHighlyAbundant (lcmUpto 41))
+    (h43 : IsHighlyAbundant (lcmUpto 43))
+    (h47 : IsHighlyAbundant (lcmUpto 47))
+    (h49 : IsHighlyAbundant (lcmUpto 49))
+    (h53 : IsHighlyAbundant (lcmUpto 53))
+    (h59 : IsHighlyAbundant (lcmUpto 59))
+    (h61 : IsHighlyAbundant (lcmUpto 61))
+    (h64 : IsHighlyAbundant (lcmUpto 64))
+    (h67 : IsHighlyAbundant (lcmUpto 67))
+    (h81 : IsHighlyAbundant (lcmUpto 81))
+    (h83 : IsHighlyAbundant (lcmUpto 83))
+    (h89 : IsHighlyAbundant (lcmUpto 89))
+    (h125 : IsHighlyAbundant (lcmUpto 125))
+    (h127 : IsHighlyAbundant (lcmUpto 127))
+    (h128 : IsHighlyAbundant (lcmUpto 128))
+    (h131 : IsHighlyAbundant (lcmUpto 131))
+    (h137 : IsHighlyAbundant (lcmUpto 137))
+    (h139 : IsHighlyAbundant (lcmUpto 139))
+    (h169 : IsHighlyAbundant (lcmUpto 169))
+    (c1 : ∀ i, 71 ≤ i → i ≤ 80 → ¬ IsHighlyAbundant (lcmUpto i))
+    (c2 : ∀ i, 97 ≤ i → i ≤ 124 → ¬ IsHighlyAbundant (lcmUpto i))
+    (c3 : ∀ i, 149 ≤ i → i ≤ 168 → ¬ IsHighlyAbundant (lcmUpto i))
     (c4 : ∀ i, 173 ≤ i → i ≤ 10029542461709537120579603199949529595648 →
-      ¬ IsHighlyAbundant (lcmRange i)) :
-    IsHighlyAbundant (lcmRange n) ↔
+      ¬ IsHighlyAbundant (lcmUpto i)) :
+    IsHighlyAbundant (lcmUpto n) ↔
       n ∈ Finset.Icc 1 70 ∪ Finset.Icc 81 96 ∪ Finset.Icc 125 148 ∪ Finset.Icc 169 172 := by
-  have blk : ∀ (q e : ℕ), IsHighlyAbundant (lcmRange q) →
+  have blk : ∀ (q e : ℕ), IsHighlyAbundant (lcmUpto q) →
       (∀ x ∈ Finset.Ioc q e, ¬ IsPrimePow x) →
-      ∀ k, q ≤ k → k ≤ e → IsHighlyAbundant (lcmRange k) :=
-    fun q e hq hgap k hk1 hk2 => isHighlyAbundant_lcmRange_of_no_primePow_Ioc hk1
+      ∀ k, q ≤ k → k ≤ e → IsHighlyAbundant (lcmUpto k) :=
+    fun q e hq hgap k hk1 hk2 => isHighlyAbundant_lcmUpto_of_no_primePow_Ioc hk1
       (fun x hx => hgap x (Finset.mem_Ioc.2
         ⟨(Finset.mem_Ioc.1 hx).1, le_trans (Finset.mem_Ioc.1 hx).2 hk2⟩)) hq
   have b1 := blk 1 1 h1 (by decide +kernel)
@@ -195,33 +195,33 @@ private theorem iff_of_facts {n : ℕ} (hn1 : 1 ≤ n) (hn : n ≤ 10 ^ 40)
         ⟨l, r⟩
       · exact b169 n l r
 
-/-- For `1 ≤ n ≤ 10 ^ 40`, `lcmRange n` is highly abundant iff `n` lies in the explicit
+/-- For `1 ≤ n ≤ 10 ^ 40`, `lcmUpto n` is highly abundant iff `n` lies in the explicit
 finite set of the README (the union of four intervals of admissible indices). -/
-theorem isHighlyAbundant_lcmRange_iff {n : ℕ} (hn1 : 1 ≤ n) (hn : n ≤ 10 ^ 40) :
-    IsHighlyAbundant (lcmRange n) ↔
+theorem isHighlyAbundant_lcmUpto_iff {n : ℕ} (hn1 : 1 ≤ n) (hn : n ≤ 10 ^ 40) :
+    IsHighlyAbundant (lcmUpto n) ↔
       n ∈ Finset.Icc 1 70 ∪ Finset.Icc 81 96 ∪ Finset.Icc 125 148 ∪ Finset.Icc 169 172 :=
   iff_of_facts hn1 hn
     (by
-      have h : lcmRange 1 = 1 := by decide
+      have h : lcmUpto 1 = 1 := by decide
       intro m hm hlt
       omega)
-    Sage.isHighlyAbundant_lcmRange_2 Sage.isHighlyAbundant_lcmRange_3
-    Sage.isHighlyAbundant_lcmRange_4 Sage.isHighlyAbundant_lcmRange_5
-    Sage.isHighlyAbundant_lcmRange_7 Sage.isHighlyAbundant_lcmRange_8
-    Sage.isHighlyAbundant_lcmRange_9 Sage.isHighlyAbundant_lcmRange_11
-    Sage.isHighlyAbundant_lcmRange_13 Sage.isHighlyAbundant_lcmRange_16
-    Sage.isHighlyAbundant_lcmRange_17 Sage.isHighlyAbundant_lcmRange_19
-    Sage.isHighlyAbundant_lcmRange_23 Sage.isHighlyAbundant_lcmRange_25
-    Sage.isHighlyAbundant_lcmRange_27 Sage.isHighlyAbundant_lcmRange_29
-    Sage.isHighlyAbundant_lcmRange_31 Sage.isHighlyAbundant_lcmRange_32
-    Sage.isHighlyAbundant_lcmRange_37 Sage.isHighlyAbundant_lcmRange_41
-    Sage.isHighlyAbundant_lcmRange_43 Sage.isHighlyAbundant_lcmRange_47
-    Sage.isHighlyAbundant_lcmRange_49 Sage.isHighlyAbundant_lcmRange_53
-    Sage.isHighlyAbundant_lcmRange_59 Sage.isHighlyAbundant_lcmRange_61
-    Sage.isHighlyAbundant_lcmRange_64 Sage.isHighlyAbundant_lcmRange_67
-    Sage.isHighlyAbundant_lcmRange_81 Sage.isHighlyAbundant_lcmRange_83
-    Sage.isHighlyAbundant_lcmRange_89 Sage.isHighlyAbundant_lcmRange_125
-    Sage.isHighlyAbundant_lcmRange_127 Sage.isHighlyAbundant_lcmRange_128
-    Sage.isHighlyAbundant_lcmRange_131 Sage.isHighlyAbundant_lcmRange_137
-    Sage.isHighlyAbundant_lcmRange_139 Sage.isHighlyAbundant_lcmRange_169
+    Sage.isHighlyAbundant_lcmUpto_2 Sage.isHighlyAbundant_lcmUpto_3
+    Sage.isHighlyAbundant_lcmUpto_4 Sage.isHighlyAbundant_lcmUpto_5
+    Sage.isHighlyAbundant_lcmUpto_7 Sage.isHighlyAbundant_lcmUpto_8
+    Sage.isHighlyAbundant_lcmUpto_9 Sage.isHighlyAbundant_lcmUpto_11
+    Sage.isHighlyAbundant_lcmUpto_13 Sage.isHighlyAbundant_lcmUpto_16
+    Sage.isHighlyAbundant_lcmUpto_17 Sage.isHighlyAbundant_lcmUpto_19
+    Sage.isHighlyAbundant_lcmUpto_23 Sage.isHighlyAbundant_lcmUpto_25
+    Sage.isHighlyAbundant_lcmUpto_27 Sage.isHighlyAbundant_lcmUpto_29
+    Sage.isHighlyAbundant_lcmUpto_31 Sage.isHighlyAbundant_lcmUpto_32
+    Sage.isHighlyAbundant_lcmUpto_37 Sage.isHighlyAbundant_lcmUpto_41
+    Sage.isHighlyAbundant_lcmUpto_43 Sage.isHighlyAbundant_lcmUpto_47
+    Sage.isHighlyAbundant_lcmUpto_49 Sage.isHighlyAbundant_lcmUpto_53
+    Sage.isHighlyAbundant_lcmUpto_59 Sage.isHighlyAbundant_lcmUpto_61
+    Sage.isHighlyAbundant_lcmUpto_64 Sage.isHighlyAbundant_lcmUpto_67
+    Sage.isHighlyAbundant_lcmUpto_81 Sage.isHighlyAbundant_lcmUpto_83
+    Sage.isHighlyAbundant_lcmUpto_89 Sage.isHighlyAbundant_lcmUpto_125
+    Sage.isHighlyAbundant_lcmUpto_127 Sage.isHighlyAbundant_lcmUpto_128
+    Sage.isHighlyAbundant_lcmUpto_131 Sage.isHighlyAbundant_lcmUpto_137
+    Sage.isHighlyAbundant_lcmUpto_139 Sage.isHighlyAbundant_lcmUpto_169
     chunk1 chunk2 chunk3 chunk4

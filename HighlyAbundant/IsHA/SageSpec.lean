@@ -49,7 +49,7 @@ Spec of the search in `HighlyAbundant.Sage`. Notation:
 `step`'s shared fuel does not factor over `++`, so the root evaluation
 `step B searchFuel [(sL, 1, 0)]` does not decompose into per-child evaluations.
 To prove `lcm (1..n)` highly abundant from per-subtree results, with
-`(B, sL) = (lcmRange n, σ₁ (lcmRange n))` and `2 ≤ B`:
+`(B, sL) = (lcmUpto n, σ₁ (lcmUpto n))` and `2 ≤ B`:
 
 1. Evaluate `children B sL 1 0 = some cs` (enlarge `primes` on `none`).
 2. For each `c ∈ cs`, obtain `step B searchFuel [c] = some true` separately;
@@ -621,21 +621,21 @@ theorem step_false {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
     ∃ node ∈ stack, (W B node.1 node.2.1 node.2.2).Nonempty := sorry
 -/
 
-/-- A `some true` answer of `highlyAbundantLcm?` on `(lcmRange n, σ₁ (lcmRange n))`
+/-- A `some true` answer of `highlyAbundantLcm?` on `(lcmUpto n, σ₁ (lcmUpto n))`
 certifies that `lcm (1..n)` is highly abundant. -/
 theorem highlyAbundantLcm_correct {n : ℕ}
-    (h : highlyAbundantLcm? (lcmRange n) (σ₁ (lcmRange n)) = some true) :
-    IsHighlyAbundant (lcmRange n) := by
+    (h : highlyAbundantLcm? (lcmUpto n) (σ₁ (lcmUpto n)) = some true) :
+    IsHighlyAbundant (lcmUpto n) := by
   intro m hm₀ hm_lt
   rw [highlyAbundantLcm?] at h
-  by_cases hB : lcmRange n ≤ 1
+  by_cases hB : lcmUpto n ≤ 1
   · omega
   simp only [hB, if_false] at h
-  have hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅ :=
-    step_true h (σ₁ (lcmRange n), 1, 0) List.mem_cons_self
+  have hW : W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = ∅ :=
+    step_true h (σ₁ (lcmUpto n), 1, 0) List.mem_cons_self
   by_contra! hcontra
   have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
-  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]
+  have hmW : m ∈ W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 := by grind [Nat.Prime.two_le]
   rwa [hW] at hmW
 
 /-- Recursive partial step: a non-trivial node's witness set is empty if all its
@@ -655,31 +655,31 @@ theorem W_eq_empty_of_partial {B g a minIdx : ℕ} {cs : List (ℕ × ℕ × ℕ
 
 /-- If the root witness set is empty, `lcm(1..n)` is highly abundant. -/
 theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
-    (hW : W (lcmRange n) (σ₁ (lcmRange n)) 1 0 = ∅) :
-    IsHighlyAbundant (lcmRange n) := by
+    (hW : W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = ∅) :
+    IsHighlyAbundant (lcmUpto n) := by
   intro m hm₀ hm_lt
   by_contra! hcontra
   have h2 : nth Nat.Prime 0 = 2 := Nat.nth_prime_zero_eq_two
-  have hmW : m ∈ W (lcmRange n) (σ₁ (lcmRange n)) 1 0 := by grind [Nat.Prime.two_le]
+  have hmW : m ∈ W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 := by grind [Nat.Prime.two_le]
   rwa [hW] at hmW
 
 /-- Partial-verification entry point taking `W = ∅` for each root child. Used
 when individual subtrees are evaluated recursively rather than via `step`. -/
 theorem highlyAbundantLcm_correct_partial_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (hsL : 2 ≤ σ₁ (lcmRange n))
-    (hch : children (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, W (lcmRange n) c.1 c.2.1 c.2.2 = ∅) :
-    IsHighlyAbundant (lcmRange n) :=
+    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, W (lcmUpto n) c.1 c.2.1 c.2.2 = ∅) :
+    IsHighlyAbundant (lcmUpto n) :=
   isHighlyAbundant_of_root_W_eq_empty (W_eq_empty_of_partial hsL hch hcs)
 
 /-- Partial-verification entry point: certify `lcm (1..n)` is highly abundant from
 per-child kernel evaluations. The root `step` is never evaluated; instead, expand the
 root via `children` and check each child's subtree separately with its own `step`. -/
 theorem highlyAbundantLcm_correct_partial {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (hsL : 2 ≤ σ₁ (lcmRange n))
-    (hch : children (lcmRange n) (σ₁ (lcmRange n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, step (lcmRange n) searchFuel [c] = some true) :
-    IsHighlyAbundant (lcmRange n) :=
+    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, step (lcmUpto n) searchFuel [c] = some true) :
+    IsHighlyAbundant (lcmUpto n) :=
   highlyAbundantLcm_correct_partial_W hsL hch
     (fun c hc => step_true (hcs c hc) c List.mem_cons_self)
 

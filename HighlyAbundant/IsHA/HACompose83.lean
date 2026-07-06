@@ -9,14 +9,14 @@ import HighlyAbundant.IsHA.LcmRangeProofs
 import HighlyAbundant.IsHA.SageKernelBeq
 
 /-!
-# Kernel certificate for `IsHighlyAbundant (lcmRange 83)`
+# Kernel certificate for `IsHighlyAbundant (lcmUpto 83)`
 
-Proof that `lcmRange 83` is highly abundant, closed by the `ha_lcm_compose` tactic.
+Proof that `lcmUpto 83` is highly abundant, closed by the `ha_lcm_compose` tactic.
 -/
 
 namespace Sage
 
-theorem isHighlyAbundant_lcmRange_83 : IsHighlyAbundant (lcmRange 83) := by
-  ha_lcm_compose lcmRange_83 sigma_lcmRange_83 10000
+theorem isHighlyAbundant_lcmUpto_83 : IsHighlyAbundant (lcmUpto 83) := by
+  ha_lcm_compose lcmUpto_83 sigma_lcmUpto_83 10000
 
 end Sage
