@@ -14,8 +14,8 @@ lemma pratt_predicate_iff (p a x : ℕ) :
     pratt_predicate p a x ↔ ∀ q ∈ x.primeFactors, powMod a ((p - 1) / q) p ≠ 1 :=
   Iff.rfl
 
-def pratt_zero (p a : ℕ) : pratt_predicate p a 0 := by simp!
-def pratt_axiom (p a : ℕ) : pratt_predicate p a 1 := by simp!
+theorem pratt_zero (p a : ℕ) : pratt_predicate p a 0 := by simp!
+theorem pratt_axiom (p a : ℕ) : pratt_predicate p a 1 := by simp!
 
 open Nat
 
