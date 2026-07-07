@@ -4,9 +4,15 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.IsNotHA.PrepareLadder
-import HighlyAbundant.SetupPrimes
-import HighlyAbundant.IsNotHA.HA256
+module
+
+public import HighlyAbundant.IsNotHA.PrepareLadder
+meta import HighlyAbundant.IsNotHA.PrepareLadder
+meta import Mathlib.Data.Nat.Log
+public import HighlyAbundant.SetupPrimes
+public import HighlyAbundant.IsNotHA.HA256
+
+@[expose] public section
 
 open Nat
 

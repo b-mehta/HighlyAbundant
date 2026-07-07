@@ -1,4 +1,8 @@
-import HighlyAbundant.Prime.Prime
+module
+
+public import HighlyAbundant.Prime.Prime
+
+@[expose] public section
 
 theorem Tactic.Prime.Nat.prime_1009 : Nat.Prime 1009 := by pratt
   [2, 3, 7, (1009, 11, [2, 3, 7])]

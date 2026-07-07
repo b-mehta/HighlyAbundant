@@ -4,8 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.Basic
-import Mathlib.Tactic.NormNum.Prime
+module
+
+public import HighlyAbundant.Basic
+public import Mathlib.Tactic.NormNum.Prime
+
+@[expose] public section
 
 /-!
 # Proof of non-high-abundance of lcm(1..256)

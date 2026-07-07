@@ -3,10 +3,19 @@ Copyright (c) 2025 Bhavik Mehta. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
-import HighlyAbundant.Prime.Pratt
-import Batteries.Tactic.NoMatch
-import Lean.Message
-import Mathlib.Tactic.NormNum.Prime
+
+module
+
+public import HighlyAbundant.Prime.Pratt
+meta import HighlyAbundant.Prime.Pratt
+public import Batteries.Tactic.NoMatch
+meta import Batteries.Tactic.NoMatch
+public import Lean.Message
+meta import Lean.Message
+public import Mathlib.Tactic.NormNum.Prime
+meta import Mathlib.Tactic.NormNum.Prime
+
+@[expose] public section
 
 open Nat
 
@@ -25,18 +34,18 @@ inductive PrattEntry : Type
 def PrattCertificate : Type := List PrattEntry
   deriving Repr, BEq, Lean.ToExpr, Lean.FromJson
 
-def MPrattCertificate.out : MPrattCertificate → ℕ
+meta def MPrattCertificate.out : MPrattCertificate → ℕ
   | .small n => n
   | .big n _ _ => n
 
-def reformatAux : MPrattCertificate → Std.TreeMap ℕ PrattEntry
+meta def reformatAux : MPrattCertificate → Std.TreeMap ℕ PrattEntry
   | .small n => {(n, .small n)}
   | .big n root factors =>
       if n ≤ 11 then {(n, .small n)} else
       (factors.map reformatAux).foldl (.mergeWith (fun _ a _ => a))
       {(n, .big n root (factors.map (·.out)))}
 
-def reformat : MPrattCertificate → PrattCertificate := Std.TreeMap.values ∘ reformatAux
+meta def reformat : MPrattCertificate → PrattCertificate := Std.TreeMap.values ∘ reformatAux
 
 section
 
@@ -51,7 +60,7 @@ syntax "[" bpratt_entry,* "]" : bpratt_certificate
 syntax num : bpratt_entry
 syntax "(" num "," ppSpace num "," ppSpace "[" num,* "]" ")" : bpratt_entry
 
-partial def PrattEntry.ofSyntax : TSyntax `bpratt_entry → MetaM PrattEntry
+meta partial def PrattEntry.ofSyntax : TSyntax `bpratt_entry → MetaM PrattEntry
   | `(bpratt_entry| $n:num) => return .small n.getNat
   | `(bpratt_entry| ( $n:num, $root:num, [ $[$nums],* ] )) => do
       let n := n.getNat
@@ -60,17 +69,17 @@ partial def PrattEntry.ofSyntax : TSyntax `bpratt_entry → MetaM PrattEntry
       return .big n root nums.toList
   | e => throwError "Invalid builder Pratt entry syntax {e}"
 
-partial def PrattCertificate.ofSyntaxAux : TSyntax `bpratt_certificate → MetaM PrattCertificate
+meta partial def PrattCertificate.ofSyntaxAux : TSyntax `bpratt_certificate → MetaM PrattCertificate
   | `(bpratt_certificate| [ $[$entries],* ] ) => do
     let entries ← entries.mapM PrattEntry.ofSyntax
     return entries.toList
   | e => throwError "Invalid builder Pratt certificate syntax {e}"
 
-partial def PrattCertificate.ofSyntax : TSyntax `pratt_certificate → MetaM PrattCertificate
+meta partial def PrattCertificate.ofSyntax : TSyntax `pratt_certificate → MetaM PrattCertificate
   | `(pratt_certificate| $n:bpratt_certificate) => PrattCertificate.ofSyntaxAux n
   | e => throwError "Invalid Pratt certificate syntax {e}"
 
-partial def PrattEntry.toSyntax : PrattEntry → MetaM (TSyntax `bpratt_entry)
+meta partial def PrattEntry.toSyntax : PrattEntry → MetaM (TSyntax `bpratt_entry)
   | .small n => do
       let n := Lean.Syntax.mkNatLit n
       `(bpratt_entry| $n:num)
@@ -80,13 +89,12 @@ partial def PrattEntry.toSyntax : PrattEntry → MetaM (TSyntax `bpratt_entry)
       let factors := factors.toArray.map Lean.Syntax.mkNatLit
       `(bpratt_entry| ($n:num, $root:num, [ $[$factors],* ]))
 
-partial def PrattCertificate.toSyntax (i : PrattCertificate) :
+meta partial def PrattCertificate.toSyntax (i : PrattCertificate) :
     MetaM (TSyntax `bpratt_certificate) := do
   let j ← i.toArray.mapM (·.toSyntax)
   `(bpratt_certificate| [ $[$j],* ] )
 
 end
-
 
 section
 
@@ -110,7 +118,7 @@ section
 
 open Lean Elab Meta Tactic Qq
 
-def extractFactor.acc (p q i : ℕ) (hq : 1 < q) : ℕ × ℕ :=
+meta def extractFactor.acc (p q i : ℕ) (hq : 1 < q) : ℕ × ℕ :=
   if hp₀ : p = 0 then (0, i)
   else if p % q = 0 then
     have : p / q < p := Nat.div_lt_self (by omega) hq
@@ -120,7 +128,7 @@ def extractFactor.acc (p q i : ℕ) (hq : 1 < q) : ℕ × ℕ :=
 /--
 Given `p q : ℕ`, find the unique `r k : ℕ` such that `r * q ^ k = p` and `r` is not divisible by `q`
 -/
-def extractFactor (p q : ℕ) : ℕ × ℕ :=
+meta def extractFactor (p q : ℕ) : ℕ × ℕ :=
   if hq : q ≤ 1 then (p, 0) else extractFactor.acc p q 0 (lt_of_not_ge hq)
 
 structure PrattProofEntry : Type where
@@ -129,7 +137,7 @@ structure PrattProofEntry : Type where
   pf : Expr
   deriving Repr
 
-def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' : ℕ) (pE rootE : Expr)
+meta def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' : ℕ) (pE rootE : Expr)
     (factors : List ℕ) :
     MetaM (ℕ × Std.TreeSet ℕ × Expr) := do
   let mut t : ℕ := 1
@@ -154,9 +162,9 @@ def processEntryAux (m : Std.TreeMap ℕ PrattProofEntry) (p p' : ℕ) (pE rootE
     uses := insert q (uses.insertMany entry.uses)
   return (t, uses, pf)
 
-def toName (n : ℕ) : Name := .mkStr4 "Tactic" "Prime" "Nat" (s!"prime_{n}")
+meta def toName (n : ℕ) : Name := .mkStr4 "Tactic" "Prime" "Nat" (s!"prime_{n}")
 
-def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
+meta def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
     PrattEntry → MetaM (Std.TreeMap ℕ PrattProofEntry)
   | .small p => do
     if p ∈ m then return m
@@ -185,7 +193,7 @@ def processEntry (m : Std.TreeMap ℕ PrattProofEntry) :
       (userName := .mkSimple s!"prime_{p}")
     return insert (p, ⟨i, uses, pf⟩) m
 
-def prove_prime (cert : PrattCertificate) (n : ℕ) : MetaM Expr := do
+meta def prove_prime (cert : PrattCertificate) (n : ℕ) : MetaM Expr := do
   let data ← cert.foldlM processEntry ∅
   let some ent := data.get? n | throwError "the certificate doesn't prove {n} is prime"
   ent.uses.foldrM (init := ent.pf) fun q pf => do
@@ -205,7 +213,7 @@ elab "pratt" ppSpace certificate:pratt_certificate : tactic => liftMetaFinishing
     let pf ← prove_prime cert n
     goal.assign pf
 
-def powMod (a b n : ℕ) : ℕ :=
+meta def powMod (a b n : ℕ) : ℕ :=
   powModAux (a % n) b 1 where
   powModAux (a b c : ℕ) : ℕ :=
     if b = 0 then c % n
@@ -216,10 +224,10 @@ def powMod (a b n : ℕ) : ℕ :=
       powModAux (a * a % n) (b / 2) (a * c % n)
     partial_fixpoint
 
-def testPrimitiveRoot (n a : ℕ) (facs : List ℕ) : Bool :=
+meta def testPrimitiveRoot (n a : ℕ) (facs : List ℕ) : Bool :=
   facs.all fun q ↦ powMod a ((n - 1) / q) n ≠ 1
 
-def makePrimitiveRoot (n : ℕ) (facs : List ℕ) : Except String ℕ :=
+meta def makePrimitiveRoot (n : ℕ) (facs : List ℕ) : Except String ℕ :=
   go 2 where
   go (a : ℕ) : Except String ℕ :=
     if a.gcd n > 1 then .error s!"composite: found factor {a}" else
@@ -230,24 +238,24 @@ def makePrimitiveRoot (n : ℕ) (facs : List ℕ) : Except String ℕ :=
         else go (a + 1)
     else .error "no primitive root found"
 
-def factorList (n : ℕ) : List ℕ := Nat.primeFactorsList n
+meta def factorList (n : ℕ) : List ℕ := Nat.primeFactorsList n
 
-partial def makeNativeCertificate (n : ℕ) : MetaM MPrattCertificate := do
+meta partial def makeNativeCertificate (n : ℕ) : MetaM MPrattCertificate := do
   if n < 100 then return .small n else
   let facs := (factorList (n - 1)).destutter (· ≠ ·)
   match makePrimitiveRoot n facs with
   | .ok a => return .big n a (← facs.mapM makeNativeCertificate)
   | .error e => throwError e
 
-def makeCertificate (n : ℕ) : MetaM PrattCertificate := reformat <$> makeNativeCertificate n
+meta def makeCertificate (n : ℕ) : MetaM PrattCertificate := reformat <$> makeNativeCertificate n
 
 syntax "prime" Parser.Tactic.optConfig ppSpace : tactic
 
-def mkPrimalityProof (n : ℕ) : MetaM Expr := do
+meta def mkPrimalityProof (n : ℕ) : MetaM Expr := do
   let cert ← makeCertificate n
   prove_prime cert n
 
-def mkCachedPrimalityProof (n : ℕ) : TacticM Expr := do
+meta def mkCachedPrimalityProof (n : ℕ) : TacticM Expr := do
   let e ← getEnv
   let nm := toName n
   bif e.constants.contains nm then

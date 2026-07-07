@@ -4,14 +4,22 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.Basic
-import HighlyAbundant.SetupPrimes
-import Mathlib.Algebra.Order.Ring.Star
-import Mathlib.Analysis.Normed.Field.Lemmas
-import Mathlib.Data.Int.Star
-import Mathlib.Data.Rat.Star
-import Mathlib.Tactic.LinearCombination
-import Mathlib.Tactic.Ring.Compare
+module
+
+public import HighlyAbundant.Basic
+public import HighlyAbundant.SetupPrimes
+meta import HighlyAbundant.SetupPrimes
+meta import HighlyAbundant.Prime.Prime
+meta import HighlyAbundant.Basic
+meta import Mathlib.Data.Nat.Log
+public import Mathlib.Algebra.Order.Ring.Star
+public import Mathlib.Analysis.Normed.Field.Lemmas
+public import Mathlib.Data.Int.Star
+public import Mathlib.Data.Rat.Star
+public import Mathlib.Tactic.LinearCombination
+public import Mathlib.Tactic.Ring.Compare
+
+@[expose] public section
 
 open Nat
 
@@ -434,21 +442,21 @@ syntax bounds ";" ppSpace dict ";" ppSpace dict ppSpace : entry
 def ladder : Parser.Parser := leading_parser
   Lean.Parser.sepBy (Parser.categoryParser `tactic 0) "\n"
 
-def parseBounds : TSyntax `bounds → MetaM (ℕ × ℕ)
+meta def parseBounds : TSyntax `bounds → MetaM (ℕ × ℕ)
   | `(bounds| [$lo:num, $hi:num]) => return (lo.getNat, hi.getNat)
   | _ => throwError "??b"
 
-def parsePrimePow : TSyntax `primepow → MetaM (ℕ × ℕ)
+meta def parsePrimePow : TSyntax `primepow → MetaM (ℕ × ℕ)
   | `(primepow| $k:num : $v:num) => return (k.getNat, v.getNat)
   | _ => throwError "??p"
 
-def parseDict : TSyntax `dict → MetaM (List (ℕ × ℕ))
+meta def parseDict : TSyntax `dict → MetaM (List (ℕ × ℕ))
   | `(dict| { $[$es],*}) => do
     let e ← es.mapM parsePrimePow
     return Array.toList (Array.qsort e (·.1 < ·.1))
   | _ => throwError "??d"
 
-def parseEntry : TSyntax `entry → MetaM (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)
+meta def parseEntry : TSyntax `entry → MetaM (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)
   | `(entry| $bounds:bounds; $muls:dict; $divs:dict) => do
     let (lo, hi) ← parseBounds bounds
     let muls ← parseDict muls
@@ -467,21 +475,21 @@ open Lean Elab Tactic Meta
 syntax "rung" ppSpace entry : tactic
 syntax "ladder" ppSpace (entry,+,?) : tactic
 
-def proveAllPrimeMuls : (l : List (ℕ × ℕ × ℕ)) → TacticM Expr
+meta def proveAllPrimeMuls : (l : List (ℕ × ℕ × ℕ)) → TacticM Expr
   | [] => return mkConst `List.allPrimeMuls_nil
   | (p, k) :: xs => do
     let h₁ ← Prime.mkCachedPrimalityProof p
     let h₂ ← proveAllPrimeMuls xs
     return mkApp5 (mkConst ``List.allPrimeMuls_cons) (mkNatLit p) (toExpr k) (toExpr xs) h₁ h₂
 
-def proveAllPrime : (l : List ℕ) → TacticM Expr
+meta def proveAllPrime : (l : List ℕ) → TacticM Expr
   | [] => return mkConst `List.allPrime_nil
   | p :: xs => do
     let h₁ ← Prime.mkCachedPrimalityProof p
     let h₂ ← proveAllPrime xs
     return mkApp4 (mkConst ``List.allPrime_cons) (mkNatLit p) (toExpr xs) h₁ h₂
 
-def proveRung (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ) : TacticM Expr := do
+meta def proveRung (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ) : TacticM Expr := do
   let pf1 ← proveAllPrimeMuls muls
   let pf2 ← proveAllPrime divs
   let pf3 := mkApp4 (mkConst ``not_HA) (mkNatLit lo) (mkNatLit hi) (toExpr muls) (toExpr divs)
@@ -495,7 +503,7 @@ def proveRung (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ) 
     -- let pf ← proveRung lo hi muls divs
     -- goal.assign pf
 
-def proveLadder : (l : List (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)) → TacticM ((ℕ × ℕ) × Expr)
+meta def proveLadder : (l : List (ℕ × ℕ × List (ℕ × ℕ × ℕ) × List ℕ)) → TacticM ((ℕ × ℕ) × Expr)
   | [] => throwError "empty ladder"
   | [(lo, hi, muls, divs)] => do
     let pf1 ← proveRung lo hi muls divs

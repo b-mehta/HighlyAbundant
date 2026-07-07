@@ -4,9 +4,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import Mathlib.Algebra.Group.Nat.Even
-import Mathlib.Data.Nat.Basic
-import Mathlib.Tactic.NormNum.PowMod
+module
+
+public import Mathlib.Algebra.Group.Nat.Even
+public import Mathlib.Data.Nat.Basic
+public import Mathlib.Tactic.NormNum.PowMod
+
+@[expose] public section
 
 /-!
 # Proof-producing evaluation of `a ^ b % n`
@@ -34,7 +38,7 @@ where
             (r ((a.mul a).mod n) (b.div 2) c))
           (c.mod n))
 
-def powModTR' (a b n : ℕ) : ℕ :=
+meta def powModTR' (a b n : ℕ) : ℕ :=
   aux (a % n) b 1
   where aux (a b c : ℕ) : ℕ :=
     if b = 0 then c % n
@@ -109,24 +113,24 @@ namespace Tactic.powMod
 open Lean Meta Elab Tactic
 
 /-- Given `a, b, n : ℕ`, return `(m, ⊢ powMod a b n = m)`. -/
-def mkPowModEq' (a b n : ℕ) (aE bE nE : Expr) : MetaM (ℕ × Expr × Expr) := do
+meta def mkPowModEq' (a b n : ℕ) (aE bE nE : Expr) : MetaM (ℕ × Expr × Expr) := do
   let m := powModTR' a b n
   let mE := mkNatLit m
   return (m, mE, mkApp5 (mkConst ``powMod_eq_of_powModTR) aE bE nE mE eagerReflBoolTrue)
 
 /-- Given `a, b, n, m : ℕ`, if `powMod a b n = m` then return a proof of that fact. -/
-def provePowModEq' (a b n m : ℕ) (aE bE nE : Expr) : MetaM Expr := do
+meta def provePowModEq' (a b n m : ℕ) (aE bE nE : Expr) : MetaM Expr := do
   let (m', _, eq) ← mkPowModEq' a b n aE bE nE
   unless m = m' do throwError "attempted to prove {a} ^ {b} % {n} = {m} but it's actually {m'}"
   return eq
 
 /-- Given `a, b, n, m : ℕ`, if `powMod a b n ≠ m` then return a proof of that fact. -/
-def provePowModNe' (a b n m : ℕ) (aE bE nE mE : Expr) : MetaM Expr := do
+meta def provePowModNe' (a b n m : ℕ) (aE bE nE mE : Expr) : MetaM Expr := do
   let m' := powModTR' a b n
   if m = m' then throwError "attempted to prove {a} ^ {b} % {n} ≠ {m} but it is {m'}"
   return mkApp5 (mkConst ``powMod_ne_of_powModTR) aE bE nE mE eagerReflBoolFalse
 
-def prove_pow_mod_tac (g : MVarId) : MetaM Unit := do
+meta def prove_pow_mod_tac (g : MVarId) : MetaM Unit := do
   let t : Expr ← g.getType
   match_expr t with
   | Eq ty lhsE rhsE =>
