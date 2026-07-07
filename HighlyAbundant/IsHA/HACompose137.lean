@@ -5,7 +5,6 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.IsHA.WCertsTactic
-import HighlyAbundant.IsHA.LcmRangeProofs
 import HighlyAbundant.IsHA.SageKernelBeq
 
 open Nat
@@ -19,6 +18,6 @@ Proof that `lcmUpto 137` is highly abundant, closed by the `ha_lcm_compose` tact
 namespace Sage
 
 theorem isHighlyAbundant_lcmUpto_137 : IsHighlyAbundant (lcmUpto 137) := by
-  ha_lcm_compose lcmUpto_137 sigma_lcmUpto_137 10000
+  ha_lcm_compose 137 10000
 
 end Sage

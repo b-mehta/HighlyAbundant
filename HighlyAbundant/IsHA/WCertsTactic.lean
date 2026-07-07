@@ -6,6 +6,7 @@ Authors: Bhavik Mehta
 
 import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageKernelBeq
+import HighlyAbundant.IsHA.SigmaFactor
 
 open Nat
 
@@ -225,29 +226,21 @@ theorem ha_lcm_compose_bridge {n B g : ℕ} {cs : List SageNode}
   subst eB eg
   exact highlyAbundantLcm_correct_partialK_W hsL (childrenKBeqCert_eq_some hch) hcs
 
-/-- `ha_lcm_compose eB eg threshold` closes a goal `IsHighlyAbundant (lcmUpto n)`.
-`eB : lcmUpto n = B` and `eg : σ₁ (lcmUpto n) = g` supply the literals `B`, `g`;
-`threshold` is the `w_certs_auto` subtree-size bound. The root children are
-computed meta-side, emitted as a named auxiliary `def` (`kids`), and three aux
-lemmas (`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and
-combined via `ha_lcm_compose_bridge`. No inline `kids` list appears at the call site. -/
-elab "ha_lcm_compose" eBStx:ident egStx:ident thr:num : tactic => do
+/-- `ha_lcm_compose n threshold` closes a goal `IsHighlyAbundant (lcmUpto n)` for a
+literal `n`. The value `B = lcmUpto n` and `g = σ₁ (lcmUpto n)` are computed and
+kernel-certified by `Sage.proveLcmUptoValues` (no standalone literal lemmas needed);
+`threshold` is the `w_certs_auto` subtree-size bound. The root children are computed
+meta-side, emitted as a named auxiliary `def` (`kids`), and three aux lemmas
+(`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and combined
+via `ha_lcm_compose_bridge`. No inline `kids` list appears at the call site. -/
+elab "ha_lcm_compose" nStx:num thr:num : tactic => do
+  let n := nStx.getNat
   let threshold := thr.getNat
-  let eBexpr := mkConst (← resolveGlobalConstNoOverload eBStx)
-  let egexpr := mkConst (← resolveGlobalConstNoOverload egStx)
-  let eBty ← inferType eBexpr
-  let egty ← inferType egexpr
-  let some (_, lhsB, BExpr) := eBty.eq?
-    | throwError "first argument must prove `lcmUpto n = B`, got: {← Meta.ppExpr eBty}"
-  let_expr Nat.lcmUpto nExpr := lhsB
-    | throwError "first argument's LHS must be `lcmUpto n`, got: {← Meta.ppExpr lhsB}"
-  let some Bval := BExpr.nat?
-    | throwError "`B` is not a `Nat` literal: {← Meta.ppExpr BExpr}"
-  let some (_, _, gExpr) := egty.eq?
-    | throwError "second argument must prove `σ₁ (lcmUpto n) = g`, got: {← Meta.ppExpr egty}"
-  let some gval := gExpr.nat?
-    | throwError "`g` is not a `Nat` literal: {← Meta.ppExpr gExpr}"
   liftMetaFinishingTactic fun g => do
+    let (Bval, gval, eBexpr, egexpr) ← Sage.proveLcmUptoValues n
+    let nExpr := mkNatLit n
+    let BExpr := mkNatLit Bval
+    let gExpr := mkNatLit gval
     let ce := mkCommonExprs
     let fuel := mkConst ``Sage.searchFuel
     let some rootKidsList := Sage.children Bval gval 1 0
@@ -280,6 +273,19 @@ elab "ha_lcm_compose" eBStx:ident egStx:ident thr:num : tactic => do
     -- (7) assemble via the bridge (transports literal certs to `lcmUpto n` form).
     g.assign <| mkAppN (mkConst ``Sage.ha_lcm_compose_bridge)
       #[nExpr, BExpr, gExpr, kidsE, eBexpr, egexpr, hsL, hch, hcs]
+
+/-- `lcm_upto_facts n` adds two kernel-certified hypotheses for a literal `n`:
+`eB : lcmUpto n = <B>` and `eg : σ₁ (lcmUpto n) = <g>`. Used by the split `n = 169`
+proof, which composes its two halves manually rather than through `ha_lcm_compose`. -/
+elab "lcm_upto_facts" nStx:num : tactic => do
+  let n := nStx.getNat
+  liftMetaTactic fun g => do
+    let (_, _, eB, eg) ← Sage.proveLcmUptoValues n
+    let g ← g.assert `eB (← inferType eB) eB
+    let (_, g) ← g.intro1P
+    let g ← g.assert `eg (← inferType eg) eg
+    let (_, g) ← g.intro1P
+    return [g]
 
 /-! ### Sanity tests -/
 

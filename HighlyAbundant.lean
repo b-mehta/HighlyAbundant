@@ -21,7 +21,6 @@ import HighlyAbundant.IsHA.SageSpec
 import HighlyAbundant.IsHA.WCertsTactic
 import HighlyAbundant.IsHA.Primes
 import HighlyAbundant.IsHA.SigmaFactor
-import HighlyAbundant.IsHA.LcmRangeProofs
 import HighlyAbundant.IsHA.HAComposeSmall
 import HighlyAbundant.IsHA.HACompose67
 import HighlyAbundant.IsHA.HACompose81

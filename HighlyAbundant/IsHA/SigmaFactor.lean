@@ -95,48 +95,66 @@ lemma sigma_lcm_bridge {n L sL : ℕ} (F : List (ℕ × ℕ))
   rw [hL, ← hprod]
   exact sigma_of_factorization F hp hd hsig
 
+/-- Fold form of `lcmUpto n`, computing the lcm over `List.foldr Nat.lcm 1`; the
+kernel reduces this cheaply. -/
+def lcmUptoFoldr (n : ℕ) : ℕ := (List.range' 1 n).foldr Nat.lcm 1
+
+lemma lcmUpto_eq_lcmUptoFoldr (n : ℕ) : lcmUpto n = lcmUptoFoldr n := by
+  rw [Nat.lcmUpto, lcmUptoFoldr, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
+  change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
+  simp only [Nat.add_sub_cancel, List.map_id]
+  induction List.range' 1 n with
+  | nil => rfl
+  | cons a l ih => rw [List.foldr_cons, List.foldr_cons, ih, lcm_eq_nat_lcm]
+
+/-- Boilerplate for closing `lcmUpto n = <literal>` from a `Nat.beq` check. -/
+lemma lcmUpto_aux (n : ℕ) {L : ℕ} (h : (lcmUptoFoldr n).beq L = true) : lcmUpto n = L := by
+  rw [lcmUpto_eq_lcmUptoFoldr]; exact Nat.eq_of_beq_eq_true h
+
 /-- Meta-side factorization of `lcmUpto n`: primes `≤ n` with exponent `Nat.log p n`. -/
 def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
   (List.range (n + 1)).filterMap fun p => if p.Prime then some (p, Nat.log p n) else none
 
-/-- `sigma_lcm hL` proves `σ₁ (lcmUpto n) = sL` given `hL : lcmUpto n = L`. The
-factorization is computed meta-side; the kernel only verifies `∏ p^k = L`, `∏ σ = sL`
-(via `Nat.beq`/`reflBoolTrue`), primality by trial division, and distinctness. -/
-elab "sigma_lcm" hLStx:ident : tactic => do
-  let hLName ← resolveGlobalConstNoOverload hLStx
-  let hLexpr := mkConst hLName
-  let hLty ← inferType hLexpr
-  let some (_, lhs, LExpr) := hLty.eq?
-    | throwError "sigma_lcm: argument must prove `lcmUpto n = L`"
-  let_expr Nat.lcmUpto nExpr := lhs
-    | throwError "sigma_lcm: LHS must be `lcmUpto n`"
-  let some nVal := nExpr.nat? | throwError "sigma_lcm: n not a literal"
-  liftMetaFinishingTactic fun g => do
-    let some (_, _, sLExpr) := (← g.getType).eq?
-      | throwError "sigma_lcm: goal must be `σ₁ (lcmUpto n) = sL`"
-    let natTy := mkConst ``Nat
-    let prodTy := mkApp2 (mkConst ``Prod [.zero, .zero]) natTy natTy
-    let mut FExpr := mkApp (mkConst ``List.nil [.zero]) prodTy
-    for (p, k) in (factorLcmUptoMeta nVal).reverse do
-      let pairE := mkApp4 (mkConst ``Prod.mk [.zero, .zero]) natTy natTy (mkNatLit p) (mkNatLit k)
-      FExpr := mkApp3 (mkConst ``List.cons [.zero]) prodTy pairE FExpr
-    let factorsE ← mkAuxDefinition (← mkAuxDeclName `factors)
-      (mkApp (mkConst ``List [.zero]) prodTy) FExpr (compile := false)
-    let boolTy := mkConst ``Bool
-    let trueE := mkConst ``Bool.true
-    let boolCert (b : Expr) : MetaM Expr := do
-      return mkConst (← mkAuxLemma [] (mkApp3 (mkConst ``Eq [.succ .zero]) boolTy b trueE)
-        Lean.reflBoolTrue)
-    let prodApp := mkApp (mkConst ``Sage.prodFactor) factorsE
-    let hprod := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) prodApp LExpr
-      (← boolCert (mkApp2 (mkConst ``Nat.beq) prodApp LExpr))
-    let hp ← boolCert (mkApp (mkConst ``Sage.allCheckPrime) factorsE)
-    let hd ← mkDecideProof (mkApp2 (mkConst ``List.Nodup [.zero]) natTy
-      (mkApp (mkConst ``Sage.primesFactor) factorsE))
-    let sigApp := mkApp (mkConst ``Sage.sigmaFactor) factorsE
-    let hsig := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) sigApp sLExpr
-      (← boolCert (mkApp2 (mkConst ``Nat.beq) sigApp sLExpr))
-    g.assign <| mkAppN (mkConst ``Sage.sigma_lcm_bridge)
-      #[nExpr, LExpr, sLExpr, factorsE, hLexpr, hprod, hp, hd, hsig]
+/-- For a literal `n`, compute `B = lcmUpto n` and `g = σ₁ (lcmUpto n)`, returning
+`(B, g, proof of lcmUpto n = B, proof of σ₁ (lcmUpto n) = g)`. The factorization is
+found meta-side; the kernel verifies `lcmUpto n = B` and `∏ p^k = B` (via `Nat.beq`),
+the σ closed form, primality by trial division, and distinctness of the primes. -/
+def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
+  let nE := mkNatLit n
+  let boolTy := mkConst ``Bool
+  let trueE := mkConst ``Bool.true
+  let boolCert (b : Expr) : MetaM Expr := do
+    return mkConst (← mkAuxLemma [] (mkApp3 (mkConst ``Eq [.succ .zero]) boolTy b trueE)
+      Lean.reflBoolTrue)
+  -- `B = lcmUpto n`, with `eB : lcmUpto n = B` via `lcmUpto_aux` and a `beq` cert.
+  let Bval := (List.range' 1 n).foldr Nat.lcm 1
+  let BE := mkNatLit Bval
+  let foldrApp := mkApp (mkConst ``Sage.lcmUptoFoldr) nE
+  let hBeq ← boolCert (mkApp2 (mkConst ``Nat.beq) foldrApp BE)
+  let eB := mkApp3 (mkConst ``Sage.lcmUpto_aux) nE BE hBeq
+  -- Factorization → `g` and the σ proof.
+  let factors := factorLcmUptoMeta n
+  let gval := factors.foldr (fun pk r => (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1
+  let gE := mkNatLit gval
+  let natTy := mkConst ``Nat
+  let prodTy := mkApp2 (mkConst ``Prod [.zero, .zero]) natTy natTy
+  let mut FExpr := mkApp (mkConst ``List.nil [.zero]) prodTy
+  for (p, k) in factors.reverse do
+    let pairE := mkApp4 (mkConst ``Prod.mk [.zero, .zero]) natTy natTy (mkNatLit p) (mkNatLit k)
+    FExpr := mkApp3 (mkConst ``List.cons [.zero]) prodTy pairE FExpr
+  let factorsE ← mkAuxDefinition (← mkAuxDeclName `factors)
+    (mkApp (mkConst ``List [.zero]) prodTy) FExpr (compile := false)
+  let prodApp := mkApp (mkConst ``Sage.prodFactor) factorsE
+  let hprod := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) prodApp BE
+    (← boolCert (mkApp2 (mkConst ``Nat.beq) prodApp BE))
+  let hp ← boolCert (mkApp (mkConst ``Sage.allCheckPrime) factorsE)
+  let hd ← mkDecideProof (mkApp2 (mkConst ``List.Nodup [.zero]) natTy
+    (mkApp (mkConst ``Sage.primesFactor) factorsE))
+  let sigApp := mkApp (mkConst ``Sage.sigmaFactor) factorsE
+  let hsig := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) sigApp gE
+    (← boolCert (mkApp2 (mkConst ``Nat.beq) sigApp gE))
+  let eg := mkAppN (mkConst ``Sage.sigma_lcm_bridge)
+    #[nE, BE, gE, factorsE, eB, hprod, hp, hd, hsig]
+  return (Bval, gval, eB, eg)
 
 end Sage
