@@ -1,6 +1,8 @@
 module
 
 public import HighlyAbundant.Prime.Prime
+meta import HighlyAbundant.Prime.Prime
+meta import HighlyAbundant.Prime.Certificate
 
 @[expose] public section
 
