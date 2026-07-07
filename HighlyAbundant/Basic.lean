@@ -126,3 +126,36 @@ lemma sq_not_dvd {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) : ¬ p ^ 2 ∣ lcm
   rw [hp.pow_dvd_iff_le_factorization (lcmUpto_ne_zero _), not_le]
   have := factorization_lcmUpto_le_one hp hnp
   lia
+
+/-! ### `lcmUpto` is constant between consecutive prime powers
+
+`lcmUpto n` only increases when `n` crosses a prime power. If there is no prime power in `(m, n]`
+then `lcmUpto m = lcmUpto n`, and highly-abundant-ness transfers along such a block.
+-/
+
+/-- If no prime power lies in `(m, n]` (with `m ≤ n`), then `lcmUpto m = lcmUpto n`. -/
+theorem lcmUpto_eq_of_le {m n : ℕ} (hmn : m ≤ n)
+    (h : ∀ q, IsPrimePow q → m < q → n < q) : lcmUpto m = lcmUpto n := by
+  refine Nat.factorization_inj (by simp) (by simp) ?_
+  ext p
+  by_cases hp : p.Prime
+  · rw [Nat.factorization_lcmUpto m hp, Nat.factorization_lcmUpto n hp]
+    refine le_antisymm (Nat.log_mono_right hmn) ?_
+    by_contra! hlt
+    have hpp : IsPrimePow (p ^ Nat.log p n) := hp.isPrimePow.pow (by lia)
+    grind [Nat.pow_log_le_self, Nat.lt_pow_of_log_lt, hp.one_lt]
+  · simp [hp]
+
+/-- Highly-abundant-ness transfers across a block with no prime power in `(m, n]`. -/
+theorem isHighlyAbundant_lcmUpto_of_le {m n : ℕ} (hmn : m ≤ n)
+    (h : ∀ q, IsPrimePow q → m < q → n < q) (hm : IsHighlyAbundant (lcmUpto m)) :
+    IsHighlyAbundant (lcmUpto n) := by rwa [lcmUpto_eq_of_le hmn h] at hm
+
+/-- Transfer `IsHighlyAbundant (lcmUpto ·)` along a block given as a finite gap condition on
+`Finset.Ioc m n`. This form is dischargeable by `decide` for concrete `m`, `n`. -/
+theorem isHighlyAbundant_lcmUpto_of_no_primePow_Ioc {m n : ℕ} (hmn : m ≤ n)
+    (hgap : ∀ x ∈ Finset.Ioc m n, ¬ IsPrimePow x) (hm : IsHighlyAbundant (lcmUpto m)) :
+    IsHighlyAbundant (lcmUpto n) := by
+  refine isHighlyAbundant_lcmUpto_of_le hmn (fun q hq hmq ↦ ?_) hm
+  by_contra! hc
+  exact hgap q (Finset.mem_Ioc.2 ⟨hmq, hc⟩) hq
