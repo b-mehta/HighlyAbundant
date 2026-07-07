@@ -99,7 +99,7 @@ elab_rules : command
     for i in [2:j+1] do
       if Nat.Prime i then
         let nm := mkIdent (.mkStr2 "Nat" (s!"prime_{i}"))
-        let cmd ← `(command| def $nm : Nat.Prime $(Syntax.mkNatLit i) := by norm_num)
+        let cmd ← `(command| theorem $nm : Nat.Prime $(Syntax.mkNatLit i) := by norm_num)
         elabCommand cmd
 
 mk_tiny_primes 1000
