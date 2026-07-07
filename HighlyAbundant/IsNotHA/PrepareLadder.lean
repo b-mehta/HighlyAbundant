@@ -13,6 +13,8 @@ import Mathlib.Data.Rat.Star
 import Mathlib.Tactic.LinearCombination
 import Mathlib.Tactic.Ring.Compare
 
+open Nat
+
 /-!
 # Helpers for formalising ladders
 -/
@@ -65,21 +67,21 @@ lemma h_disjoint : ∀ pki ∈ d.muls, pki.1 ∉ d.divs := d.h_disjoint'
 def mul : ℕ := (d.muls.map (fun pk ↦ pk.1 ^ pk.2.1)).prod
 def div : ℕ := d.divs.prod
 
-lemma h_muls_hi' : ∀ pki ∈ d.muls, (lcmRange d.hi).factorization pki.1 = pki.2.2 := by
+lemma h_muls_hi' : ∀ pki ∈ d.muls, (lcmUpto d.hi).factorization pki.1 = pki.2.2 := by
   intro pki hpki
-  exact factorization_lcmRange_eq (d.h_muls_hi _ hpki).1 (d.h_muls_hi _ hpki).2 (d.h_muls _ hpki)
+  exact factorization_lcmUpto_eq (d.h_muls_hi _ hpki).1 (d.h_muls_hi _ hpki).2 (d.h_muls _ hpki)
 
 lemma h_muls_i {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
-    ∀ pki ∈ d.muls, (lcmRange i).factorization pki.1 ≤ pki.2.2 := by
+    ∀ pki ∈ d.muls, (lcmUpto i).factorization pki.1 ≤ pki.2.2 := by
   simp only [Finset.mem_Icc] at hi
   intro pki hpki
-  exact factorization_lcmRange_le (hi.2.trans_lt (d.h_muls_hi _ hpki).2) (d.h_muls _ hpki)
+  exact factorization_lcmUpto_le (hi.2.trans_lt (d.h_muls_hi _ hpki).2) (d.h_muls _ hpki)
 
 lemma h_divs_i {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
-    ∀ p ∈ d.divs, (lcmRange i).factorization p = 1 := by
+    ∀ p ∈ d.divs, (lcmUpto i).factorization p = 1 := by
   simp only [Finset.mem_Icc] at hi
   intro p hp
-  exact factorization_lcmRange_eq_one (d.h_divs _ hp)
+  exact factorization_lcmUpto_eq_one (d.h_divs _ hp)
     (by have := d.h_divs_lo; grind) (by have := d.h_divs_hi; grind)
 
 lemma mul_eq : d.mul = (∏ pk ∈ d.muls.toFinset, pk.1 ^ pk.2.1) := by
@@ -89,9 +91,9 @@ lemma div_eq : d.div = (∏ i ∈ d.divs.toFinset, i) := by
   rw [div, List.prod_toFinset _ d.h_divs_nodup, List.map_id']
 
 def K (i : ℕ) : ℕ :=
-  (∏ p ∈ (lcmRange i).primeFactors with p ∉ d.muls.map (·.1), p ^ (lcmRange i).factorization p)
+  (∏ p ∈ (lcmUpto i).primeFactors with p ∉ d.muls.map (·.1), p ^ (lcmUpto i).factorization p)
 
-def M (i : ℕ) : ℕ := (lcmRange i) / d.div * d.mul
+def M (i : ℕ) : ℕ := (lcmUpto i) / d.div * d.mul
 
 lemma mem_of_dvd {p i : ℕ} (hp : p.Prime) (h : p ∣ d.K i) :
     p ∉ d.muls.map (·.1) := by
@@ -109,28 +111,28 @@ lemma h_div_K {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ d.K i := b
     rwa [Nat.coprime_primes (d.h_divs _ hp₁) (d.h_divs _ hp₂)]
   simp only [List.mem_toFinset]
   intro p hp
-  have hpl : p ∈ (lcmRange i).primeFactors := by
-    rw [Nat.mem_primeFactors_of_ne_zero lcmRange_ne_zero]
+  have hpl : p ∈ (lcmUpto i).primeFactors := by
+    rw [Nat.mem_primeFactors_of_ne_zero (lcmUpto_ne_zero _)]
     refine ⟨d.h_divs _ hp, ?_⟩
-    exact dvd_lcmRange_of_le (d.h_divs p hp).ne_zero
+    exact dvd_lcmUpto_of_le (d.h_divs p hp).ne_zero
       (by have := d.h_divs_lo; grind)
   have : p ∉ d.muls.map (·.1) := by have := d.h_disjoint; grind
-  convert_to p ^ (lcmRange i).factorization p ∣ d.K i
+  convert_to p ^ (lcmUpto i).factorization p ∣ d.K i
   · rfl
   · rw [d.h_divs_i hi _ hp, Nat.pow_one]
   exact Finset.dvd_prod_of_mem _ (by simp [hpl, this])
 
 lemma L_eq {i : ℕ} :
-    lcmRange i = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * d.K i := by
+    lcmUpto i = (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmUpto i).factorization pki.1) * d.K i := by
   conv_lhs =>
-    rw [← Nat.prod_factorization_pow_eq_self (n := lcmRange i) lcmRange_ne_zero, Finsupp.prod,
+    rw [← Nat.prod_factorization_pow_eq_self (n := lcmUpto i) (lcmUpto_ne_zero _), Finsupp.prod,
       Nat.support_factorization]
-  rw [← Finset.prod_filter_mul_prod_filter_not (lcmRange i).primeFactors (· ∈ d.muls.map (·.1)) _]
+  rw [← Finset.prod_filter_mul_prod_filter_not (lcmUpto i).primeFactors (· ∈ d.muls.map (·.1)) _]
   change _ * d.K i = _
   suffices
-      ∏ x ∈ (lcmRange i).primeFactors with x ∈ d.muls.map (·.1),
-            x ^ (lcmRange i).factorization x =
-      (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) by
+      ∏ x ∈ (lcmUpto i).primeFactors with x ∈ d.muls.map (·.1),
+            x ^ (lcmUpto i).factorization x =
+      (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmUpto i).factorization pki.1) by
     rw [this]
   apply (Finset.prod_bij_ne_one (fun pki _ _ ↦ pki.1) _ _ _ (by simp)).symm
   · rintro ⟨p, k, i⟩ hpki h₂
@@ -138,7 +140,7 @@ lemma L_eq {i : ℕ} :
     simp only [List.mem_toFinset] at hpki
     simp only [List.mem_map, Prod.exists, exists_and_right, exists_eq_right, Finset.mem_filter,
       Nat.mem_primeFactors, ne_eq]
-    refine ⟨⟨(d.h_muls _ hpki), ?_, lcmRange_ne_zero⟩, _, _, hpki⟩
+    refine ⟨⟨(d.h_muls _ hpki), ?_, lcmUpto_ne_zero _⟩, _, _, hpki⟩
     exact Nat.dvd_of_factorization_pos (by intro h; simp [h] at h₂)
   · simp only [List.mem_toFinset, ne_eq, Nat.pow_eq_one, not_or, and_imp, Prod.forall]
     rintro p₁ k₁ i₁ hpki₁ hp₁ hLp₁ p₂ k₂ i₂ hpki₂ hp₂ hLp₂ rfl
@@ -146,19 +148,19 @@ lemma L_eq {i : ℕ} :
     exact (d.h_muls_sorted.imp ne_of_lt).set_pairwise hpki₁ hpki₂ h rfl
   · simp +contextual
 
-lemma K_div_L {i : ℕ} : d.K i ∣ lcmRange i := by
+lemma K_div_L {i : ℕ} : d.K i ∣ lcmUpto i := by
   rw [d.L_eq]
   simp
 
-lemma div_dvd_L {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ lcmRange i :=
+lemma div_dvd_L {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div ∣ lcmUpto i :=
   (d.h_div_K hi).trans (d.K_div_L)
 
-lemma M_lt_L {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.M i < lcmRange i := by
+lemma M_lt_L {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.M i < lcmUpto i := by
   rw [M]
-  have : d.div ∣ lcmRange i := (d.h_div_K hi).trans (d.K_div_L)
+  have : d.div ∣ lcmUpto i := (d.h_div_K hi).trans (d.K_div_L)
   rw [Nat.div_mul_right_comm this]
   apply Nat.div_lt_of_lt_mul
-  have := lcmRange_pos (n := i)
+  have := lcmUpto_pos (n := i)
   rw [mul_comm]
   apply Nat.mul_lt_mul_of_pos_right _ this
   exact d.h_prod
@@ -180,7 +182,7 @@ lemma div_coprime {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) : d.div.Coprime (d
 
 lemma M_eq {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
     d.M i =
-      (∏ pki ∈ d.muls.toFinset, pki.1 ^ ((lcmRange i).factorization pki.1 + pki.2.1)) *
+      (∏ pki ∈ d.muls.toFinset, pki.1 ^ ((lcmUpto i).factorization pki.1 + pki.2.1)) *
       (d.K i / d.div) := by
   simp only [ProofData.M]
   conv_lhs => rw [d.L_eq]
@@ -196,7 +198,7 @@ lemma K_ne_zero {i : ℕ} : d.K i ≠ 0 := by
   rintro hK
   have := d.L_eq (i := i)
   rw [hK, mul_zero] at this
-  exact lcmRange_ne_zero this
+  exact lcmUpto_ne_zero _ this
 
 lemma sigma_K_ne_zero {i : ℕ} : σ₁ (d.K i) ≠ 0 := by simp [d.K_ne_zero]
 
@@ -212,7 +214,7 @@ lemma prod_coprime_K {f : ℕ × ℕ × ℕ → ℕ} {i : ℕ} :
 
 lemma M_pos {i} (hi : i ∈ Finset.Icc d.lo d.hi) : 0 < d.M i := by
   rw [M]
-  apply Nat.mul_pos (Nat.div_pos (Nat.le_of_dvd (lcmRange_pos) (d.div_dvd_L hi)) _) _
+  apply Nat.mul_pos (Nat.div_pos (Nat.le_of_dvd (lcmUpto_pos _) (d.div_dvd_L hi)) _) _
   · rw [div_eq]
     simp only [CanonicallyOrderedAdd.prod_pos, List.mem_toFinset]
     intro i hi
@@ -221,16 +223,16 @@ lemma M_pos {i} (hi : i ∈ Finset.Icc d.lo d.hi) : 0 < d.M i := by
     intro i hi
     exact Nat.pow_pos (d.h_muls _ hi).pos
 
-lemma sig_eq {i} (hi : i ∈ Finset.Icc d.lo d.hi) : σ₁ (d.M i) / σ₁ (lcmRange i) =
+lemma sig_eq {i} (hi : i ∈ Finset.Icc d.lo d.hi) : σ₁ (d.M i) / σ₁ (lcmUpto i) =
         (∏ pki ∈ d.muls.toFinset,
-          (pki.1 ^ ((lcmRange i).factorization pki.1 + pki.2.1 + 1) - 1 : ℕ) /
-          (pki.1 ^ ((lcmRange i).factorization pki.1 + 1) - 1 : ℕ) : ℚ) /
+          (pki.1 ^ ((lcmUpto i).factorization pki.1 + pki.2.1 + 1) - 1 : ℕ) /
+          (pki.1 ^ ((lcmUpto i).factorization pki.1 + 1) - 1 : ℕ) : ℚ) /
         (∏ p ∈ d.divs.toFinset, (p + 1)) := by
   have h₁ : (σ₁ (d.K i / d.div) : ℚ) = (σ₁ (d.K i)) / (σ₁ d.div) :=
       (isMultiplicative_sigma (k := 1)).natCast.map_div_of_coprime (R := ℚ) (d.h_div_K hi)
       (d.div_coprime hi).symm (by simp [sigma_eq_zero, d.div_ne_zero])
-  have h₂ : σ₁ (lcmRange i) =
-      σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1) * σ₁ (d.K i) := by
+  have h₂ : σ₁ (lcmUpto i) =
+      σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmUpto i).factorization pki.1) * σ₁ (d.K i) := by
     rw [← isMultiplicative_sigma.map_mul_of_coprime, ← L_eq]
     apply d.prod_coprime_K
   rw [d.M_eq hi, isMultiplicative_sigma.map_mul_of_coprime, Nat.cast_mul, h₁, h₂, Nat.cast_mul]
@@ -240,8 +242,8 @@ lemma sig_eq {i} (hi : i ∈ Finset.Icc d.lo d.hi) : σ₁ (d.M i) / σ₁ (lcmR
   have : σ₁ (d.K i) ≠ 0 := by simp [sigma_eq_zero, d.K_ne_zero]
   conv_lhs =>
   { equals
-      ((σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ ((lcmRange i).factorization pki.1 + pki.2.1)) : ℚ) /
-      (σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmRange i).factorization pki.1))) /
+      ((σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ ((lcmUpto i).factorization pki.1 + pki.2.1)) : ℚ) /
+      (σ₁ (∏ pki ∈ d.muls.toFinset, pki.1 ^ (lcmUpto i).factorization pki.1))) /
       (σ₁ d.div) =>
     field_simp [this] }
   rw [d.div_eq, isMultiplicative_sigma.map_prod, isMultiplicative_sigma.map_prod,
@@ -295,9 +297,9 @@ lemma inequality {p a a' b : ℕ} (ha : a' ≤ a) (hp : 2 ≤ p) :
   have := test (p := p) (a := a' + 1) (b := b) (c := c)
   grind
 
-theorem not_HA' : ∀ i ∈ Finset.Icc d.lo d.hi, ¬ IsHighlyAbundant (lcmRange i) := by
+theorem not_HA' : ∀ i ∈ Finset.Icc d.lo d.hi, ¬ IsHighlyAbundant (lcmUpto i) := by
   intro i hi
-  set L := lcmRange i with hL
+  set L := lcmUpto i with hL
   have hsig_ge :
       (∏ pki ∈ d.muls.toFinset,
         (pki.1 ^ (pki.2.2 + pki.2.1 + 1) - 1 : ℕ) / (pki.1 ^ (pki.2.2 + 1) - 1 : ℕ) : ℚ) /
@@ -373,9 +375,9 @@ section
 
 theorem combine_ranges {a b c d : ℕ}
     (h : c.ble (b + 1))
-    (h₁ : ∀ i, a ≤ i → i ≤ b → ¬ IsHighlyAbundant (lcmRange i))
-    (h₂ : ∀ i, c ≤ i → i ≤ d → ¬ IsHighlyAbundant (lcmRange i)) :
-    ∀ i, a ≤ i → i ≤ d → ¬ IsHighlyAbundant (lcmRange i) := by
+    (h₁ : ∀ i, a ≤ i → i ≤ b → ¬ IsHighlyAbundant (lcmUpto i))
+    (h₂ : ∀ i, c ≤ i → i ≤ d → ¬ IsHighlyAbundant (lcmUpto i)) :
+    ∀ i, a ≤ i → i ≤ d → ¬ IsHighlyAbundant (lcmUpto i) := by
   intro i ha hd
   simp only [Nat.ble_eq] at h
   grind
@@ -394,7 +396,7 @@ theorem not_HA (lo hi : ℕ) (muls : List (ℕ × ℕ × ℕ)) (divs : List ℕ)
     (h_prod : Nat.blt (muls.map (fun pk ↦ pk.1 ^ pk.2.1)).prod divs.prod)
     (h_muls_prime : muls.allPrimeMuls)
     (h_divs_prime : divs.allPrime) :
-    ∀ i, lo ≤ i → i ≤ hi → ¬ IsHighlyAbundant (lcmRange i) := by
+    ∀ i, lo ≤ i → i ≤ hi → ¬ IsHighlyAbundant (lcmUpto i) := by
   intro i hlo hhi
   let d : ProofData :=
   { lo := lo,
