@@ -13,7 +13,7 @@ public import Mathlib.Data.Nat.Cast.Field
 public import Mathlib.NumberTheory.ArithmeticFunction.Misc
 public import Mathlib.NumberTheory.Chebyshev
 
-@[expose] public section
+public section
 
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
