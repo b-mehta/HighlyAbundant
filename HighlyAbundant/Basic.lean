@@ -4,12 +4,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import Mathlib.Algebra.GCDMonoid.Finset
-import Mathlib.Algebra.GCDMonoid.Nat
-import Mathlib.Algebra.Order.Star.Basic
-import Mathlib.Data.Nat.Cast.Field
-import Mathlib.NumberTheory.ArithmeticFunction.Misc
-import Mathlib.NumberTheory.Chebyshev
+module
+
+public import Mathlib.Algebra.GCDMonoid.Finset
+public import Mathlib.Algebra.GCDMonoid.Nat
+public import Mathlib.Algebra.Order.Star.Basic
+public import Mathlib.Data.Nat.Cast.Field
+public import Mathlib.NumberTheory.ArithmeticFunction.Misc
+public import Mathlib.NumberTheory.Chebyshev
+
+@[expose] public section
 
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
