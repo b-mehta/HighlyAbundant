@@ -25,6 +25,7 @@ open Nat
 notation "σ₁" => ArithmeticFunction.sigma 1
 
 /-- Definition of highly abundant number -/
+@[expose]
 def IsHighlyAbundant (N : ℕ) : Prop :=
   ∀ m > 0, m < N → σ₁ m < σ₁ N
 
