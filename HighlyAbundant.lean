@@ -3,5 +3,6 @@ import HighlyAbundant.IsNotHA.ClimbLadder
 import HighlyAbundant.IsNotHA.HA256
 import HighlyAbundant.IsNotHA.PrepareLadder
 import HighlyAbundant.Prime.PowMod
+import HighlyAbundant.Prime.PowModTactic
 import HighlyAbundant.Prime.Pratt
 import HighlyAbundant.Prime.Prime
