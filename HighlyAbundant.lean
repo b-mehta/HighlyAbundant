@@ -6,3 +6,4 @@ import HighlyAbundant.Prime.PowMod
 import HighlyAbundant.Prime.PowModTactic
 import HighlyAbundant.Prime.Pratt
 import HighlyAbundant.Prime.Prime
+import HighlyAbundant.IsHA.Primes
