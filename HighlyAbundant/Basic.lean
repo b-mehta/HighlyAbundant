@@ -4,12 +4,16 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import Mathlib.Algebra.GCDMonoid.Finset
-import Mathlib.Algebra.GCDMonoid.Nat
-import Mathlib.Algebra.Order.Star.Basic
-import Mathlib.Data.Nat.Cast.Field
-import Mathlib.NumberTheory.ArithmeticFunction.Misc
-import Mathlib.NumberTheory.Chebyshev
+module
+
+public import Mathlib.Algebra.GCDMonoid.Finset
+public import Mathlib.Algebra.GCDMonoid.Nat
+public import Mathlib.Algebra.Order.Star.Basic
+public import Mathlib.Data.Nat.Cast.Field
+public import Mathlib.NumberTheory.ArithmeticFunction.Misc
+public import Mathlib.NumberTheory.Chebyshev
+
+public section
 
 /-!
 # Definitions and basic lemmas about highly abundant numbers and lcm(1..n)
@@ -21,6 +25,7 @@ open Nat
 notation "σ₁" => ArithmeticFunction.sigma 1
 
 /-- Definition of highly abundant number -/
+@[expose]
 def IsHighlyAbundant (N : ℕ) : Prop :=
   ∀ m > 0, m < N → σ₁ m < σ₁ N
 
@@ -65,54 +70,25 @@ lemma factorization_eq {n p k : ℕ} (h₁ : p ^ k ∣ n) (h₂ : ¬ p ^ (k + 1)
   suffices k ≤ Nat.factorization n p ∧ ¬ (k + 1 ≤ Nat.factorization n p) by lia
   simp [← hp.pow_dvd_iff_le_factorization hn, *]
 
-lemma Nat.factorization_finsetLcm {α : Type*} {p : ℕ} {s : Finset α} {f : α → ℕ}
-    (h : ∀ x ∈ s, f x ≠ 0) :
-    (s.lcm f).factorization p = s.sup (fun i ↦ (f i).factorization p) := by
-  classical
-  induction s using Finset.induction with
-  | empty => simp
-  | insert a s has ih =>
-    simp only [Finset.mem_insert, ne_eq, forall_eq_or_imp] at h
-    rw [Finset.lcm_insert, lcm_eq_nat_lcm, Nat.factorization_lcm h.1 (by simpa using h.2)]
-    simp only [Finset.sup_insert, Finsupp.sup_apply, ih h.2]
-
 attribute [simp, grind .] Nat.lcmUpto_ne_zero Nat.lcmUpto_pos
 
 lemma dvd_lcmUpto_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmUpto n := by
   apply Finset.dvd_lcm
   grind
 
-lemma factorization_lcmUpto_sup {p n : ℕ} :
-    (lcmUpto n).factorization p = Finset.sup (Finset.Icc 1 n) (fun i ↦ i.factorization p) := by
-  apply Nat.factorization_finsetLcm
-  grind
-
 lemma factorization_lcmUpto_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
     (lcmUpto n).factorization p ≤ k := by
-  simp only [factorization_lcmUpto_sup, Finset.sup_le_iff, Finset.mem_Icc, and_imp]
-  intro i hi hin
-  suffices ¬ (k + 1 ≤ i.factorization p) by lia
-  rw [← hp.pow_dvd_iff_le_factorization (by lia)]
-  intro h
-  have := Nat.le_of_dvd (by lia) h
+  rw [Nat.factorization_lcmUpto n hp]
+  have := Nat.log_lt_of_lt_pow' (Nat.succ_ne_zero k) h'
   lia
 
 lemma factorization_lcmUpto_eq {n p k : ℕ} (h : p ^ k ≤ n) (h' : n < p ^ (k + 1)) (hp : p.Prime) :
     (lcmUpto n).factorization p = k := by
-  apply le_antisymm
-  · apply factorization_lcmUpto_le h' hp
-  · rw [← hp.pow_dvd_iff_le_factorization (by simp)]
-    apply dvd_lcmUpto_of_le (pow_ne_zero _ hp.ne_zero) h
+  rw [Nat.factorization_lcmUpto n hp, Nat.log_eq_of_pow_le_of_lt_pow h h']
 
 lemma factorization_lcmUpto_le_one {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) :
     (lcmUpto n).factorization p ≤ 1 :=
   factorization_lcmUpto_le hnp hp
-
-lemma not_dvd_of_lt {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
-    ¬ p ^ (k + 1) ∣ lcmUpto n := by
-  rw [hp.pow_dvd_iff_le_factorization (by grind)]
-  have := factorization_lcmUpto_le h' hp
-  lia
 
 lemma factorization_lcmUpto_eq_one {p n : ℕ} (hp : p.Prime) (hpn : p ≤ n) (hnp : n < p ^ 2) :
     (lcmUpto n).factorization p = 1 := by
