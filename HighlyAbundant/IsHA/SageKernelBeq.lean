@@ -6,8 +6,6 @@ Authors: Bhavik Mehta
 module
 
 public import HighlyAbundant.IsHA.SageKernel
-public import Lean.Elab.Tactic.Basic
-meta import Lean.Elab.Tactic.Basic
 
 public section
 
@@ -47,10 +45,6 @@ literal arguments. The kernel unfolds it to the `Option.elim` form. -/
 @[expose] noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) :
     Bool :=
   (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids)
-
-/-- Discharge a `<bool> = true` goal by kernel reduction, using `Lean.reflBoolTrue`. -/
-elab "quickRfl" : tactic =>
-  Lean.Elab.Tactic.liftMetaFinishingTactic fun g ↦ g.assign Lean.reflBoolTrue
 
 /-! ### Proofs -/
 
