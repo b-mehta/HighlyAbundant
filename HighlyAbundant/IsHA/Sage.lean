@@ -21,14 +21,8 @@ with `sL ≤ σ m` as products of prime powers in increasing-prime order. With
 
 namespace Sage
 
-/-- The first 49 primes, `2` to `227`. Read only through `primes[i]?` so the
-table can be extended for larger `n` without invalidating proofs. -/
-def primes : Array Nat := #[
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
-    59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131,
-    137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223,
-    227]
-
+/-- The first 49 primes, `2` to `227`, as an `RArray` for fast kernel lookup. Read only through
+`primesRArray.get i` so the table can be extended for larger `n` without invalidating proofs. -/
 @[expose] def primesRArray : Lean.RArray Nat :=
   .branch (nat_lit 24)
     (.branch (nat_lit 12)
@@ -64,11 +58,6 @@ def primes : Array Nat := #[
             (.branch (nat_lit 46) (.leaf (nat_lit 199)) (.leaf (nat_lit 211)))
             (.branch (nat_lit 48) (.leaf (nat_lit 223)) (.leaf (nat_lit 227)))))))
 
-theorem primesRArray_get_eq_primes_get (i : Nat) (hi : i < 49) :
-    primesRArray.get i = primes[i] := by
-  change primesRArray[i] = primes[i]
-  decide +kernel +revert
-
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
 @[expose] def ceilDiv (a b : Nat) : Nat := (a + b - 1) / b
 
@@ -100,25 +89,6 @@ def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
         if lhs' > m2 then .tooLarge else extend fuel m2 front front lhs' (rhs * (q - 1))
       else .exhaustedTable
 
-/-- Well-founded form of `extend`. Not used by the search; kept as a spec-level
-reference equivalent to `extend` when fuel is sufficient. -/
-def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
-  if front ≤ back then
-    if lhs ≥ rhs then .window back lhs rhs
-    else if back + 1 < 49 then
-      let q := primesRArray.get (back + 1)
-      let lhs' := lhs * q
-      if lhs' > m2 then .tooLarge else extendWF m2 front (back + 1) lhs' (rhs * (q - 1))
-    else .exhaustedTable
-  else
-    if front < 49 then
-      let q := primesRArray.get front
-      let lhs' := lhs * q
-      if lhs' > m2 then .tooLarge else extendWF m2 front front lhs' (rhs * (q - 1))
-    else .exhaustedTable
-  termination_by 49 - back
-  decreasing_by all_goals omega
-
 /-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
 `p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`. -/
 def expChildren (fuel target num next m p pk : Nat) : List (Nat × Nat × Nat) :=
@@ -148,23 +118,6 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
         wheelChildren fuel m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
           (expChildren (m + 1) target num (front + 1) m p p ++ acc)
       else none
-
-/-- Well-founded form of `wheelChildren`. Not used by the search; kept as a
-spec-level reference. -/
-def wheelChildrenWF (m2 m target num front back lhs rhs : Nat) :
-    Option (List (Nat × Nat × Nat)) :=
-  if front ≥ 49 then none
-  else
-    match extendWF m2 front back lhs rhs with
-    | .exhaustedTable => none
-    | .tooLarge => some []
-    | .window b lhs' rhs' =>
-      let p := primesRArray.get front
-      match wheelChildrenWF m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1)) with
-      | none => none
-      | some rest => some (rest ++ expChildren (m + 1) target num (front + 1) m p p)
-  termination_by 49 - front
-  decreasing_by omega
 
 /-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
 `(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
