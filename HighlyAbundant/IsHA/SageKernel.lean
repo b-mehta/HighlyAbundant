@@ -34,9 +34,8 @@ structure SageNode where
 /-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
 def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.target, n.num, n.minIdx)
 
-/-- List append written with `List.rec`, so the kernel never unfolds `List.append`'s
-`brecOn`/`match_1`. -/
-@[expose] noncomputable def appendK {α : Type _} (xs ys : List α) : List α :=
+/-- Append on `List SageNode`, written with `List.rec` so the kernel reduces it directly. -/
+@[expose] noncomputable def appendK (xs ys : List SageNode) : List SageNode :=
   xs.rec ys fun x _ ih ↦ x :: ih
 
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
