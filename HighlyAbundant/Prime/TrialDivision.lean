@@ -52,20 +52,26 @@ theorem Nat.primes_below_23 (p : ℕ) (hlt : p < 23) (hp : p.Prime) :
     p ∈ [2, 3, 5, 7, 11, 13, 17, 19] := by
   decide +revert +kernel
 
-/-- If `2 ≤ n < 529 = 23²` and `n` survives trial division by the primes below `23`, then `n` is
-prime. -/
-theorem Nat.prime_of_passes (n : ℕ) (h2 : 2 ≤ n) (h529 : n < 529)
-    (hpass : passes n [2, 3, 5, 7, 11, 13, 17, 19]) : Nat.Prime n := by
+/-- If every prime below `k` lies in `L`, `2 ≤ n < k²`, and `n` survives trial division by `L`, then
+`n` is prime: a proper factor of `n` would have a prime factor below `k`, hence in `L`. -/
+theorem Nat.prime_of_passes_lt_sq {n k : ℕ} {L : List ℕ} (hL : ∀ p < k, p.Prime → p ∈ L)
+    (h2 : 2 ≤ n) (hk : n < k ^ 2) (hpass : passes n L) : Nat.Prime n := by
   by_contra hnp
   set p := n.minFac with hp
   have hpp : p.Prime := Nat.minFac_prime (by omega)
   have hsq : p ^ 2 ≤ n := Nat.minFac_sq_le_self (by omega) hnp
-  have hplt23 : p < 23 := lt_of_pow_lt_pow_left' 2 (by grind)
-  have hpmem : p ∈ [2, 3, 5, 7, 11, 13, 17, 19] := Nat.primes_below_23 p hplt23 hpp
+  have hpltk : p < k := lt_of_pow_lt_pow_left' 2 (by grind)
+  have hpmem : p ∈ L := hL p hpltk hpp
   have hpltn : p < n := by nlinarith [hpp.two_le, hsq]
   rcases (passes_true_iff.mp hpass) p hpmem with hmod | hle
   · exact hmod (Nat.dvd_iff_mod_eq_zero.mp (Nat.minFac_dvd n))
   · omega
+
+/-- If `2 ≤ n < 529 = 23²` and `n` survives trial division by the primes below `23`, then `n` is
+prime. The `k = 23` case of `Nat.prime_of_passes_lt_sq`. -/
+theorem Nat.prime_of_passes (n : ℕ) (h2 : 2 ≤ n) (h529 : n < 529)
+    (hpass : passes n [2, 3, 5, 7, 11, 13, 17, 19]) : Nat.Prime n :=
+  Nat.prime_of_passes_lt_sq Nat.primes_below_23 h2 (h529.trans_le (by norm_num)) hpass
 
 /-- Kernel `Bool`: `p` is a prime below `529 = 23²`, certified by trial division by the primes below
 `23` (`passes`). -/
