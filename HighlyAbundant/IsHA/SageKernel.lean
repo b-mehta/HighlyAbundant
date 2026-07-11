@@ -14,8 +14,7 @@ public section
 # Kernel-reducible versions of the decider functions
 
 These mirror the `HighlyAbundant.Sage` definitions using primitives the kernel reduces directly:
-`Nat.rec`, `Bool.rec`, `Nat.ble`, `Nat.blt`. `SageKernelEquiv` proves they agree with the spec
-versions.
+`Nat.rec`, `Bool.rec`, `Nat.ble`. `SageKernelEquiv` proves they agree with the spec versions.
 
 Nodes here use a flat `SageNode` struct, one `SageNode.rec` per node, where the spec side on
 `Nat × Nat × Nat` takes two nested `Prod.rec`.
