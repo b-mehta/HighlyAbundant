@@ -28,8 +28,7 @@ namespace Sage
 
 /-! ### Definitions -/
 
-/-- Structural `beq` on `SageNode` via `Nat.beq` and `Bool.and'`. Not a `BEq` instance: `BEq Nat`
-is `instBEqOfDecidableEq`, i.e. `decide (a = b)`, which pulls in `DecidableEq`. -/
+/-- Structural `beq` on `SageNode` from `Nat.beq` and `Bool.and'`. -/
 @[expose] noncomputable def SageNode.beq (a b : SageNode) : Bool :=
   Bool.and' (a.target.beq b.target) (Bool.and' (a.num.beq b.num) (a.minIdx.beq b.minIdx))
 
@@ -39,8 +38,7 @@ is `instBEqOfDecidableEq`, i.e. `decide (a = b)`, which pulls in `DecidableEq`. 
     (fun ys ↦ ys.rec true (fun _ _ _ ↦ false))
     (fun x _ ih ys ↦ ys.rec false (fun y ys' _ ↦ Bool.and' (SageNode.beq x y) (ih ys')))
 
-/-- `Bool` form of the leaf certificate `stepK B fuel [c] = some true`, as a `Bool = true` goal for
-`Lean.reflBoolTrue`. -/
+/-- `Bool` form of the leaf certificate `stepK B fuel [c] = some true`. -/
 @[expose] noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
   (stepK B fuel [c]).elim false (fun b ↦ b)
 
@@ -57,23 +55,16 @@ elab "quickRfl" : tactic =>
 /-! ### Proofs -/
 
 theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b = true) : a = b := by
-  unfold SageNode.beq at h
-  simp only [Bool.and'_eq_and, Bool.and_eq_true] at h
-  obtain ⟨at_, an, ai⟩ := a
-  obtain ⟨bt, bn, bi⟩ := b
-  obtain ⟨h1, h2, h3⟩ := h
-  simp only [SageNode.mk.injEq]
-  exact ⟨Nat.eq_of_beq_eq_true h1, Nat.eq_of_beq_eq_true h2, Nat.eq_of_beq_eq_true h3⟩
+  cases a; cases b
+  simp_all [SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
 
 theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = true → xs = ys
   | [], [], _ => rfl
-  | [], _ :: _, h => by simp [sageListBeq] at h
-  | _ :: _, [], h => by simp [sageListBeq] at h
+  | [], _ :: _, h | _ :: _, [], h => by simp [sageListBeq] at h
   | x :: xs, y :: ys, h => by
       have he : sageListBeq (x :: xs) (y :: ys)
           = Bool.and' (SageNode.beq x y) (sageListBeq xs ys) := rfl
-      rw [he] at h
-      simp only [Bool.and'_eq_and, Bool.and_eq_true] at h
+      rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
       rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
 /-- Turn the `Bool` check into the propositional equality the correctness lemmas take. Abstract in
