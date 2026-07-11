@@ -96,9 +96,8 @@ including the first `k` where `σ(p^k) ≥ target`. -/
     wheelChildrenK (nat_lit 50) (m.mul m) m target num minIdx minIdx (p0.mul m)
       (target.mul (p0.sub (nat_lit 1))) []
 
-/-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
-`some false`: some node has a witness. `none`: fuel exhausted or `children` read
-an index `≥ 49`. -/
+/-- Stack-machine witness search. Returns `some true` if no node on `stack` has a witness,
+`some false` if some node does, and `none` if fuel runs out or `children` reads an index `≥ 49`. -/
 @[expose] noncomputable def stepK (B : Nat) : Nat → List SageNode → Option Bool :=
   fun fuel ↦ fuel.rec (fun _ ↦ none) fun _ r stack ↦
     stack.rec (some true) fun node rest _ ↦
