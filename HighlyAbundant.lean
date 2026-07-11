@@ -7,3 +7,4 @@ import HighlyAbundant.Prime.PowModTactic
 import HighlyAbundant.Prime.Pratt
 import HighlyAbundant.Prime.Prime
 import HighlyAbundant.Prime.TrialDivision
+import HighlyAbundant.IsHA.Sage
