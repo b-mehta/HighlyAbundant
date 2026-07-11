@@ -13,46 +13,39 @@ public section
 /-!
 # Kernel-reducible versions of the decider functions
 
-These mirror the definitions in `HighlyAbundant.Sage` but are written using primitives the
-kernel can reduce without unfolding `Decidable` instances: `Nat.rec`, `Bool.rec`, `Nat.ble`,
-`Nat.blt`, and so on. Equivalence with the original
-definitions lives in `HighlyAbundant.SageKernelEquiv`.
+These mirror the `HighlyAbundant.Sage` definitions but use primitives the kernel reduces without
+unfolding `Decidable` instances (`Nat.rec`, `Bool.rec`, `Nat.ble`, `Nat.blt`). `SageKernelEquiv`
+proves they agree with the originals.
 
-Search-tree nodes are represented as a flat 3-field `SageNode` struct rather
-than `(Nat × Nat × Nat)`. The kernel destructures a `SageNode` with one
-`SageNode.rec` rather than two nested `Prod.rec`; this reduces structural work
-during checking. The spec form in `HighlyAbundant.Sage` stays on
-`Nat × Nat × Nat`; the equivalence file bridges the two.
+Nodes here are a flat `SageNode` struct instead of `(Nat × Nat × Nat)`, so the kernel uses one
+`SageNode.rec` in place of two nested `Prod.rec`. The spec side in `HighlyAbundant.Sage` keeps
+`Nat × Nat × Nat`, and the equivalence file bridges the two.
 -/
 
 namespace Sage
 
-/-- Flat 3-field representation of a search-tree node. Avoids the nested
-`Prod (Nat × Nat × Nat)` and its two-step `Prod.rec` destructuring. -/
+/-- A search node as a flat struct: the kernel destructures it with one `SageNode.rec`, not two
+nested `Prod.rec`. -/
 structure SageNode where
   target : Nat
   num : Nat
   minIdx : Nat
-deriving DecidableEq, Repr
-
-/-- Convert a spec-side `(Nat × Nat × Nat)` to a kernel-side `SageNode`. -/
-def toSageNode (p : Nat × Nat × Nat) : SageNode := ⟨p.1, p.2.1, p.2.2⟩
 
 /-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
 def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.target, n.num, n.minIdx)
 
-/-- List append via `List.rec` directly, avoiding the
-brecOn/match_1 machinery that `List.append` would unfold. -/
+/-- List append written with `List.rec`, so the kernel never unfolds `List.append`'s
+`brecOn`/`match_1`. -/
 @[expose] noncomputable def appendK {α : Type _} (xs ys : List α) : List α :=
   xs.rec ys fun x _ ih ↦ x :: ih
 
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
 @[expose] def ceilDivK (a b : Nat) : Nat := ((a.add b).sub (nat_lit 1)).div b
 
-/-- Grow a prime window from `back` forward, threading `lhs = m * ∏ primes[i]`
-and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
-`b ≥ back` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
-`.exhaustedTable` if fuel or the table runs out. -/
+/-- Grow a prime window forward from `back`, where `lhs = m * ∏ primes[i]` and
+`rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least `b ≥ back` with
+`lhs ≥ rhs`, `.tooLarge` if the next prime pushes `lhs > m2`, and `.exhaustedTable` if fuel or the
+table runs out. -/
 @[expose] noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel :=
   fuel.rec (fun _ _ _ ↦ .exhaustedTable) fun _ r back lhs rhs ↦
     (front.ble back).rec
@@ -67,8 +60,8 @@ and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the l
           (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
         (.window back lhs rhs))
 
-/-- Emit children `⟨⌈target / σ(p^k)⌉, num * p^k, next⟩` for `k ≥ 1` with
-`p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`. -/
+/-- Emit children `⟨⌈target / σ(p^k)⌉, num * p^k, next⟩` for `k ≥ 1` with `p^k ≤ m`, up to and
+including the first `k` where `σ(p^k) ≥ target`. -/
 @[expose] noncomputable def expChildrenK (fuel target num next m p : Nat) :
     Nat → List SageNode :=
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
@@ -77,8 +70,8 @@ and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the l
        let child : SageNode := ⟨ceilDivK target spk, num.mul pk, next⟩
        (target.ble spk).rec (child :: r (pk.mul p)) [child])
 
-/-- Iterate `extend` from `front` onward, collecting `expChildren` at every
-`.window` index. Returns `none` if an index `≥ 49` is read. -/
+/-- Iterate `extend` from `front` onward and gather `expChildren` at each `.window` index. Returns
+`none` if it reads an index `≥ 49`. -/
 @[expose] noncomputable def wheelChildrenK (fuel m2 m target num : Nat) :
     Nat → Nat → Nat → Nat → List SageNode → Option (List SageNode) :=
   fuel.rec (fun _ _ _ _ _ ↦ none) fun _ r front back lhs rhs acc ↦
