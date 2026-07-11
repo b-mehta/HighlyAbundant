@@ -49,8 +49,7 @@ literal arguments. The kernel unfolds it to the `Option.elim` form. -/
 /-! ### Proofs -/
 
 theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b = true) : a = b := by
-  cases a; cases b
-  simp_all [SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
+  cases a; cases b; grind [SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
 
 theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = true → xs = ys
   | [], [], _ => rfl
