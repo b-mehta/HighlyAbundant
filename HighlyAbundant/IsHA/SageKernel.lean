@@ -13,19 +13,17 @@ public section
 /-!
 # Kernel-reducible versions of the decider functions
 
-These mirror the `HighlyAbundant.Sage` definitions but use primitives the kernel reduces without
-unfolding `Decidable` instances (`Nat.rec`, `Bool.rec`, `Nat.ble`, `Nat.blt`). `SageKernelEquiv`
-proves they agree with the originals.
+These mirror the `HighlyAbundant.Sage` definitions using primitives the kernel reduces directly:
+`Nat.rec`, `Bool.rec`, `Nat.ble`, `Nat.blt`. `SageKernelEquiv` proves they agree with the spec
+versions.
 
-Nodes here are a flat `SageNode` struct instead of `(Nat × Nat × Nat)`, so the kernel uses one
-`SageNode.rec` in place of two nested `Prod.rec`. The spec side in `HighlyAbundant.Sage` keeps
-`Nat × Nat × Nat`, and the equivalence file bridges the two.
+Nodes here use a flat `SageNode` struct, one `SageNode.rec` per node, where the spec side on
+`Nat × Nat × Nat` takes two nested `Prod.rec`.
 -/
 
 namespace Sage
 
-/-- A search node as a flat struct: the kernel destructures it with one `SageNode.rec`, not two
-nested `Prod.rec`. -/
+/-- A search node as a flat struct, so the kernel destructures it with a single `SageNode.rec`. -/
 structure SageNode where
   target : Nat
   num : Nat
