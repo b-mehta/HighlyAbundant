@@ -53,14 +53,13 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
     rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
     rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
-/-- Recover `childrenK … = some kids` from its `Bool` certificate. Stated abstractly, so the
-`childrenK` reduction happens in the `quickRfl` cert rather than per application. -/
+/-- Recover `childrenK … = some kids` from its `Bool` certificate. -/
 theorem childrenKBeqCert_eq_some {B goal cand idx : Nat} {kids : List SageNode}
     (h : childrenKBeqCert B goal cand idx kids) :
     childrenK B goal cand idx = some kids := by
   cases hc : childrenK B goal cand idx with grind [childrenKBeqCert, sageListBeq_sound]
 
-/-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate, stated abstractly. -/
+/-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate. -/
 theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
     (h : stepKSingletonBeqCert B fuel c) : stepK B fuel [c] = some true := by
   cases hc : stepK B fuel [c] with grind [stepKSingletonBeqCert]
