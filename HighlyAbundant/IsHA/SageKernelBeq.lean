@@ -58,10 +58,10 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
     rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
     rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
-/-- Turn the `Bool` check into the propositional equality the correctness lemmas take. Abstract in
-its arguments, so the `childrenK` reduction runs once inside the `quickRfl`-proved hypothesis and
+/-- Turn the `Bool` certificate into the propositional equality the correctness lemmas take. Abstract
+in its arguments, so the `childrenK` reduction runs once inside the `quickRfl`-proved hypothesis and
 each per-`n` use is free. -/
-theorem childrenK_eq_of_beq {B target num minIdx : Nat} {kids : List SageNode}
+theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
     (h : childrenKBeqCert B target num minIdx kids) :
     childrenK B target num minIdx = some kids := by
   cases hc : childrenK B target num minIdx with grind [childrenKBeqCert, sageListBeq_sound]
@@ -71,10 +71,5 @@ so each per-`c` use is free. -/
 theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
     (h : stepKSingletonBeqCert B fuel c) : stepK B fuel [c] = some true := by
   cases hc : stepK B fuel [c] with grind [stepKSingletonBeqCert]
-
-theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
-    (h : childrenKBeqCert B target num minIdx kids) :
-    childrenK B target num minIdx = some kids :=
-  childrenK_eq_of_beq h
 
 end Sage
