@@ -49,38 +49,31 @@ literal arguments. The kernel unfolds it to the `Option.elim` form. -/
 /-! ### Proofs -/
 
 theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b = true) : a = b := by
-  cases a; cases b; grind [SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
+  grind [cases SageNode, SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
 
 theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = true → xs = ys
   | [], [], _ => rfl
-  | [], _ :: _, h | _ :: _, [], h => by simp [sageListBeq] at h
   | x :: xs, y :: ys, h => by
-      have he : sageListBeq (x :: xs) (y :: ys)
-          = Bool.and' (SageNode.beq x y) (sageListBeq xs ys) := rfl
-      rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
-      rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
+    have he : sageListBeq (x :: xs) (y :: ys) = (x.beq y).and' (sageListBeq xs ys) := rfl
+    rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
+    rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
 /-- Turn the `Bool` check into the propositional equality the correctness lemmas take. Abstract in
 its arguments, so the `childrenK` reduction runs once inside the `quickRfl`-proved hypothesis and
 each per-`n` use is free. -/
 theorem childrenK_eq_of_beq {B target num minIdx : Nat} {kids : List SageNode}
-    (h : (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids) = true) :
+    (h : childrenKBeqCert B target num minIdx kids) :
     childrenK B target num minIdx = some kids := by
-  cases hc : childrenK B target num minIdx with
-  | none => rw [hc] at h; simp [Option.elim] at h
-  | some cs => rw [hc] at h; simp only [Option.elim] at h; rw [sageListBeq_sound h]
+  cases hc : childrenK B target num minIdx with grind [childrenKBeqCert, sageListBeq_sound]
 
 /-- Turn the `Bool` leaf certificate into `stepK B fuel [c] = some true`, proved once and abstractly
 so each per-`c` use is free. -/
 theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
-    (h : stepKSingletonBeqCert B fuel c = true) : stepK B fuel [c] = some true := by
-  unfold stepKSingletonBeqCert at h
-  cases hc : stepK B fuel [c] with
-  | none => rw [hc] at h; simp [Option.elim] at h
-  | some b => rw [hc] at h; simp only [Option.elim] at h; rw [h]
+    (h : stepKSingletonBeqCert B fuel c) : stepK B fuel [c] = some true := by
+  cases hc : stepK B fuel [c] with grind [stepKSingletonBeqCert]
 
 theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
-    (h : childrenKBeqCert B target num minIdx kids = true) :
+    (h : childrenKBeqCert B target num minIdx kids) :
     childrenK B target num minIdx = some kids :=
   childrenK_eq_of_beq h
 
