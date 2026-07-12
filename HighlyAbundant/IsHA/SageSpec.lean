@@ -33,24 +33,6 @@ attribute [grind .] sigma_pos
 
 namespace Sage
 
-/-! ### Specification: `P`, `W`, `lcmData` -/
-
-/-- `P j`: nonzero naturals whose every prime factor is at least the `j`-th prime. -/
-def P (j : ℕ) : Set ℕ :=
-  {t | t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → nth Nat.Prime j ≤ q}
-
-@[grind =] lemma mem_P {j t : ℕ} :
-    t ∈ P j ↔ t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → nth Nat.Prime j ≤ q :=
-  Iff.rfl
-
-/-- The witness set of a node `(goal, cand, idx)` for bound `B`. -/
-def W (B goal cand idx : ℕ) : Set ℕ :=
-  {t | t ∈ P idx ∧ cand * t < B ∧ goal ≤ σ₁ t}
-
-@[simp, grind =] lemma mem_W {B goal cand idx t : ℕ} :
-    t ∈ W B goal cand idx ↔ t ∈ P idx ∧ cand * t < B ∧ goal ≤ σ₁ t :=
-  Iff.rfl
-
 /-! ### The `primes` table -/
 
 private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
@@ -68,6 +50,28 @@ private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
 private lemma primesRArray_get_eq_nth {i : ℕ} (hi : i < 49) :
     primesRArray.get i = nth Nat.Prime i :=
   primesRArray_get_eq_nth_aux ⟨i, hi⟩
+
+/-! ### Specification: `P` and `W` -/
+
+/-- `P j`: nonzero naturals whose every prime factor is at least the `j`-th prime. -/
+def P (j : ℕ) : Set ℕ :=
+  {t | t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → nth Nat.Prime j ≤ q}
+
+@[grind =] lemma mem_P {j t : ℕ} :
+    t ∈ P j ↔ t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → nth Nat.Prime j ≤ q :=
+  Iff.rfl
+
+/-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
+@[simp, grind .] private theorem one_mem_P (j : ℕ) : 1 ∈ P j := by
+  grind [Nat.not_prime_one, Nat.dvd_one]
+
+/-- The witness set of a node `(goal, cand, idx)` for bound `B`. -/
+def W (B goal cand idx : ℕ) : Set ℕ :=
+  {t | t ∈ P idx ∧ cand * t < B ∧ goal ≤ σ₁ t}
+
+@[simp, grind =] lemma mem_W {B goal cand idx t : ℕ} :
+    t ∈ W B goal cand idx ↔ t ∈ P idx ∧ cand * t < B ∧ goal ≤ σ₁ t :=
+  Iff.rfl
 
 /-! ### Membership in `P` -/
 
@@ -99,10 +103,6 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
     primeFactors_pow p (by lia), hp_prime.primeFactors,
     card_union_of_disjoint (disjoint_singleton_left.mpr hp_not_t'),
     card_singleton, Nat.add_comm]
-
-/-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
-@[simp, grind .] private theorem one_mem_P (j : ℕ) : 1 ∈ P j := by
-  grind [Nat.not_prime_one, Nat.dvd_one]
 
 /-! ### Multiplicative decomposition -/
 
