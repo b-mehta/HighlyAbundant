@@ -28,7 +28,7 @@ namespace Sage
 
 /-- Structural `beq` on `SageNode` from `Nat.beq` and `Bool.and'`. -/
 @[expose] noncomputable def SageNode.beq (a b : SageNode) : Bool :=
-  (a.target.beq b.target).and' ((a.num.beq b.num).and' (a.minIdx.beq b.minIdx))
+  (a.goal.beq b.goal).and' ((a.cand.beq b.cand).and' (a.idx.beq b.idx))
 
 /-- Pointwise `SageNode.beq` on two lists via `List.rec`, so the kernel sees a plain `List.rec`. -/
 @[expose] noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
@@ -42,9 +42,9 @@ namespace Sage
 
 /-- `Bool` form of the `childrenK` certificate, as a flat predicate the metaprogram applies to
 literal arguments. The kernel unfolds it to the `Option.elim` form. -/
-@[expose] noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) :
+@[expose] noncomputable def childrenKBeqCert (B goal cand idx : Nat) (kids : List SageNode) :
     Bool :=
-  (childrenK B target num minIdx).elim false fun cs ↦ sageListBeq cs kids
+  (childrenK B goal cand idx).elim false fun cs ↦ sageListBeq cs kids
 
 /-! ### Proofs -/
 
@@ -61,10 +61,10 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
 /-- Turn the `Bool` certificate into the propositional equality the correctness lemmas take. Abstract
 in its arguments, so the `childrenK` reduction runs once inside the `quickRfl`-proved hypothesis and
 each per-`n` use is free. -/
-theorem childrenKBeqCert_eq_some {B target num minIdx : Nat} {kids : List SageNode}
-    (h : childrenKBeqCert B target num minIdx kids) :
-    childrenK B target num minIdx = some kids := by
-  cases hc : childrenK B target num minIdx with grind [childrenKBeqCert, sageListBeq_sound]
+theorem childrenKBeqCert_eq_some {B goal cand idx : Nat} {kids : List SageNode}
+    (h : childrenKBeqCert B goal cand idx kids) :
+    childrenK B goal cand idx = some kids := by
+  cases hc : childrenK B goal cand idx with grind [childrenKBeqCert, sageListBeq_sound]
 
 /-- Turn the `Bool` leaf certificate into `stepK B fuel [c] = some true`, proved once and abstractly
 so each per-`c` use is free. -/
