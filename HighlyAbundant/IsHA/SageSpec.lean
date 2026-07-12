@@ -92,18 +92,6 @@ private lemma mem_P_succ_of_coprime {t t' p k front : ℕ}
       (hp_min q hq (hpk_t ▸ dvd_mul_of_dvd_right hqd _))
       fun hqp => hp_prime.coprime_iff_not_dvd.mp hcoprime (hqp ▸ hqd))
 
-/-- After factoring `t = p^k * t'` with `k ≠ 0`, `p` prime, and `Coprime p t'`, the prime
-factors of `t` are those of `t'` plus `{p}`. -/
-private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
-    (hk : k ≠ 0) (hpk_t : p ^ k * t' = t) (hcoprime : p.Coprime t') :
-    #t.primeFactors = #t'.primeFactors + 1 := by
-  have hp_not_t' : p ∉ t'.primeFactors := fun h =>
-    hp_prime.coprime_iff_not_dvd.mp hcoprime (mem_primeFactors.mp h).2.1
-  rw [← hpk_t, (hcoprime.pow_left k).primeFactors_mul,
-    primeFactors_pow p (by lia), hp_prime.primeFactors,
-    card_union_of_disjoint (disjoint_singleton_left.mpr hp_not_t'),
-    card_singleton, Nat.add_comm]
-
 /-! ### Multiplicative decomposition -/
 
 /-- Decompose `t` at a prime factor `p`: `t = p ^ k * t'` with `0 < k`, `Coprime p t'`,
@@ -127,8 +115,20 @@ private lemma exists_minFac_decomp {t : ℕ} (ht : 2 ≤ t) :
       0 < t' ∧ t' < t ∧ Nat.Coprime p t' ∧
       (∀ q, q.Prime → q ∣ t → p ≤ q) := by
   obtain ⟨k, t', hk, hpkt, ht'p, ht'l, hcop⟩ :=
-    exists_factor_decomp (minFac_prime (by omega)) (minFac_dvd t) (by omega)
-  exact ⟨_, k, t', minFac_prime (by omega), minFac_dvd t, hk, hpkt, ht'p, ht'l,
+    exists_factor_decomp (minFac_prime (by lia)) (minFac_dvd t) (by lia)
+  exact ⟨_, k, t', minFac_prime (by lia), minFac_dvd t, hk, hpkt, ht'p, ht'l,
     hcop, fun q hq hqd => minFac_le_of_dvd hq.two_le hqd⟩
+
+/-- After factoring `t = p^k * t'` with `k ≠ 0`, `p` prime, and `Coprime p t'`, the prime
+factors of `t` are those of `t'` plus `{p}`. -/
+private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
+    (hk : k ≠ 0) (hpk_t : p ^ k * t' = t) (hcoprime : p.Coprime t') :
+    #t.primeFactors = #t'.primeFactors + 1 := by
+  have hp_not_t' : p ∉ t'.primeFactors := fun h =>
+    hp_prime.coprime_iff_not_dvd.mp hcoprime (mem_primeFactors.mp h).2.1
+  rw [← hpk_t, (hcoprime.pow_left k).primeFactors_mul,
+    primeFactors_pow p (by lia), hp_prime.primeFactors,
+    card_union_of_disjoint (disjoint_singleton_left.mpr hp_not_t'),
+    card_singleton, Nat.add_comm]
 
 end Sage
