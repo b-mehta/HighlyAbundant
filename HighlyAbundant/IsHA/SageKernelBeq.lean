@@ -28,23 +28,23 @@ namespace Sage
 
 /-- Structural `beq` on `SageNode` from `Nat.beq` and `Bool.and'`. -/
 @[expose] noncomputable def SageNode.beq (a b : SageNode) : Bool :=
-  Bool.and' (a.target.beq b.target) (Bool.and' (a.num.beq b.num) (a.minIdx.beq b.minIdx))
+  (a.target.beq b.target).and' ((a.num.beq b.num).and' (a.minIdx.beq b.minIdx))
 
 /-- Pointwise `SageNode.beq` on two lists via `List.rec`, so the kernel sees a plain `List.rec`. -/
 @[expose] noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
   fun xs ↦ xs.rec
     (fun ys ↦ ys.rec true (fun _ _ _ ↦ false))
-    (fun x _ ih ys ↦ ys.rec false (fun y ys' _ ↦ Bool.and' (SageNode.beq x y) (ih ys')))
+    fun x _ ih ys ↦ ys.rec false fun y ys' _ ↦ (x.beq y).and' (ih ys')
 
 /-- `Bool` form of the leaf certificate `stepK B fuel [c] = some true`. -/
 @[expose] noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
-  (stepK B fuel [c]).elim false (fun b ↦ b)
+  (stepK B fuel [c]).elim false fun b ↦ b
 
 /-- `Bool` form of the `childrenK` certificate, as a flat predicate the metaprogram applies to
 literal arguments. The kernel unfolds it to the `Option.elim` form. -/
 @[expose] noncomputable def childrenKBeqCert (B target num minIdx : Nat) (kids : List SageNode) :
     Bool :=
-  (childrenK B target num minIdx).elim false (fun cs ↦ sageListBeq cs kids)
+  (childrenK B target num minIdx).elim false fun cs ↦ sageListBeq cs kids
 
 /-! ### Proofs -/
 
