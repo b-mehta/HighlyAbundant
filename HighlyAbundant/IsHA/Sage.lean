@@ -68,7 +68,7 @@ inductive Wheel where
   | window (back lhs rhs : Nat)
 
 /-- Grow a prime window from `back` forward, threading `lhs = m * ∏ primes[i]`
-and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
+and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
 `b ≥ back` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
 `.exhaustedTable` if fuel or the table runs out. -/
 def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
@@ -89,22 +89,22 @@ def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
         if lhs' > m2 then .tooLarge else extend fuel m2 front front lhs' (rhs * (q - 1))
       else .exhaustedTable
 
-/-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
-`p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`. -/
-def expChildren (fuel target num next m p pk : Nat) : List (Nat × Nat × Nat) :=
+/-- Emit children `(⌈goal / σ(p^k)⌉, cand * p^k, next)` for `k ≥ 1` with
+`p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ goal`. -/
+def expChildren (fuel goal cand next m p pk : Nat) : List (Nat × Nat × Nat) :=
   match fuel with
   | 0 => []
   | fuel + 1 =>
     if pk > m then []
     else
       let spk := (pk * p - 1) / (p - 1)              -- σ(p^k); pk * p = p^(k+1)
-      let child := (ceilDiv target spk, num * pk, next)
-      if spk ≥ target then [child]
-      else child :: expChildren fuel target num next m p (pk * p)
+      let child := (ceilDiv goal spk, cand * pk, next)
+      if spk ≥ goal then [child]
+      else child :: expChildren fuel goal cand next m p (pk * p)
 
 /-- Iterate `extend` from `front` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
-def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
+def wheelChildren (fuel m2 m goal cand front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
   | 0 => none
@@ -115,19 +115,19 @@ def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
     | .window b lhs' rhs' =>
       if front < 49 then
         let p := primesRArray.get front
-        wheelChildren fuel m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
-          (expChildren (m + 1) target num (front + 1) m p p ++ acc)
+        wheelChildren fuel m2 m goal cand (front + 1) b (lhs' / p) (rhs' / (p - 1))
+          (expChildren (m + 1) goal cand (front + 1) m p p ++ acc)
       else none
 
-/-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
-`(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
+/-- Children of node `(goal, cand, idx)` with `m = B / cand`. Each `c ∈ cs` is
+`(⌈goal/σ(primes[i]^k)⌉, cand * primes[i]^k, i + 1)` for some `i ≥ idx` and
 `k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
 `≥ 49`. -/
-def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
-  if minIdx < 49 then
-    let p0 := primesRArray.get minIdx
-    let m := B / num
-    wheelChildren 50 (m * m) m target num minIdx minIdx (p0 * m) (target * (p0 - 1)) []
+def children (B goal cand idx : Nat) : Option (List (Nat × Nat × Nat)) :=
+  if idx < 49 then
+    let p0 := primesRArray.get idx
+    let m := B / cand
+    wheelChildren 50 (m * m) m goal cand idx idx (p0 * m) (goal * (p0 - 1)) []
   else none
 
 /-- Upper bound on nodes visited by `step`. Experimentally minimal for
@@ -140,10 +140,10 @@ an index `≥ 49`. -/
 def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
   | _, [] => some true
-  | fuel + 1, (target, num, minIdx) :: rest =>
-    if target ≤ 1 then
-      if num < B then some false else step B fuel rest   -- t = 1 is a witness iff num < B
-    else match children B target num minIdx with
+  | fuel + 1, (goal, cand, idx) :: rest =>
+    if goal ≤ 1 then
+      if cand < B then some false else step B fuel rest   -- t = 1 is a witness iff cand < B
+    else match children B goal cand idx with
       | none => none
       | some cs => step B fuel (cs ++ rest)
 
