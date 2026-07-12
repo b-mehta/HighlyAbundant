@@ -12,14 +12,9 @@ public section
 /-!
 # Bool-valued equality check for child lists
 
-A structural `Bool` check on `childrenK … = some kids`, built from `Nat.beq` (kernel GMP-native)
-and `Bool.and'` (one `Bool.rec`), discharged by `Lean.reflBoolTrue` through `quickRfl`. Reducing it
-stays on the kernel's GMP `Nat` path, where `childrenK` itself is cheap to reduce. The
-`DecidableEq`-routed `decide +kernel` comparison is much slower on numbers this size.
-
-`childrenK_eq_of_beq` turns the `Bool` result into the propositional equality the correctness lemmas
-take, proved once and applied per `n`. This file imports only `HighlyAbundant.IsHA.SageKernel`, so
-the per-`n` certificates stay independent of mathlib's elaboration cost.
+A `Bool` equality check on child lists, from `Nat.beq` and `Bool.and'`, so a `childrenK … = some
+kids` certificate reduces in the kernel via `Lean.reflBoolTrue` (through `quickRfl`) on `Nat.beq`.
+`childrenKBeqCert_eq_some` recovers the `Option` equality the correctness lemmas take.
 -/
 
 namespace Sage
@@ -30,7 +25,7 @@ namespace Sage
 @[expose] noncomputable def SageNode.beq (a b : SageNode) : Bool :=
   (a.goal.beq b.goal).and' ((a.cand.beq b.cand).and' (a.idx.beq b.idx))
 
-/-- Pointwise `SageNode.beq` on two lists via `List.rec`, so the kernel sees a plain `List.rec`. -/
+/-- Pointwise `SageNode.beq` on two lists, written with `List.rec`. -/
 @[expose] noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
   fun xs ↦ xs.rec
     (fun ys ↦ ys.rec true (fun _ _ _ ↦ false))
@@ -40,8 +35,8 @@ namespace Sage
 @[expose] noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
   (stepK B fuel [c]).elim false fun b ↦ b
 
-/-- `Bool` form of the `childrenK` certificate, as a flat predicate the metaprogram applies to
-literal arguments. The kernel unfolds it to the `Option.elim` form. -/
+/-- `Bool` form of the `childrenK` certificate, phrased on `Option.elim` so the metaprogram builds
+it from literal arguments. -/
 @[expose] noncomputable def childrenKBeqCert (B goal cand idx : Nat) (kids : List SageNode) :
     Bool :=
   (childrenK B goal cand idx).elim false fun cs ↦ sageListBeq cs kids
@@ -58,16 +53,14 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
     rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
     rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
-/-- Turn the `Bool` certificate into the propositional equality the correctness lemmas take. Abstract
-in its arguments, so the `childrenK` reduction runs once inside the `quickRfl`-proved hypothesis and
-each per-`n` use is free. -/
+/-- Recover `childrenK … = some kids` from its `Bool` certificate. Stated abstractly, so the
+`childrenK` reduction happens in the `quickRfl` cert rather than per application. -/
 theorem childrenKBeqCert_eq_some {B goal cand idx : Nat} {kids : List SageNode}
     (h : childrenKBeqCert B goal cand idx kids) :
     childrenK B goal cand idx = some kids := by
   cases hc : childrenK B goal cand idx with grind [childrenKBeqCert, sageListBeq_sound]
 
-/-- Turn the `Bool` leaf certificate into `stepK B fuel [c] = some true`, proved once and abstractly
-so each per-`c` use is free. -/
+/-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate, stated abstractly. -/
 theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
     (h : stepKSingletonBeqCert B fuel c) : stepK B fuel [c] = some true := by
   cases hc : stepK B fuel [c] with grind [stepKSingletonBeqCert]
