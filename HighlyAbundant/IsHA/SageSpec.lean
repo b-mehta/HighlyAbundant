@@ -58,7 +58,7 @@ private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
   have hp : ∀ i : Fin 49, Nat.Prime (primesRArray.get i.val) := by
     intro i
     refine checkPrime_true ?_
-    revert i; decide
+    revert i; decide +kernel
   rw [← nth_count (hp i)]
   congr 1
   decide +kernel +revert
@@ -106,25 +106,25 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Multiplicative decomposition -/
 
-/-- Decompose `t` at a prime factor `p`: `t = p ^ k * t'` with `k ≠ 0`, `Coprime p t'`,
-`t' ≠ 0`, `t' < t`. -/
+/-- Decompose `t` at a prime factor `p`: `t = p ^ k * t'` with `0 < k`, `Coprime p t'`,
+`0 < t'`, `t' < t`. -/
 private lemma exists_factor_decomp {t p : ℕ} (hp : p.Prime) (hpt : p ∣ t) (htne : t ≠ 0) :
-    ∃ k t' : ℕ, k ≠ 0 ∧ p ^ k * t' = t ∧ t' ≠ 0 ∧ t' < t ∧ Nat.Coprime p t' := by
+    ∃ k t' : ℕ, 0 < k ∧ p ^ k * t' = t ∧ 0 < t' ∧ t' < t ∧ Nat.Coprime p t' := by
   set k := t.factorization p
   set t' := ordCompl[p] t
-  have hk₀ : 1 ≤ k :=
+  have hk₀ : 0 < k :=
     (hp.pow_dvd_iff_le_factorization htne).mp (by simpa using hpt)
   have hpk_t : ordProj[p] t * t' = t := ordProj_mul_ordCompl_eq_self t p
   have hpk_ge2 : 2 ≤ ordProj[p] t :=
     hp.two_le.trans (by simpa using Nat.pow_le_pow_right hp.one_lt.le hk₀)
-  have ht'₀ : 1 ≤ t' := Nat.ordCompl_pos _ htne
-  refine ⟨k, t', by omega, hpk_t, by omega, ?_, coprime_ordCompl hp htne⟩
+  have ht'₀ : 0 < t' := Nat.ordCompl_pos _ htne
+  refine ⟨k, t', hk₀, hpk_t, ht'₀, ?_, coprime_ordCompl hp htne⟩
   nlinarith [hpk_t, hpk_ge2, ht'₀]
 
 /-- For `t ≥ 2`, decompose at the smallest prime factor. -/
 private lemma exists_minFac_decomp {t : ℕ} (ht : 2 ≤ t) :
-    ∃ p k t' : ℕ, p.Prime ∧ p ∣ t ∧ k ≠ 0 ∧ p ^ k * t' = t ∧
-      t' ≠ 0 ∧ t' < t ∧ Nat.Coprime p t' ∧
+    ∃ p k t' : ℕ, p.Prime ∧ p ∣ t ∧ 0 < k ∧ p ^ k * t' = t ∧
+      0 < t' ∧ t' < t ∧ Nat.Coprime p t' ∧
       (∀ q, q.Prime → q ∣ t → p ≤ q) := by
   obtain ⟨k, t', hk, hpkt, ht'p, ht'l, hcop⟩ :=
     exists_factor_decomp (minFac_prime (by omega)) (minFac_dvd t) (by omega)
