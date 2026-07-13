@@ -106,15 +106,15 @@ private lemma exists_factor_decomp {t p : ℕ} (hp : p.Prime) (hpt : p ∣ t) (h
   refine ⟨k, t', hk₀, hpk_t, ht'₀, ?_, coprime_ordCompl hp htne⟩
   nlinarith [hpk_t, hpk_ge2, ht'₀]
 
-/-- For `t ≥ 2`, decompose at the smallest prime factor. -/
+/-- For `t ≥ 2`, decompose at the smallest prime factor, which is minimal among the prime
+divisors of `t`. -/
 private lemma exists_minFac_decomp {t : ℕ} (ht : 2 ≤ t) :
-    ∃ p k t' : ℕ, p.Prime ∧ p ∣ t ∧ 0 < k ∧ p ^ k * t' = t ∧
-      0 < t' ∧ t' < t ∧ Nat.Coprime p t' ∧
-      (∀ q, q.Prime → q ∣ t → p ≤ q) := by
+    ∃ p k t' : ℕ, 0 < k ∧ p ^ k * t' = t ∧ 0 < t' ∧ t' < t ∧ Nat.Coprime p t' ∧
+      Minimal (fun q => q.Prime ∧ q ∣ t) p := by
   obtain ⟨k, t', hk, hpkt, ht'p, ht'l, hcop⟩ :=
     exists_factor_decomp (minFac_prime (by lia)) (minFac_dvd t) (by lia)
-  exact ⟨_, k, t', minFac_prime (by lia), minFac_dvd t, hk, hpkt, ht'p, ht'l,
-    hcop, fun q hq hqd => minFac_le_of_dvd hq.two_le hqd⟩
+  exact ⟨_, k, t', hk, hpkt, ht'p, ht'l, hcop,
+    ⟨minFac_prime (by lia), minFac_dvd t⟩, fun q ⟨hq, hqd⟩ _ => minFac_le_of_dvd hq.two_le hqd⟩
 
 /-- After factoring `t = p^k * t'` with `k ≠ 0`, `p` prime, and `Coprime p t'`, the prime
 factors of `t` are those of `t'` plus `{p}`. -/
