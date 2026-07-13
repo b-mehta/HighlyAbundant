@@ -195,12 +195,8 @@ private theorem sigma_pow_le_window_factor {p p₀ k : ℕ} (hp : p.Prime) (hp�
   refine Nat.le_of_mul_le_mul_right (c := p - 1) ?_ (by lia)
   rw [mul_right_comm, sigma_one_apply_prime_pow' hp,
     Nat.div_mul_cancel (Nat.sub_one_dvd_pow_sub_one p (k + 1))]
-  zify [one_le_pow (k+1) _ hp.pos, (by lia : (1 : ℕ) ≤ p₀), (by lia : (1 : ℕ) ≤ p)]
-  nlinarith [pow_succ p k, one_le_pow k p hp.pos]
-
-/-- σ formula in `expChildren`'s loop: `(p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k)` for prime `p`. -/
-@[grind =] private theorem sigma_pow_expChildren_eq {p k : ℕ} (hp : p.Prime) :
-    (p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k) := by rw [← pow_succ, ← sigma_one_apply_prime_pow' hp]
+  zify [one_le_pow (k+1) _ hp.pos, (by lia : 1 ≤ p₀), (by lia : 1 ≤ p)] at *
+  linear_combination hple * p ^ k + hp₀
 
 /-! ### The two main bounds: σ-window and radical -/
 
@@ -235,7 +231,7 @@ private theorem sigma_bound_window {t front : ℕ} (B : ℕ) (ht : t ≠ 0) (hP 
 /-- `primesProd front (front + j - 1) ≤ t` for `t ∈ P front` with `j ≥ 1`
 distinct primes, and `front + j ≤ 49`. -/
 private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P front) (j : ℕ)
-    (hj : 1 ≤ j) (hjle : j ≤ t.primeFactors.card) (hsize : front + j ≤ 49) :
+    (hj : j ≠ 0) (hjle : j ≤ t.primeFactors.card) (hsize : front + j ≤ 49) :
     primesProd front (front + j - 1) ≤ t := by
   induction t using Nat.strongRecOn generalizing front j with
   | ind t ih =>
