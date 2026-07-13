@@ -86,11 +86,8 @@ and every prime factor of `t` is `≥ p`, then `t' ∈ P (front + 1)`. -/
 private lemma mem_P_succ_of_coprime {t t' p k front : ℕ}
     (hp_prime : p.Prime) (hp_geprimes : nth Nat.Prime front ≤ p)
     (hp_min : ∀ q, q.Prime → q ∣ t → p ≤ q) (hpk_t : p ^ k * t' = t)
-    (ht'₀ : t' ≠ 0) (hcoprime : Nat.Coprime p t') : t' ∈ P (front + 1) :=
-  mem_P_succ_of_factors_gt ht'₀ fun q hq hqd =>
-    hp_geprimes.trans_lt (lt_of_le_of_ne
-      (hp_min q hq (hpk_t ▸ dvd_mul_of_dvd_right hqd _))
-      fun hqp => hp_prime.coprime_iff_not_dvd.mp hcoprime (hqp ▸ hqd))
+    (ht'₀ : t' ≠ 0) (hcoprime : Nat.Coprime p t') : t' ∈ P (front + 1) := by
+  grind [mem_P_succ_of_factors_gt, hp_prime.coprime_iff_not_dvd]
 
 /-! ### Multiplicative decomposition -/
 
