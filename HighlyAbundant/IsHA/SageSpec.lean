@@ -51,6 +51,19 @@ private lemma primesRArray_get_eq_nth {i : ℕ} (hi : i < 49) :
     primesRArray.get i = nth Nat.Prime i :=
   primesRArray_get_eq_nth_aux ⟨i, hi⟩
 
+/-! ### Ceiling division -/
+
+@[grind =]
+private theorem ceilDiv_le_iff {a b c : ℕ} (hb : 0 < b) : ceilDiv a b ≤ c ↔ a ≤ c * b := by
+  rw [ceilDiv, div_le_iff_le_mul_add_pred hb, mul_comm]; lia
+
+@[grind =]
+private theorem lt_ceilDiv_iff {a b c : ℕ} (hb : 0 < b) : c < ceilDiv a b ↔ c * b < a :=
+  lt_iff_lt_of_le_iff_le (ceilDiv_le_iff hb)
+
+private theorem le_ceilDiv_mul {a b : ℕ} (hb : 0 < b) : a ≤ ceilDiv a b * b :=
+  (ceilDiv_le_iff hb).mp le_rfl
+
 /-! ### Specification: `P` and `W` -/
 
 /-- `P j`: nonzero naturals whose every prime factor is at least the `j`-th prime. -/
@@ -179,27 +192,15 @@ private theorem primesProdM1_le_primesProd {front B : ℕ} :
 private theorem sigma_pow_le_window_factor {p p₀ k : ℕ} (hp : p.Prime) (hp₀ : 2 ≤ p₀)
     (hple : p₀ ≤ p) :
     σ₁ (p ^ k) * (p₀ - 1) ≤ p ^ k * p₀ := by
-  have hpk₀ : 1 ≤ p ^ k := one_le_pow _ _ hp.pos
   refine Nat.le_of_mul_le_mul_right (c := p - 1) ?_ (by lia)
   rw [mul_right_comm, sigma_one_apply_prime_pow' hp,
     Nat.div_mul_cancel (Nat.sub_one_dvd_pow_sub_one p (k + 1))]
   zify [one_le_pow (k+1) _ hp.pos, (by lia : (1 : ℕ) ≤ p₀), (by lia : (1 : ℕ) ≤ p)]
-  nlinarith [pow_succ p k]
+  nlinarith [pow_succ p k, one_le_pow k p hp.pos]
 
 /-- σ formula in `expChildren`'s loop: `(p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k)` for prime `p`. -/
 @[grind =] private theorem sigma_pow_expChildren_eq {p k : ℕ} (hp : p.Prime) :
     (p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k) := by rw [← pow_succ, ← sigma_one_apply_prime_pow' hp]
-
-@[grind =]
-private theorem ceilDiv_le_iff {a b c : ℕ} (hb : 0 < b) : ceilDiv a b ≤ c ↔ a ≤ c * b := by
-  rw [ceilDiv, div_le_iff_le_mul_add_pred hb, mul_comm]; lia
-
-@[grind =]
-private theorem lt_ceilDiv_iff {a b c : ℕ} (hb : 0 < b) : c < ceilDiv a b ↔ c * b < a :=
-  lt_iff_lt_of_le_iff_le (ceilDiv_le_iff hb)
-
-private theorem le_ceilDiv_mul {a b : ℕ} (hb : 0 < b) : a ≤ ceilDiv a b * b :=
-  (ceilDiv_le_iff hb).mp le_rfl
 
 /-! ### The two main bounds: σ-window and radical -/
 
