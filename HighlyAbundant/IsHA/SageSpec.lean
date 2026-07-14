@@ -54,14 +54,14 @@ private lemma primesRArray_get_eq_nth {i : ℕ} (hi : i < 49) :
 /-! ### Ceiling division -/
 
 @[grind =]
-private theorem ceilDiv_le_iff {a b c : ℕ} (hb : 0 < b) : ceilDiv a b ≤ c ↔ a ≤ c * b := by
-  rw [ceilDiv, div_le_iff_le_mul_add_pred hb, mul_comm]; lia
+private theorem ceilDiv_le_iff {a b c : ℕ} (hb : b ≠ 0) : ceilDiv a b ≤ c ↔ a ≤ c * b := by
+  rw [ceilDiv, div_le_iff_le_mul_add_pred (Nat.pos_of_ne_zero hb), mul_comm]; lia
 
 @[grind =]
-private theorem lt_ceilDiv_iff {a b c : ℕ} (hb : 0 < b) : c < ceilDiv a b ↔ c * b < a :=
+private theorem lt_ceilDiv_iff {a b c : ℕ} (hb : b ≠ 0) : c < ceilDiv a b ↔ c * b < a :=
   lt_iff_lt_of_le_iff_le (ceilDiv_le_iff hb)
 
-private theorem le_ceilDiv_mul {a b : ℕ} (hb : 0 < b) : a ≤ ceilDiv a b * b :=
+private theorem le_ceilDiv_mul {a b : ℕ} (hb : b ≠ 0) : a ≤ ceilDiv a b * b :=
   (ceilDiv_le_iff hb).mp le_rfl
 
 /-! ### Specification: `P` and `W` -/
@@ -145,25 +145,25 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-- `primesProd front back = ∏_{i ∈ [front, back]} (i-th prime)`. -/
 private noncomputable def primesProd (front back : ℕ) : ℕ :=
-  ∏ i ∈ Ico front (back + 1), nth Nat.Prime i
+  ∏ i ∈ Icc front back, nth Nat.Prime i
 
 /-- `primesProdM1 front back = ∏_{i ∈ [front, back]} ((i-th prime) - 1)`. -/
 private noncomputable def primesProdM1 (front back : ℕ) : ℕ :=
-  ∏ i ∈ Ico front (back + 1), (nth Nat.Prime i - 1)
+  ∏ i ∈ Icc front back, (nth Nat.Prime i - 1)
 
 @[grind =] private theorem primesProd_empty {front back : ℕ} (h : back < front) :
-    primesProd front back = 1 := by grind [primesProd, Ico_eq_empty]
+    primesProd front back = 1 := by grind [primesProd, Finset.Icc_eq_empty]
 
 @[grind =] private theorem primesProdM1_empty {front back : ℕ} (h : back < front) :
-    primesProdM1 front back = 1 := by grind [primesProdM1, Ico_eq_empty]
+    primesProdM1 front back = 1 := by grind [primesProdM1, Finset.Icc_eq_empty]
 
 @[grind =] private theorem primesProd_succ {front back : ℕ} (h : front ≤ back + 1) :
     primesProd front (back + 1) = primesProd front back * nth Nat.Prime (back + 1) :=
-  prod_Ico_succ_top h _
+  prod_Icc_succ_top h _
 
 @[grind =] private theorem primesProdM1_succ {front back : ℕ} (h : front ≤ back + 1) :
     primesProdM1 front (back + 1) = primesProdM1 front back * (nth Nat.Prime (back + 1) - 1) :=
-  prod_Ico_succ_top h _
+  prod_Icc_succ_top h _
 
 @[grind =] private theorem primesProd_self (i : ℕ) :
     primesProd i i = nth Nat.Prime i := by simp [primesProd]
@@ -179,12 +179,14 @@ private theorem primesProdM1_le_primesProd {front B : ℕ} :
 /-- Factoring `primesProd` at the front. -/
 @[grind =] private theorem primesProd_succ_front {front B : ℕ} (hB : front ≤ B) :
     primesProd front B = nth Nat.Prime front * primesProd (front + 1) B := by
-  grind [primesProd, prod_eq_prod_Ico_succ_bot]
+  rw [primesProd, primesProd, ← Finset.Ico_add_one_right_eq_Icc,
+    Finset.prod_eq_prod_Ico_succ_bot (by lia), Finset.Ico_add_one_right_eq_Icc]
 
 /-- Factoring `primesProdM1` at the front. -/
 @[grind =] private theorem primesProdM1_succ_front {front B : ℕ} (hB : front ≤ B) :
     primesProdM1 front B = (nth Nat.Prime front - 1) * primesProdM1 (front + 1) B := by
-  grind [primesProdM1, prod_eq_prod_Ico_succ_bot]
+  rw [primesProdM1, primesProdM1, ← Finset.Ico_add_one_right_eq_Icc,
+    Finset.prod_eq_prod_Ico_succ_bot (by lia), Finset.Ico_add_one_right_eq_Icc]
 
 /-! ### Sigma at a single prime -/
 
