@@ -29,6 +29,8 @@ set_option linter.mathlibStandardSet true
 
 open Nat Finset ArithmeticFunction
 
+local notation:max "p_" i:max => nth Nat.Prime i
+
 attribute [grind .] sigma_pos
 
 namespace Sage
@@ -143,50 +145,45 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Products over prime windows -/
 
-/-- `primesProd front back = ∏_{i ∈ [front, back]} (i-th prime)`. -/
-private noncomputable def primesProd (front back : ℕ) : ℕ :=
-  ∏ i ∈ Icc front back, nth Nat.Prime i
+@[grind =] private theorem prod_primes_empty {front back : ℕ} (h : back < front) :
+    ∏ i ∈ Icc front back, (p_ i) = 1 := by grind [Finset.Icc_eq_empty]
 
-/-- `primesProdM1 front back = ∏_{i ∈ [front, back]} ((i-th prime) - 1)`. -/
-private noncomputable def primesProdM1 (front back : ℕ) : ℕ :=
-  ∏ i ∈ Icc front back, (nth Nat.Prime i - 1)
+@[grind =] private theorem prod_primesM1_empty {front back : ℕ} (h : back < front) :
+    ∏ i ∈ Icc front back, ((p_ i) - 1) = 1 := by grind [Finset.Icc_eq_empty]
 
-@[grind =] private theorem primesProd_empty {front back : ℕ} (h : back < front) :
-    primesProd front back = 1 := by grind [primesProd, Finset.Icc_eq_empty]
-
-@[grind =] private theorem primesProdM1_empty {front back : ℕ} (h : back < front) :
-    primesProdM1 front back = 1 := by grind [primesProdM1, Finset.Icc_eq_empty]
-
-@[grind =] private theorem primesProd_succ {front back : ℕ} (h : front ≤ back + 1) :
-    primesProd front (back + 1) = primesProd front back * nth Nat.Prime (back + 1) :=
+@[grind =] private theorem prod_primes_succ {front back : ℕ} (h : front ≤ back + 1) :
+    ∏ i ∈ Icc front (back + 1), (p_ i)
+      = (∏ i ∈ Icc front back, (p_ i)) * (p_ (back + 1)) :=
   prod_Icc_succ_top h _
 
-@[grind =] private theorem primesProdM1_succ {front back : ℕ} (h : front ≤ back + 1) :
-    primesProdM1 front (back + 1) = primesProdM1 front back * (nth Nat.Prime (back + 1) - 1) :=
+@[grind =] private theorem prod_primesM1_succ {front back : ℕ} (h : front ≤ back + 1) :
+    ∏ i ∈ Icc front (back + 1), ((p_ i) - 1)
+      = (∏ i ∈ Icc front back, ((p_ i) - 1)) * ((p_ (back + 1)) - 1) :=
   prod_Icc_succ_top h _
 
-@[grind =] private theorem primesProd_self (i : ℕ) :
-    primesProd i i = nth Nat.Prime i := by simp [primesProd]
+@[grind =] private theorem prod_primes_self (i : ℕ) :
+    ∏ j ∈ Icc i i, (p_ j) = p_ i := by simp
 
-@[grind =] private theorem primesProdM1_self (i : ℕ) :
-    primesProdM1 i i = nth Nat.Prime i - 1 := by simp [primesProdM1]
+@[grind =] private theorem prod_primesM1_self (i : ℕ) :
+    ∏ j ∈ Icc i i, ((p_ j) - 1) = (p_ i) - 1 := by simp
 
-/-- `primesProdM1 front B ≤ primesProd front B` since each factor `(p-1) ≤ p`. -/
-private theorem primesProdM1_le_primesProd {front B : ℕ} :
-    primesProdM1 front B ≤ primesProd front B :=
+/-- Each factor `(p - 1) ≤ p`. -/
+private theorem prod_primesM1_le {front B : ℕ} :
+    ∏ i ∈ Icc front B, ((p_ i) - 1) ≤ ∏ i ∈ Icc front B, (p_ i) :=
   prod_le_prod' (by simp)
 
-/-- Factoring `primesProd` at the front. -/
-@[grind =] private theorem primesProd_succ_front {front B : ℕ} (hB : front ≤ B) :
-    primesProd front B = nth Nat.Prime front * primesProd (front + 1) B := by
-  rw [primesProd, primesProd, ← Finset.Ico_add_one_right_eq_Icc,
-    Finset.prod_eq_prod_Ico_succ_bot (by lia), Finset.Ico_add_one_right_eq_Icc]
+/-- Factoring the prime-window product at the front. -/
+@[grind =] private theorem prod_primes_succ_front {front B : ℕ} (hB : front ≤ B) :
+    ∏ i ∈ Icc front B, (p_ i) = (p_ front) * ∏ i ∈ Icc (front + 1) B, (p_ i) := by
+  rw [← Finset.Ico_add_one_right_eq_Icc, Finset.prod_eq_prod_Ico_succ_bot (by lia),
+    Finset.Ico_add_one_right_eq_Icc]
 
-/-- Factoring `primesProdM1` at the front. -/
-@[grind =] private theorem primesProdM1_succ_front {front B : ℕ} (hB : front ≤ B) :
-    primesProdM1 front B = (nth Nat.Prime front - 1) * primesProdM1 (front + 1) B := by
-  rw [primesProdM1, primesProdM1, ← Finset.Ico_add_one_right_eq_Icc,
-    Finset.prod_eq_prod_Ico_succ_bot (by lia), Finset.Ico_add_one_right_eq_Icc]
+/-- Factoring the `p - 1` window product at the front. -/
+@[grind =] private theorem prod_primesM1_succ_front {front B : ℕ} (hB : front ≤ B) :
+    ∏ i ∈ Icc front B, ((p_ i) - 1)
+      = ((p_ front) - 1) * ∏ i ∈ Icc (front + 1) B, ((p_ i) - 1) := by
+  rw [← Finset.Ico_add_one_right_eq_Icc, Finset.prod_eq_prod_Ico_succ_bot (by lia),
+    Finset.Ico_add_one_right_eq_Icc]
 
 /-! ### Sigma at a single prime -/
 
@@ -202,39 +199,39 @@ private theorem sigma_pow_le_window_factor {p p₀ k : ℕ} (hp : p.Prime) (hp�
 
 /-! ### The two main bounds: σ-window and radical -/
 
-/-- `σ₁(t) * Π'(front, B) ≤ t * Π(front, B)` for `t ∈ P front` with at most
+/-- `σ₁ t * ∏ (p_ i - 1) ≤ t * ∏ p_ i` over `Icc front B`, for `t ∈ P front` with at most
 `B - front + 1` distinct primes. -/
 private theorem sigma_bound_window {t front : ℕ} (B : ℕ) (ht : t ≠ 0) (hP : t ∈ P front)
     (hBsize : B + 1 ≤ 49) (hcard : t.primeFactors.card + front ≤ B + 1) :
-    σ₁ t * primesProdM1 front B ≤ t * primesProd front B := by
+    σ₁ t * ∏ i ∈ Icc front B, ((p_ i) - 1) ≤ t * ∏ i ∈ Icc front B, (p_ i) := by
   induction t using Nat.strongRecOn generalizing front B with
   | ind t ih =>
     obtain rfl | ht1 := eq_or_ne t 1
-    · simpa using primesProdM1_le_primesProd
+    · simpa using prod_primesM1_le
     have ht2 : 2 ≤ t := by lia
     obtain ⟨p, k, t', hk₀, hpk_t, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
     have hp_prime : p.Prime := hmin.prop.1
-    have hp_geprimes : nth Nat.Prime front ≤ p := hP.2 p hp_prime hmin.prop.2
+    have hp_geprimes : p_ front ≤ p := hP.2 p hp_prime hmin.prop.2
     have hcard := card_primeFactors_coprime hp_prime hk₀.ne' hpk_t hcoprime
     have ht'P : t' ∈ P (front + 1) :=
       mem_P_succ_of_coprime hp_prime hp_geprimes (fun q hq hqd => hmin.le ⟨hq, hqd⟩)
         hpk_t ht'₀.ne' hcoprime
     have IH := ih t' ht'_lt B ht'₀.ne' ht'P hBsize (by lia)
-    have hcons : σ₁ (p ^ k) * (nth Nat.Prime front - 1) ≤ p ^ k * nth Nat.Prime front :=
+    have hcons : σ₁ (p ^ k) * ((p_ front) - 1) ≤ p ^ k * (p_ front) :=
       sigma_pow_le_window_factor hp_prime (prime_nth_prime front).two_le hp_geprimes
-    calc σ₁ t * primesProdM1 front B
-        = σ₁ (p ^ k) * (nth Nat.Prime front - 1) * (σ₁ t' * primesProdM1 (front + 1) B) := by
+    calc σ₁ t * ∏ i ∈ Icc front B, ((p_ i) - 1)
+        = σ₁ (p ^ k) * ((p_ front) - 1) * (σ₁ t' * ∏ i ∈ Icc (front + 1) B, ((p_ i) - 1)) := by
           rw [← hpk_t, isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
-            primesProdM1_succ_front (by lia)]
+            prod_primesM1_succ_front (by lia)]
           ring
-      _ ≤ p ^ k * nth Nat.Prime front * (t' * primesProd (front + 1) B) := by gcongr
-      _ = t * primesProd front B := by grind
+      _ ≤ p ^ k * (p_ front) * (t' * ∏ i ∈ Icc (front + 1) B, (p_ i)) := by gcongr
+      _ = t * ∏ i ∈ Icc front B, (p_ i) := by grind
 
-/-- `primesProd front (front + j - 1) ≤ t` for `t ∈ P front` with `j ≥ 1`
-distinct primes, and `front + j ≤ 49`. -/
+/-- `∏ p_ i ≤ t` over `Icc front (front + j - 1)`, for `t ∈ P front` with `j ≥ 1`
+distinct primes and `front + j ≤ 49`. -/
 private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P front) (j : ℕ)
     (hj : j ≠ 0) (hjle : j ≤ t.primeFactors.card) (hsize : front + j ≤ 49) :
-    primesProd front (front + j - 1) ≤ t := by
+    ∏ i ∈ Icc front (front + j - 1), (p_ i) ≤ t := by
   induction t using Nat.strongRecOn generalizing front j with
   | ind t ih =>
     have ht1 : t ≠ 1 := by grind [primeFactors_one]
@@ -242,8 +239,8 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
     obtain ⟨p, k, t', hk₀, hpk_t, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
     have hp_prime : p.Prime := hmin.prop.1
     have hp_dvd : p ∣ t := hpk_t ▸ (dvd_pow_self p (by lia)).mul_right _
-    have hp_geprimes : nth Nat.Prime front ≤ p := hP.2 p hp_prime hp_dvd
-    have hpk_ge : nth Nat.Prime front ≤ p ^ k := hp_geprimes.trans (le_self_pow (by lia) p)
+    have hp_geprimes : p_ front ≤ p := hP.2 p hp_prime hp_dvd
+    have hpk_ge : p_ front ≤ p ^ k := hp_geprimes.trans (le_self_pow (by lia) p)
     rcases lt_or_ge 1 j with hj2 | hj2
     · have ht'P : t' ∈ P (front + 1) :=
         mem_P_succ_of_coprime hp_prime hp_geprimes (fun q hq hqd => hmin.le ⟨hq, hqd⟩)
@@ -251,13 +248,13 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
       have hcard := card_primeFactors_coprime hp_prime hk₀.ne' hpk_t hcoprime
       have IH := ih t' ht'_lt ht'₀.ne' ht'P (j - 1) (by lia) (by lia) (by lia)
       rw [(by lia : (front + 1) + (j - 1) - 1 = front + j - 1)] at IH
-      calc primesProd front (front + j - 1)
-          = nth Nat.Prime front * primesProd (front + 1) (front + j - 1) :=
-            primesProd_succ_front (by lia)
+      calc ∏ i ∈ Icc front (front + j - 1), (p_ i)
+          = (p_ front) * ∏ i ∈ Icc (front + 1) (front + j - 1), (p_ i) :=
+            prod_primes_succ_front (by lia)
         _ ≤ p ^ k * t' := by gcongr
         _ = t := hpk_t
     · obtain rfl : j = 1 := by lia
-      rw [Nat.add_sub_cancel, primesProd_self]
+      rw [Nat.add_sub_cancel, prod_primes_self]
       exact hpk_ge.trans (hpk_t ▸ Nat.le_mul_of_pos_right _ ht'₀)
 
 end Sage
