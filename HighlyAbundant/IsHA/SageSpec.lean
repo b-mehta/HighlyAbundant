@@ -145,12 +145,6 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Products over prime windows -/
 
-@[grind =] private theorem prod_primes_empty {front back : ℕ} (h : back < front) :
-    ∏ i ∈ Icc front back, p_ i = 1 := by grind [Finset.Icc_eq_empty]
-
-@[grind =] private theorem prod_primesM1_empty {front back : ℕ} (h : back < front) :
-    ∏ i ∈ Icc front back, (p_ i - 1) = 1 := by grind [Finset.Icc_eq_empty]
-
 @[grind =] private theorem prod_primes_succ {front back : ℕ} (h : front ≤ back + 1) :
     ∏ i ∈ Icc front (back + 1), p_ i
       = (∏ i ∈ Icc front back, p_ i) * (p_ (back + 1)) :=
@@ -160,17 +154,6 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
     ∏ i ∈ Icc front (back + 1), (p_ i - 1)
       = (∏ i ∈ Icc front back, (p_ i - 1)) * (p_ (back + 1) - 1) :=
   prod_Icc_succ_top h _
-
-@[grind =] private theorem prod_primes_self (i : ℕ) :
-    ∏ j ∈ Icc i i, p_ j = p_ i := by simp
-
-@[grind =] private theorem prod_primesM1_self (i : ℕ) :
-    ∏ j ∈ Icc i i, (p_ j - 1) = p_ i - 1 := by simp
-
-/-- Each factor `(p - 1) ≤ p`. -/
-private theorem prod_primesM1_le {front B : ℕ} :
-    ∏ i ∈ Icc front B, (p_ i - 1) ≤ ∏ i ∈ Icc front B, (p_ i) :=
-  prod_le_prod' (by simp)
 
 /-- Factoring the prime-window product at the front. -/
 @[grind =] private theorem prod_primes_succ_front {front B : ℕ} (hB : front ≤ B) :
@@ -207,7 +190,7 @@ private theorem sigma_bound_window {t front : ℕ} (B : ℕ) (ht : t ≠ 0) (hP 
   induction t using Nat.strongRecOn generalizing front B with
   | ind t ih =>
     obtain rfl | ht1 := eq_or_ne t 1
-    · simpa using prod_primesM1_le
+    · simpa using prod_le_prod' (g := fun i => p_ i) fun i _ => Nat.sub_le _ 1
     have ht2 : 2 ≤ t := by lia
     obtain ⟨p, k, t', hk₀, hpk_t, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
     have hp_prime : p.Prime := hmin.prop.1
@@ -254,7 +237,7 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
         _ ≤ p ^ k * t' := by gcongr
         _ = t := hpk_t
     · obtain rfl : j = 1 := by lia
-      rw [Nat.add_sub_cancel, prod_primes_self]
+      rw [Nat.add_sub_cancel, Finset.Icc_self, Finset.prod_singleton]
       exact hpk_ge.trans (hpk_t ▸ Nat.le_mul_of_pos_right _ ht'₀)
 
 end Sage
