@@ -182,23 +182,23 @@ private theorem sigma_bound_window {t front : ℕ} (B : ℕ) (ht : t ≠ 0) (hP 
     obtain rfl | ht1 := eq_or_ne t 1
     · simpa using prod_le_prod' (g := fun i => p_ i) fun i _ => Nat.sub_le _ 1
     have ht2 : 2 ≤ t := by lia
-    obtain ⟨p, k, t', hk₀, hpk_t, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
+    obtain ⟨p, k, t', hk₀, rfl, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
     have hp_prime : p.Prime := hmin.prop.1
     have hp_geprimes : p_ front ≤ p := hP.2 p hp_prime hmin.prop.2
-    have hcard := card_primeFactors_coprime hp_prime hk₀.ne' hpk_t hcoprime
+    have hcard := card_primeFactors_coprime hp_prime hk₀.ne' rfl hcoprime
     have ht'P : t' ∈ P (front + 1) :=
       mem_P_succ_of_coprime hp_prime hp_geprimes (fun q hq hqd => hmin.le ⟨hq, hqd⟩)
-        hpk_t ht'₀.ne' hcoprime
+        rfl ht'₀.ne' hcoprime
     have IH := ih t' ht'_lt B ht'₀.ne' ht'P hBsize (by lia)
     have hcons : σ₁ (p ^ k) * (p_ front - 1) ≤ p ^ k * p_ front :=
       sigma_pow_le_window_factor hp_prime (prime_nth_prime front).two_le hp_geprimes
-    calc σ₁ t * ∏ i ∈ Icc front B, (p_ i - 1)
+    calc σ₁ (p ^ k * t') * ∏ i ∈ Icc front B, (p_ i - 1)
         = σ₁ (p ^ k) * (p_ front - 1) * (σ₁ t' * ∏ i ∈ Icc (front + 1) B, (p_ i - 1)) := by
-          rw [← hpk_t, isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
+          rw [isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
             prod_primesM1_succ_front (by lia)]
           ring
       _ ≤ p ^ k * p_ front * (t' * ∏ i ∈ Icc (front + 1) B, p_ i) := by gcongr
-      _ = t * ∏ i ∈ Icc front B, p_ i := by grind
+      _ = p ^ k * t' * ∏ i ∈ Icc front B, p_ i := by grind
 
 /-- `∏ p_ i ≤ t` over `Icc front (front + j - 1)`, for `t ∈ P front` with `j ≥ 1`
 distinct primes and `front + j ≤ 49`. -/
@@ -209,25 +209,24 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
   | ind t ih =>
     have ht1 : t ≠ 1 := by grind [primeFactors_one]
     have ht2 : 2 ≤ t := by lia
-    obtain ⟨p, k, t', hk₀, hpk_t, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
+    obtain ⟨p, k, t', hk₀, rfl, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
     have hp_prime : p.Prime := hmin.prop.1
-    have hp_dvd : p ∣ t := hpk_t ▸ (dvd_pow_self p (by lia)).mul_right _
+    have hp_dvd : p ∣ p ^ k * t' := (dvd_pow_self p (by lia)).mul_right _
     have hp_geprimes : p_ front ≤ p := hP.2 p hp_prime hp_dvd
     have hpk_ge : p_ front ≤ p ^ k := hp_geprimes.trans (le_self_pow (by lia) p)
     rcases lt_or_ge 1 j with hj2 | hj2
     · have ht'P : t' ∈ P (front + 1) :=
         mem_P_succ_of_coprime hp_prime hp_geprimes (fun q hq hqd => hmin.le ⟨hq, hqd⟩)
-          hpk_t ht'₀.ne' hcoprime
-      have hcard := card_primeFactors_coprime hp_prime hk₀.ne' hpk_t hcoprime
+          rfl ht'₀.ne' hcoprime
+      have hcard := card_primeFactors_coprime hp_prime hk₀.ne' rfl hcoprime
       have IH := ih t' ht'_lt ht'₀.ne' ht'P (j - 1) (by lia) (by lia) (by lia)
       rw [(by lia : (front + 1) + (j - 1) - 1 = front + j - 1)] at IH
       calc ∏ i ∈ Icc front (front + j - 1), p_ i
           = p_ front * ∏ i ∈ Icc (front + 1) (front + j - 1), p_ i :=
             prod_primes_succ_front (by lia)
         _ ≤ p ^ k * t' := by gcongr
-        _ = t := hpk_t
     · obtain rfl : j = 1 := by lia
       rw [Nat.add_sub_cancel, Finset.Icc_self, Finset.prod_singleton]
-      exact hpk_ge.trans (hpk_t ▸ Nat.le_mul_of_pos_right _ ht'₀)
+      exact hpk_ge.trans (Nat.le_mul_of_pos_right _ ht'₀)
 
 end Sage
