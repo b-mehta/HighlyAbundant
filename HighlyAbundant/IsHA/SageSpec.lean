@@ -145,16 +145,6 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Products over prime windows -/
 
-@[grind =] private theorem prod_primes_succ {front back : ℕ} (h : front ≤ back + 1) :
-    ∏ i ∈ Icc front (back + 1), p_ i
-      = (∏ i ∈ Icc front back, p_ i) * p_ (back + 1) :=
-  prod_Icc_succ_top h _
-
-@[grind =] private theorem prod_primesM1_succ {front back : ℕ} (h : front ≤ back + 1) :
-    ∏ i ∈ Icc front (back + 1), (p_ i - 1)
-      = (∏ i ∈ Icc front back, (p_ i - 1)) * (p_ (back + 1) - 1) :=
-  prod_Icc_succ_top h _
-
 /-- Factoring the prime-window product at the front. -/
 @[grind =] private theorem prod_primes_succ_front {front B : ℕ} (hB : front ≤ B) :
     ∏ i ∈ Icc front B, p_ i = p_ front * ∏ i ∈ Icc (front + 1) B, p_ i := by
