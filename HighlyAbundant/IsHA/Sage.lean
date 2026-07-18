@@ -71,7 +71,7 @@ inductive Wheel where
 and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
 `b ≥ back` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
 `.exhaustedTable` if fuel or the table runs out. -/
-def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
+@[expose] def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
   match fuel with
   | 0 => .exhaustedTable
   | fuel + 1 =>
@@ -91,7 +91,7 @@ def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
 
 /-- Emit children `(⌈goal / σ(p^k)⌉, cand * p^k, next)` for `k ≥ 1` with
 `p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ goal`. -/
-def expChildren (fuel goal cand next m p pk : Nat) : List (Nat × Nat × Nat) :=
+@[expose] def expChildren (fuel goal cand next m p pk : Nat) : List (Nat × Nat × Nat) :=
   match fuel with
   | 0 => []
   | fuel + 1 =>
@@ -104,7 +104,7 @@ def expChildren (fuel goal cand next m p pk : Nat) : List (Nat × Nat × Nat) :=
 
 /-- Iterate `extend` from `front` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
-def wheelChildren (fuel m2 m goal cand front back lhs rhs : Nat)
+@[expose] def wheelChildren (fuel m2 m goal cand front back lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
   | 0 => none
