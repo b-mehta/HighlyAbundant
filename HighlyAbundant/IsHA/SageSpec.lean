@@ -388,17 +388,17 @@ private theorem expChildren_witness_walk {B cand goal m p : ℕ} (hp : p.Prime) 
 
 /-- Each entry of `wheelChildren`'s output is either from `acc` or of the form
 `(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ front`, `k ≥ 1` with
-`p = nth Nat.Prime i` and `p^k ≤ m`. -/
+`p = p_ i` and `p^k ≤ m`. -/
 private theorem mem_wheelChildren {fuel m2 m goal cand front back lhs rhs : ℕ}
     {acc : List (ℕ × ℕ × ℕ)} {L : List (ℕ × ℕ × ℕ)}
     (h : wheelChildren fuel m2 m goal cand front back lhs rhs acc = some L)
     {c : ℕ × ℕ × ℕ} (hc : c ∈ L) :
-    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ nth Nat.Prime i ^ k ≤ m ∧
-      c = (ceilDiv goal (σ₁ (nth Nat.Prime i ^ k)), cand * nth Nat.Prime i ^ k, i + 1) := by
+    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ p_ i ^ k ≤ m ∧
+      c = (ceilDiv goal (σ₁ (p_ i ^ k)), cand * p_ i ^ k, i + 1) := by
   fun_induction wheelChildren generalizing L with
   | case4 front _ _ _ acc _ _ _ _ _ hp p =>
     rename_i hrec
-    have hp : p = nth Nat.Prime front := primesRArray_get_eq_nth hp
+    have hp : p = p_ front := primesRArray_get_eq_nth hp
     rcases hrec h hc with hcacc | ⟨i, k, hi, hk, hpkm, hceq⟩
     · rcases List.mem_append.mp hcacc with hcexp | hcorig
       · obtain ⟨k, hk, hpkm, hceq⟩ := mem_expChildren (prime_nth_prime front) le_rfl
@@ -431,8 +431,8 @@ private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / can
   | case3 => grind
   | case4 front back lhs rhs acc _ b lhs' rhs' hext hp p =>
     rename_i hrec
-    have hp : p = nth Nat.Prime front := primesRArray_get_eq_nth hp
-    have hp_prime : (nth Nat.Prime front).Prime := prime_nth_prime front
+    have hp : p = p_ front := primesRArray_get_eq_nth hp
+    have hp_prime : (p_ front).Prime := prime_nth_prime front
     obtain ⟨hlhs', hrhs', _, hfront_b⟩ := extend_window_invariant hlhs hrhs hfront_le hext
     replace hlhs : lhs' / p = m * ∏ i ∈ Icc (front + 1) b, p_ i := by
       rw [hp, hlhs', prod_primes_succ_front hfront_b, mul_left_comm,
@@ -440,12 +440,12 @@ private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / can
     replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (front + 1) b, (p_ i - 1) := by
       rw [hp, hrhs', prod_primesM1_succ_front hfront_b, mul_left_comm,
         Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
-    by_cases hdvd : nth Nat.Prime front ∣ t
+    by_cases hdvd : p_ front ∣ t
     · obtain ⟨k, s, hk₀, hpk_t, hs₀, _, hcoprime⟩ :=
         exists_factor_decomp hp_prime hdvd (by lia)
-      have hpkm : nth Nat.Prime front ^ k ≤ m :=
+      have hpkm : p_ front ^ k ≤ m :=
         (le_of_dvd (by lia) ⟨s, hpk_t.symm⟩).trans htm
-      have htσ' : goal ≤ σ₁ (nth Nat.Prime front ^ k) * σ₁ s := by
+      have htσ' : goal ≤ σ₁ (p_ front ^ k) * σ₁ s := by
         rwa [← isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k), hpk_t]
       have hsP : s ∈ P (front + 1) :=
         mem_P_succ_of_coprime hp_prime le_rfl htP.2 hpk_t hs₀.ne' hcoprime
@@ -460,25 +460,25 @@ private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / can
 
 /-- Every `c` in `children`'s output has the form
 `(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ idx`, `k ≥ 1` with
-`p = nth Nat.Prime i` and `p^k ≤ B / cand`. -/
+`p = p_ i` and `p^k ≤ B / cand`. -/
 private theorem mem_children {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
     (h : children B goal cand idx = some cs) {c : ℕ × ℕ × ℕ} (hc : c ∈ cs) :
-    ∃ i k, idx ≤ i ∧ 1 ≤ k ∧ nth Nat.Prime i ^ k ≤ B / cand ∧
-      c = (ceilDiv goal (σ₁ (nth Nat.Prime i ^ k)),
-        cand * nth Nat.Prime i ^ k, i + 1) := by
+    ∃ i k, idx ≤ i ∧ 1 ≤ k ∧ p_ i ^ k ≤ B / cand ∧
+      c = (ceilDiv goal (σ₁ (p_ i ^ k)),
+        cand * p_ i ^ k, i + 1) := by
   rw [children] at h
   split at h <;> [grind [mem_wheelChildren h hc]; grind]
 
 /-- If `t'` is a witness of the child `(⌈goal / σ₁(p ^ k)⌉, cand * p ^ k, i + 1)`
-with `p = nth Nat.Prime i`, then `p ^ k * t'` is a nontrivial witness of the
+with `p = p_ i`, then `p ^ k * t'` is a nontrivial witness of the
 parent `(goal, cand, idx)`. -/
 private theorem child_witness_to_parent {B goal cand idx i k : ℕ}
     (hmi : idx ≤ i) (hk : 1 ≤ k) {t' : ℕ}
-    (ht' : t' ∈ W B (ceilDiv goal (σ₁ (nth Nat.Prime i ^ k)))
-      (cand * nth Nat.Prime i ^ k) (i + 1)) :
-    nth Nat.Prime i ^ k * t' ∈ W B goal cand idx ∧
-      nth Nat.Prime i ^ k * t' ≠ 1 := by
-  set p := nth Nat.Prime i
+    (ht' : t' ∈ W B (ceilDiv goal (σ₁ (p_ i ^ k)))
+      (cand * p_ i ^ k) (i + 1)) :
+    p_ i ^ k * t' ∈ W B goal cand idx ∧
+      p_ i ^ k * t' ≠ 1 := by
+  set p := p_ i
   obtain ⟨⟨ht'1, ht'P⟩, ht'lt, ht'σ⟩ := ht'
   have hpPrime : p.Prime := prime_nth_prime i
   have hpk_ge2 : 2 ≤ p ^ k := hpPrime.two_le.trans (le_self_pow (by lia) p)
@@ -511,12 +511,12 @@ private theorem witness_to_child {B goal cand idx : ℕ} {cs : List (ℕ × ℕ 
     split at h
     · rename_i hidx_lt
       obtain ⟨⟨ht₀, htP⟩, htlt, htσ⟩ := ht
-      have e1 : ∏ i ∈ Icc idx idx, p_ i = nth Nat.Prime idx := by
+      have e1 : ∏ i ∈ Icc idx idx, p_ i = p_ idx := by
         rw [Finset.Icc_self, Finset.prod_singleton]
-      have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = nth Nat.Prime idx - 1 := by
+      have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = p_ idx - 1 := by
         rw [Finset.Icc_self, Finset.prod_singleton]
       rw [primesRArray_get_eq_nth hidx_lt, ← e2,
-        mul_comm (nth Nat.Prime idx) (B / cand), ← e1] at h
+        mul_comm (p_ idx) (B / cand), ← e1] at h
       exact wheelChildren_witness rfl hcand₀ (by lia) rfl rfl (by lia) h
         (by lia) ⟨ht₀, htP⟩ htlt htσ
     · cases h
