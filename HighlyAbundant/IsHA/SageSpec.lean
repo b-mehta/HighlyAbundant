@@ -263,15 +263,16 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) (htσ : goal ≤ σ₁ t) : False := by
   rw [primesRArray_get_eq_nth hback_lt] at hbig
   rcases lt_or_ge t.primeFactors.card (back + 2 - front) with hcard | hcard
-  · have hbound := sigma_bound_window back (by omega) htP (by omega) (by omega)
+  · have hbound := sigma_bound_window back (by lia) htP (by lia) (by lia)
     have h_chain : σ₁ t * ∏ i ∈ Icc front back, (p_ i - 1)
         < goal * ∏ i ∈ Icc front back, (p_ i - 1) := by
       nlinarith [Nat.mul_le_mul_right (∏ i ∈ Icc front back, p_ i) htm]
     exact absurd htσ (not_le.mpr (Nat.lt_of_mul_lt_mul_right h_chain))
-  · have hrad := primesProd_le_t (by omega) htP (back + 2 - front) (by omega) hcard (by omega)
-    rw [(by omega : front + (back + 2 - front) - 1 = back + 1)] at hrad
+  · have hrad := primesProd_le_t (by lia) htP (back + 2 - front) (by lia) hcard (by lia)
+    have hidx : front + (back + 2 - front) - 1 = back + 1 := by lia
+    rw [hidx] at hrad
     have hppsm : m < ∏ i ∈ Icc front (back + 1), p_ i := Nat.lt_of_mul_lt_mul_left (a := m)
-      (by rwa [prod_primes_succ (by omega : front ≤ back + 1), ← mul_assoc, ← hlhs])
+      (by rwa [prod_primes_succ (by lia : front ≤ back + 1), ← mul_assoc, ← hlhs])
     lia
 
 /-- At a wheel `.tooLarge` empty-window state with `front < 49`, the witness `t`
@@ -282,9 +283,9 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
     (hempty : back + 1 = front)
     (hbig : m * m < lhs * primesRArray.get front)
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) : False := by
-  rw [prod_primes_empty (by omega : back < front), mul_one] at hlhs
+  rw [prod_primes_empty (by lia : back < front), mul_one] at hlhs
   rw [primesRArray_get_eq_nth hfront_lt, hlhs] at hbig
-  have h1 : nth Nat.Prime front ≤ t.minFac := htP.2 _ (minFac_prime (by omega)) (minFac_dvd t)
+  have h1 : nth Nat.Prime front ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
   grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
 
 /-- If `t` is a witness, `extend` cannot return `.tooLarge`. -/
@@ -376,24 +377,24 @@ private theorem expChildren_witness_walk {B cand goal m p : ℕ} (hp : p.Prime) 
     ∃ c ∈ expChildren fuel goal cand next m p (p ^ j₀), (W B c.1 c.2.1 c.2.2).Nonempty := by
   induction n generalizing j₀ fuel with
   | zero =>
-    obtain rfl : j₀ = k := by omega
+    obtain rfl : j₀ = k := by lia
     have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
     by_cases hσg : goal ≤ σ₁ (p ^ j₀)
-    · rw [expChildren_stop (by omega) hpkm (h_sig_eq ▸ hσg), h_sig_eq]
+    · rw [expChildren_stop (by lia) hpkm (h_sig_eq ▸ hσg), h_sig_eq]
       exact ⟨_, List.mem_singleton.mpr rfl, ⟨_, one_witnesses_stop hp hj₀_k hs₀ hat hσg⟩⟩
     push Not at hσg
-    rw [expChildren_step (by omega) hpkm (h_sig_eq.symm ▸ hσg), h_sig_eq]
+    rw [expChildren_step (by lia) hpkm (h_sig_eq.symm ▸ hσg), h_sig_eq]
     refine ⟨_, List.mem_cons_self, ⟨s, hsP, hat, ?_⟩⟩
     grind [hp.pos]
   | succ n ih =>
     have hpjm : p ^ j₀ ≤ m := (Nat.pow_le_pow_right hp.one_lt.le hj₀_k).trans hpkm
     have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
     by_cases hσg : goal ≤ σ₁ (p ^ j₀)
-    · rw [expChildren_stop (by omega) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq]
+    · rw [expChildren_stop (by lia) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq]
       exact ⟨_, List.mem_singleton.mpr rfl, ⟨_, one_witnesses_stop hp hj₀_k hs₀ hat hσg⟩⟩
     push Not at hσg
-    rw [expChildren_step (by omega) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq, ← pow_succ]
-    obtain ⟨c, hc, hwit⟩ := ih (j₀ + 1) (by omega) (by omega) (by omega) (fuel - 1) (by omega)
+    rw [expChildren_step (by lia) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq, ← pow_succ]
+    obtain ⟨c, hc, hwit⟩ := ih (j₀ + 1) (by lia) (by lia) (by lia) (fuel - 1) (by lia)
     grind
 
 end Sage
