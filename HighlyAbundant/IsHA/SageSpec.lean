@@ -170,6 +170,10 @@ private theorem sigma_pow_le_window_factor {p p₀ k : ℕ} (hp : p.Prime) (hp�
   zify [one_le_pow (k+1) _ hp.pos, (by lia : 1 ≤ p₀), (by lia : 1 ≤ p)] at *
   linear_combination hple * p ^ k + hp₀
 
+/-- The σ value appearing in `expChildren`'s loop: `(p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k)`. -/
+@[grind =] private theorem sigma_pow_expChildren_eq {p k : ℕ} (hp : p.Prime) :
+    (p ^ k * p - 1) / (p - 1) = σ₁ (p ^ k) := by rw [← pow_succ, ← sigma_one_apply_prime_pow' hp]
+
 /-! ### The two main bounds: σ-window and radical -/
 
 /-- `σ₁ t * ∏ (p_ i - 1) ≤ t * ∏ p_ i` over `Icc front B`, for `t ∈ P front` with at most
@@ -228,5 +232,156 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
     · obtain rfl : j = 1 := by lia
       rw [Nat.add_sub_cancel, Finset.Icc_self, Finset.prod_singleton]
       exact hpk_ge.trans (Nat.le_mul_of_pos_right _ ht'₀)
+
+/-! ### Ruling out `.tooLarge` from a witness -/
+
+/-- At a wheel `.tooLarge` state with `back + 1 < 49`, the witness `t` with
+`t ≤ m`, `t ∈ P front`, `goal ≤ σ₁ t` gives `False`. -/
+@[grind .] private theorem extend_tooLarge_contra
+    {m goal front back lhs rhs t : ℕ}
+    (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i)
+    (hrhs : rhs = goal * ∏ i ∈ Icc front back, (p_ i - 1))
+    (hfront : front ≤ back + 1)
+    (hback_lt : back + 1 < 49)
+    (hsmall : lhs < rhs)
+    (hbig : m * m < lhs * primesRArray.get (back + 1))
+    (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) (htσ : goal ≤ σ₁ t) : False := by
+  rw [primesRArray_get_eq_nth hback_lt] at hbig
+  rcases lt_or_ge t.primeFactors.card (back + 2 - front) with hcard | hcard
+  · have hbound := sigma_bound_window back (by lia) htP (by lia) (by lia)
+    have h_chain : σ₁ t * ∏ i ∈ Icc front back, (p_ i - 1)
+        < goal * ∏ i ∈ Icc front back, (p_ i - 1) := by
+      nlinarith [Nat.mul_le_mul_right (∏ i ∈ Icc front back, p_ i) htm]
+    exact absurd htσ (Nat.lt_of_mul_lt_mul_right h_chain).not_ge
+  · have hrad := primesProd_le_t (by lia) htP (back + 2 - front) (by lia) hcard (by lia)
+    have hidx : front + (back + 2 - front) - 1 = back + 1 := by lia
+    rw [hidx] at hrad
+    have hppsm : m < ∏ i ∈ Icc front (back + 1), p_ i := Nat.lt_of_mul_lt_mul_left (a := m)
+      (by rwa [prod_Icc_succ_top (by lia : front ≤ back + 1) _, ← mul_assoc, ← hlhs])
+    lia
+
+/-- At a wheel `.tooLarge` empty-window state with `front < 49`, the witness `t`
+with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
+@[grind .] private theorem extend_tooLarge_empty_contra
+    {m front back lhs : ℕ} {t : ℕ}
+    (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i) (hfront_lt : front < 49)
+    (hempty : back + 1 = front)
+    (hbig : m * m < lhs * primesRArray.get front)
+    (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) : False := by
+  rw [Finset.Icc_eq_empty (by lia : ¬ front ≤ back), Finset.prod_empty, mul_one] at hlhs
+  rw [primesRArray_get_eq_nth hfront_lt, hlhs] at hbig
+  have h1 : nth Nat.Prime front ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
+  grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
+
+/-- If `t` is a witness, `extend` cannot return `.tooLarge`. -/
+@[grind .] private theorem extend_ne_tooLarge {fuel m goal front t : ℕ} (ht2 : 2 ≤ t)
+    (htP : t ∈ P front) (htm : t ≤ m) (htσ : goal ≤ σ₁ t)
+    {back lhs rhs : ℕ} (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i)
+    (hrhs : rhs = goal * ∏ i ∈ Icc front back, (p_ i - 1)) (hfront : front ≤ back + 1) :
+    extend fuel (m * m) front back lhs rhs ≠ .tooLarge := by
+  fun_induction extend fuel (m * m) front back lhs rhs with
+    grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
+
+/-! ### Window invariants -/
+
+/-- When `extend` returns `.window`, the new `(b, lhs', rhs')` satisfy the wheel invariants
+shifted to `b`, and `b ≥ back`. -/
+private theorem extend_window_invariant {fuel m goal front back lhs rhs b lhs' rhs' : ℕ}
+    (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i)
+    (hrhs : rhs = goal * ∏ i ∈ Icc front back, (p_ i - 1))
+    (hfront : front ≤ back + 1)
+    (heq : extend fuel (m * m) front back lhs rhs = Wheel.window b lhs' rhs') :
+    lhs' = m * ∏ i ∈ Icc front b, p_ i ∧ rhs' = goal * ∏ i ∈ Icc front b, (p_ i - 1) ∧
+    back ≤ b ∧ front ≤ b := by
+  fun_induction extend with grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
+
+/-! ### Degenerate case: `lhs = 0` -/
+
+/-- For `m2 = 0` and `lhs = 0`: `extend` returns either `.exhaustedTable` or
+`.window b 0 rhs'` (so never `.tooLarge`, and any `.window` has `lhs' = 0`). -/
+@[grind .]
+private lemma extend_zero_lhs {fuel front back lhs rhs : ℕ} (hlhs : lhs = 0) :
+    extend fuel 0 front back lhs rhs = Wheel.exhaustedTable ∨
+    ∃ b rhs', extend fuel 0 front back lhs rhs = Wheel.window b 0 rhs' := by
+  fun_induction extend fuel 0 front back lhs rhs with
+  | case2 => simp [hlhs]
+  | _ => grind
+
+/-- For `m2 = 0` and `lhs = 0`, `wheelChildren` returns `none`. -/
+@[grind =]
+private theorem wheelChildren_zero_eq_none {fuel goal cand front back lhs rhs : ℕ}
+    {acc : List (ℕ × ℕ × ℕ)} (hlhs : lhs = 0) :
+    wheelChildren fuel 0 0 goal cand front back lhs rhs acc = none := by
+  fun_induction wheelChildren with grind [Nat.zero_div]
+
+/-! ### `expChildren` analysis -/
+
+section
+variable {fuel goal cand next m p pk : ℕ}
+
+/-- One step of `expChildren` when `pk ≤ m` and `σ(pk) < goal`. -/
+private theorem expChildren_step (hfuel : 1 ≤ fuel) (hpkm : pk ≤ m)
+    (hsig_lt : (pk * p - 1) / (p - 1) < goal) :
+    expChildren fuel goal cand next m p pk =
+      (ceilDiv goal ((pk * p - 1) / (p - 1)), cand * pk, next) ::
+      expChildren (fuel - 1) goal cand next m p (pk * p) := by fun_induction expChildren with grind
+
+/-- One step of `expChildren` when `pk ≤ m` and `σ(pk) ≥ goal` (final child). -/
+private theorem expChildren_stop (hfuel : 1 ≤ fuel) (hpkm : pk ≤ m)
+    (hsig_le : goal ≤ (pk * p - 1) / (p - 1)) :
+    expChildren fuel goal cand next m p pk =
+      [(ceilDiv goal ((pk * p - 1) / (p - 1)), cand * pk, next)] := by
+  fun_induction expChildren with grind
+
+end
+
+/-- Every entry of `expChildren ... (p ^ k₀)` (for prime `p`, `k₀ ≥ 1`) has the form
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, next)` for some `k ≥ k₀` with `p ^ k ≤ m`. -/
+private theorem mem_expChildren {fuel goal cand next m p k₀ : ℕ}
+    (hp : p.Prime) (hk₀ : 1 ≤ k₀) {c : ℕ × ℕ × ℕ}
+    (hc : c ∈ expChildren fuel goal cand next m p (p ^ k₀)) :
+    ∃ k, k₀ ≤ k ∧ p ^ k ≤ m ∧ c = (ceilDiv goal (σ₁ (p ^ k)), cand * p ^ k, next) := by
+  induction fuel generalizing k₀ with grind [expChildren, =_ pow_succ]
+
+/-- Witness `1` for the stop arm of `expChildren_witness_walk`: when `σ(p ^ j₀) ≥ goal`,
+the child `(ceilDiv goal σ(p ^ j₀), cand*p ^ j₀, next)` has `1` as a witness. -/
+private lemma one_witnesses_stop {B cand goal next p k j₀ s : ℕ}
+    (hp : p.Prime) (hjk : j₀ ≤ k) (hs₀ : 1 ≤ s)
+    (hat : cand * p ^ k * s < B) (hσg : goal ≤ σ₁ (p ^ j₀)) :
+    1 ∈ W B (ceilDiv goal (σ₁ (p ^ j₀))) (cand * p ^ j₀) next := by
+  simp only [mem_W, one_mem_P, mul_one, sigma_one, true_and]
+  constructor
+  · grind [Nat.mul_le_mul_left cand (Nat.pow_le_pow_right hp.one_lt.le hjk),
+      Nat.le_mul_of_pos_right (cand * p ^ k) hs₀]
+  · grind [sigma_pos, pow_ne_zero, hp.pos]
+
+/-- Walk `expChildren` from `pk₀ = p ^ j₀` looking for a child with a witness, given
+a parent witness `t = p ^ k * s` (factored at `p` with `s` coprime to `p`). -/
+private theorem expChildren_witness_walk {B cand goal m p : ℕ} (hp : p.Prime) (next : ℕ)
+    (n k j₀ : ℕ) (hn : k - j₀ = n) (hj₀ : 1 ≤ j₀) (hj₀_k : j₀ ≤ k) (hpkm : p ^ k ≤ m)
+    {s : ℕ} (hs₀ : 1 ≤ s) (hsP : s ∈ P next) (hat : cand * p ^ k * s < B)
+    (htσ : goal ≤ σ₁ (p ^ k) * σ₁ s) (fuel : ℕ) (hfuel : n + 1 ≤ fuel) :
+    ∃ c ∈ expChildren fuel goal cand next m p (p ^ j₀), (W B c.1 c.2.1 c.2.2).Nonempty := by
+  induction n generalizing j₀ fuel with
+  | zero =>
+    obtain rfl : j₀ = k := by lia
+    have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
+    by_cases hσg : goal ≤ σ₁ (p ^ j₀)
+    · rw [expChildren_stop (by lia) hpkm (h_sig_eq ▸ hσg), h_sig_eq]
+      exact ⟨_, List.mem_singleton.mpr rfl, ⟨_, one_witnesses_stop hp hj₀_k hs₀ hat hσg⟩⟩
+    push Not at hσg
+    rw [expChildren_step (by lia) hpkm (h_sig_eq.symm ▸ hσg), h_sig_eq]
+    refine ⟨_, List.mem_cons_self, ⟨s, hsP, hat, ?_⟩⟩
+    grind [hp.pos]
+  | succ n ih =>
+    have hpjm : p ^ j₀ ≤ m := (Nat.pow_le_pow_right hp.one_lt.le hj₀_k).trans hpkm
+    have h_sig_eq : (p ^ j₀ * p - 1) / (p - 1) = σ₁ (p ^ j₀) := sigma_pow_expChildren_eq hp
+    by_cases hσg : goal ≤ σ₁ (p ^ j₀)
+    · rw [expChildren_stop (by lia) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq]
+      exact ⟨_, List.mem_singleton.mpr rfl, ⟨_, one_witnesses_stop hp hj₀_k hs₀ hat hσg⟩⟩
+    push Not at hσg
+    rw [expChildren_step (by lia) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq, ← pow_succ]
+    obtain ⟨c, hc, hwit⟩ := ih (j₀ + 1) (by lia) (by lia) (by lia) (fuel - 1) (by lia)
+    grind
 
 end Sage
