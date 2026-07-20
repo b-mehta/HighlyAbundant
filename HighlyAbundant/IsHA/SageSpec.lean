@@ -145,21 +145,6 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Products over prime windows -/
 
-@[grind =] private theorem prod_primes_empty {front back : ℕ} (h : back < front) :
-    ∏ i ∈ Icc front back, p_ i = 1 := by grind [Finset.Icc_eq_empty]
-
-@[grind =] private theorem prod_primesM1_empty {front back : ℕ} (h : back < front) :
-    ∏ i ∈ Icc front back, (p_ i - 1) = 1 := by grind [Finset.Icc_eq_empty]
-
-@[grind =] private theorem prod_primes_succ {front back : ℕ} (h : front ≤ back + 1) :
-    ∏ i ∈ Icc front (back + 1), p_ i = (∏ i ∈ Icc front back, p_ i) * p_ (back + 1) :=
-  prod_Icc_succ_top h _
-
-@[grind =] private theorem prod_primesM1_succ {front back : ℕ} (h : front ≤ back + 1) :
-    ∏ i ∈ Icc front (back + 1), (p_ i - 1)
-      = (∏ i ∈ Icc front back, (p_ i - 1)) * (p_ (back + 1) - 1) :=
-  prod_Icc_succ_top h _
-
 /-- Factoring the prime-window product at the front. -/
 @[grind =] private theorem prod_primes_succ_front {front B : ℕ} (hB : front ≤ B) :
     ∏ i ∈ Icc front B, p_ i = p_ front * ∏ i ∈ Icc (front + 1) B, p_ i := by
@@ -272,7 +257,7 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
     have hidx : front + (back + 2 - front) - 1 = back + 1 := by lia
     rw [hidx] at hrad
     have hppsm : m < ∏ i ∈ Icc front (back + 1), p_ i := Nat.lt_of_mul_lt_mul_left (a := m)
-      (by rwa [prod_primes_succ (by lia : front ≤ back + 1), ← mul_assoc, ← hlhs])
+      (by rwa [prod_Icc_succ_top (by lia : front ≤ back + 1) _, ← mul_assoc, ← hlhs])
     lia
 
 /-- At a wheel `.tooLarge` empty-window state with `front < 49`, the witness `t`
@@ -283,7 +268,7 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
     (hempty : back + 1 = front)
     (hbig : m * m < lhs * primesRArray.get front)
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) : False := by
-  rw [prod_primes_empty (by lia : back < front), mul_one] at hlhs
+  rw [Finset.Icc_eq_empty (by lia : ¬ front ≤ back), Finset.prod_empty, mul_one] at hlhs
   rw [primesRArray_get_eq_nth hfront_lt, hlhs] at hbig
   have h1 : nth Nat.Prime front ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
   grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
@@ -294,7 +279,8 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
     {back lhs rhs : ℕ} (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i)
     (hrhs : rhs = goal * ∏ i ∈ Icc front back, (p_ i - 1)) (hfront : front ≤ back + 1) :
     extend fuel (m * m) front back lhs rhs ≠ .tooLarge := by
-  fun_induction extend fuel (m * m) front back lhs rhs with grind
+  fun_induction extend fuel (m * m) front back lhs rhs with
+    grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
 
 /-! ### Window invariants -/
 
@@ -306,7 +292,8 @@ private theorem extend_window_invariant {fuel m goal front back lhs rhs b lhs' r
     (hfront : front ≤ back + 1)
     (heq : extend fuel (m * m) front back lhs rhs = Wheel.window b lhs' rhs') :
     lhs' = m * ∏ i ∈ Icc front b, p_ i ∧ rhs' = goal * ∏ i ∈ Icc front b, (p_ i - 1) ∧
-    back ≤ b ∧ front ≤ b := by fun_induction extend with grind
+    back ≤ b ∧ front ≤ b := by
+  fun_induction extend with grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
 
 /-! ### Degenerate case: `lhs = 0` -/
 
