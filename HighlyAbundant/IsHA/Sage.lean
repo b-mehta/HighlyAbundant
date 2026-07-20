@@ -123,7 +123,7 @@ and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the lea
 `(⌈goal/σ(primes[i]^k)⌉, cand * primes[i]^k, i + 1)` for some `i ≥ idx` and
 `k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
 `≥ 49`. -/
-def children (B goal cand idx : Nat) : Option (List (Nat × Nat × Nat)) :=
+@[expose] def children (B goal cand idx : Nat) : Option (List (Nat × Nat × Nat)) :=
   if idx < 49 then
     let p0 := primesRArray.get idx
     let m := B / cand
@@ -137,7 +137,7 @@ def searchFuel : Nat := 6400000
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read
 an index `≥ 49`. -/
-def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
+@[expose] def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
   | _, [] => some true
   | fuel + 1, (goal, cand, idx) :: rest =>
