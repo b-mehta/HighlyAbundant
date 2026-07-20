@@ -384,4 +384,153 @@ private theorem expChildren_witness_walk {B cand goal m p : ℕ} (hp : p.Prime) 
     obtain ⟨c, hc, hwit⟩ := ih (j₀ + 1) (by lia) (by lia) (by lia) (fuel - 1) (by lia)
     grind
 
+/-! ### `wheelChildren` and `children` -/
+
+/-- Each entry of `wheelChildren`'s output is either from `acc` or of the form
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ front`, `k ≥ 1` with
+`p = nth Nat.Prime i` and `p^k ≤ m`. -/
+private theorem mem_wheelChildren {fuel m2 m goal cand front back lhs rhs : ℕ}
+    {acc : List (ℕ × ℕ × ℕ)} {L : List (ℕ × ℕ × ℕ)}
+    (h : wheelChildren fuel m2 m goal cand front back lhs rhs acc = some L)
+    {c : ℕ × ℕ × ℕ} (hc : c ∈ L) :
+    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ nth Nat.Prime i ^ k ≤ m ∧
+      c = (ceilDiv goal (σ₁ (nth Nat.Prime i ^ k)), cand * nth Nat.Prime i ^ k, i + 1) := by
+  fun_induction wheelChildren generalizing L with
+  | case4 front _ _ _ acc _ _ _ _ _ hp p =>
+    rename_i hrec
+    have hp : p = nth Nat.Prime front := primesRArray_get_eq_nth hp
+    rcases hrec h hc with hcacc | ⟨i, k, hi, hk, hpkm, hceq⟩
+    · rcases List.mem_append.mp hcacc with hcexp | hcorig
+      · obtain ⟨k, hk, hpkm, hceq⟩ := mem_expChildren (prime_nth_prime front) le_rfl
+          (by rwa [pow_one, ← hp])
+        grind
+      · exact Or.inl hcorig
+    · exact Or.inr ⟨i, k, by grind⟩
+  | _ => grind
+
+/-- Everything in `acc` on the way in is still in the output `L`. -/
+private lemma wheelChildren_acc_subset {fuel m2 m goal cand front back lhs rhs : ℕ}
+    {acc L : List (ℕ × ℕ × ℕ)}
+    (h : wheelChildren fuel m2 m goal cand front back lhs rhs acc = some L) : acc ⊆ L := by
+  fun_induction wheelChildren generalizing L with grind [List.mem_append_right]
+
+/-- Given the wheel invariants and a witness `t`, some child in `wheelChildren`'s
+output `L` has a nonempty witness set. -/
+private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / cand)
+    (hcand₀ : 1 ≤ cand) {fuel front back lhs rhs : ℕ} {acc L : List (ℕ × ℕ × ℕ)}
+    (hfuel : 49 + 1 - front ≤ fuel)
+    (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i)
+    (hrhs : rhs = goal * ∏ i ∈ Icc front back, (p_ i - 1))
+    (hfront_le : front ≤ back + 1)
+    (hwc : wheelChildren fuel (m * m) m goal cand front back lhs rhs acc = some L)
+    {t : ℕ} (ht2 : 2 ≤ t) (htP : t ∈ P front) (hat : cand * t < B) (htσ : goal ≤ σ₁ t) :
+    ∃ c ∈ L, (W B c.1 c.2.1 c.2.2).Nonempty := by
+  have htm : t ≤ m := hmdef ▸ (le_div_iff_mul_le hcand₀).mpr (by linarith)
+  fun_induction wheelChildren generalizing L with
+  | case1 | case2 | case5 => cases hwc
+  | case3 => grind
+  | case4 front back lhs rhs acc _ b lhs' rhs' hext hp p =>
+    rename_i hrec
+    have hp : p = nth Nat.Prime front := primesRArray_get_eq_nth hp
+    have hp_prime : (nth Nat.Prime front).Prime := prime_nth_prime front
+    obtain ⟨hlhs', hrhs', _, hfront_b⟩ := extend_window_invariant hlhs hrhs hfront_le hext
+    replace hlhs : lhs' / p = m * ∏ i ∈ Icc (front + 1) b, p_ i := by
+      rw [hp, hlhs', prod_primes_succ_front hfront_b, mul_left_comm,
+        Nat.mul_div_cancel_left _ hp_prime.pos]
+    replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (front + 1) b, (p_ i - 1) := by
+      rw [hp, hrhs', prod_primesM1_succ_front hfront_b, mul_left_comm,
+        Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
+    by_cases hdvd : nth Nat.Prime front ∣ t
+    · obtain ⟨k, s, hk₀, hpk_t, hs₀, _, hcoprime⟩ :=
+        exists_factor_decomp hp_prime hdvd (by lia)
+      have hpkm : nth Nat.Prime front ^ k ≤ m :=
+        (le_of_dvd (by lia) ⟨s, hpk_t.symm⟩).trans htm
+      have htσ' : goal ≤ σ₁ (nth Nat.Prime front ^ k) * σ₁ s := by
+        rwa [← isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k), hpk_t]
+      have hsP : s ∈ P (front + 1) :=
+        mem_P_succ_of_coprime hp_prime le_rfl htP.2 hpk_t hs₀.ne' hcoprime
+      obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (front + 1) (k - 1) k 1
+        (by lia) (by lia) hk₀ hpkm hs₀ hsP
+        (by rwa [mul_assoc, hpk_t]) htσ' (m + 1)
+        (by have : k ≤ m := (Nat.lt_pow_self hp_prime.one_lt).le.trans hpkm; lia)
+      exact ⟨c, wheelChildren_acc_subset hwc (List.mem_append_left _ (by grind)), hwit⟩
+    · exact hrec (by lia) hlhs hrhs (by lia) hwc
+        (mem_P_succ_of_factors_gt (by lia) fun q' hq'_prime hq'_dvd =>
+          lt_of_le_of_ne (htP.2 q' hq'_prime hq'_dvd) (by grind))
+
+/-- Every `c` in `children`'s output has the form
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ idx`, `k ≥ 1` with
+`p = nth Nat.Prime i` and `p^k ≤ B / cand`. -/
+private theorem mem_children {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand idx = some cs) {c : ℕ × ℕ × ℕ} (hc : c ∈ cs) :
+    ∃ i k, idx ≤ i ∧ 1 ≤ k ∧ nth Nat.Prime i ^ k ≤ B / cand ∧
+      c = (ceilDiv goal (σ₁ (nth Nat.Prime i ^ k)),
+        cand * nth Nat.Prime i ^ k, i + 1) := by
+  rw [children] at h
+  split at h <;> [grind [mem_wheelChildren h hc]; grind]
+
+/-- If `t'` is a witness of the child `(⌈goal / σ₁(p ^ k)⌉, cand * p ^ k, i + 1)`
+with `p = nth Nat.Prime i`, then `p ^ k * t'` is a nontrivial witness of the
+parent `(goal, cand, idx)`. -/
+private theorem child_witness_to_parent {B goal cand idx i k : ℕ}
+    (hmi : idx ≤ i) (hk : 1 ≤ k) {t' : ℕ}
+    (ht' : t' ∈ W B (ceilDiv goal (σ₁ (nth Nat.Prime i ^ k)))
+      (cand * nth Nat.Prime i ^ k) (i + 1)) :
+    nth Nat.Prime i ^ k * t' ∈ W B goal cand idx ∧
+      nth Nat.Prime i ^ k * t' ≠ 1 := by
+  set p := nth Nat.Prime i
+  obtain ⟨⟨ht'1, ht'P⟩, ht'lt, ht'σ⟩ := ht'
+  have hpPrime : p.Prime := prime_nth_prime i
+  have hpk_ge2 : 2 ≤ p ^ k := hpPrime.two_le.trans (le_self_pow (by lia) p)
+  have hpkt'_ge2 : 2 ≤ p ^ k * t' :=
+    hpk_ge2.trans (Nat.le_mul_of_pos_right _ (Nat.pos_of_ne_zero ht'1))
+  have hcop : Nat.Coprime (p ^ k) t' := by
+    refine (hpPrime.coprime_iff_not_dvd.mpr fun hpdvd => ?_).pow_left _
+    linarith [ht'P p hpPrime hpdvd, nth_strictMono infinite_setOf_prime (lt_succ_self i)]
+  refine ⟨⟨⟨by lia, fun q hqPrime hqDvd => ?_⟩, by rwa [← mul_assoc], ?_⟩, by lia⟩
+  · rcases hqPrime.dvd_mul.mp hqDvd with h1 | h2
+    · obtain rfl : q = p :=
+        (prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
+      exact (nth_strictMono infinite_setOf_prime).monotone hmi
+    · exact ((nth_strictMono infinite_setOf_prime).monotone (by lia)).trans (ht'P q hqPrime h2)
+  · have hmul : σ₁ (p ^ k * t') = σ₁ (p ^ k) * σ₁ t' :=
+      isMultiplicative_sigma.map_mul_of_coprime hcop
+    have hpk_pos : σ₁ (p ^ k) ≠ 0 := by grind [sigma_pos, pow_ne_zero, hpPrime.pos]
+    calc goal ≤ ceilDiv goal (σ₁ (p ^ k)) * σ₁ (p ^ k) := le_ceilDiv_mul hpk_pos
+      _ ≤ σ₁ t' * σ₁ (p ^ k) := by gcongr
+      _ = σ₁ (p ^ k * t') := by rw [hmul, Nat.mul_comm]
+
+/-- A nontrivial witness of the parent gives a witness for some child in `cs`. -/
+private theorem witness_to_child {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand idx = some cs) {t : ℕ}
+    (ht : t ∈ W B goal cand idx) (h1 : t ≠ 1) :
+    ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
+  rcases Nat.eq_zero_or_pos cand with rfl | hcand₀
+  · grind [children]
+  · simp only [children] at h
+    split at h
+    · rename_i hidx_lt
+      obtain ⟨⟨ht₀, htP⟩, htlt, htσ⟩ := ht
+      have e1 : ∏ i ∈ Icc idx idx, p_ i = nth Nat.Prime idx := by
+        rw [Finset.Icc_self, Finset.prod_singleton]
+      have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = nth Nat.Prime idx - 1 := by
+        rw [Finset.Icc_self, Finset.prod_singleton]
+      rw [primesRArray_get_eq_nth hidx_lt, ← e2,
+        mul_comm (nth Nat.Prime idx) (B / cand), ← e1] at h
+      exact wheelChildren_witness rfl hcand₀ (by lia) rfl rfl (by lia) h
+        (by lia) ⟨ht₀, htP⟩ htlt htσ
+    · cases h
+
+/-- `children` reduces nontrivial witnesses of a node to witnesses of its children. -/
+theorem children_spec {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand idx = some cs) :
+    (∃ t ∈ W B goal cand idx, t ≠ 1) ↔
+      ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
+  refine ⟨fun ⟨t, ht, h1⟩ => witness_to_child h ht h1, ?_⟩
+  rintro ⟨c, hc, t', ht'⟩
+  obtain ⟨i, k, hmi, hk, _, hceq⟩ := mem_children h hc
+  rw [hceq] at ht'
+  obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hk ht'
+  exact ⟨_, hw, hne⟩
+
 end Sage
