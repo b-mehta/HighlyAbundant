@@ -267,7 +267,7 @@ private theorem primesProd_le_t {t front : ℕ} (ht : t ≠ 0) (hP : t ∈ P fro
     have h_chain : σ₁ t * ∏ i ∈ Icc front back, (p_ i - 1)
         < goal * ∏ i ∈ Icc front back, (p_ i - 1) := by
       nlinarith [Nat.mul_le_mul_right (∏ i ∈ Icc front back, p_ i) htm]
-    exact absurd htσ (not_le.mpr (Nat.lt_of_mul_lt_mul_right h_chain))
+    exact absurd htσ (Nat.lt_of_mul_lt_mul_right h_chain).not_ge
   · have hrad := primesProd_le_t (by lia) htP (back + 2 - front) (by lia) hcard (by lia)
     have hidx : front + (back + 2 - front) - 1 = back + 1 := by lia
     rw [hidx] at hrad
