@@ -63,17 +63,17 @@ private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
 /-- The wheel's array lookup gives the `i`-th prime. -/
 @[grind <=]
 private lemma primesRArray_get_eq_nth {i : ℕ} (hi : i < 49) :
-    primesRArray.get i = nth Nat.Prime i :=
+    primesRArray.get i = p_ i :=
   primesRArray_get_eq_nth_aux ⟨i, hi⟩
 
 /-! ### Specification: `P` and `W` -/
 
 /-- `P j`: nonzero naturals whose every prime factor is at least the `j`-th prime. -/
 def P (j : ℕ) : Set ℕ :=
-  {t | t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → nth Nat.Prime j ≤ q}
+  {t | t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → p_ j ≤ q}
 
 @[grind =] lemma mem_P {j t : ℕ} :
-    t ∈ P j ↔ t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → nth Nat.Prime j ≤ q :=
+    t ∈ P j ↔ t ≠ 0 ∧ ∀ q : ℕ, q.Prime → q ∣ t → p_ j ≤ q :=
   Iff.rfl
 
 /-- `1 ∈ P j` for any `j` since `1` has no prime factors. -/
@@ -93,13 +93,13 @@ def W (B goal cand idx : ℕ) : Set ℕ :=
 /-- If `x ≠ 0` and every prime factor of `x` exceeds the `front`-th prime, then
 `x ∈ P (front + 1)`. -/
 private lemma mem_P_succ_of_factors_gt {x front : ℕ} (hx : x ≠ 0)
-    (h : ∀ q, q.Prime → q ∣ x → nth Nat.Prime front < q) : x ∈ P (front + 1) :=
+    (h : ∀ q, q.Prime → q ∣ x → p_ front < q) : x ∈ P (front + 1) :=
   ⟨hx, fun q hq hqd => by by_contra! hlt; grind [le_nth_of_lt_nth_succ hlt hq]⟩
 
-/-- If `p ≥ nth Nat.Prime front` is prime, `t = p^k * t'` with `t'` nonzero and coprime to `p`,
+/-- If `p ≥ p_ front` is prime, `t = p^k * t'` with `t'` nonzero and coprime to `p`,
 and every prime factor of `t` is `≥ p`, then `t' ∈ P (front + 1)`. -/
 private lemma mem_P_succ_of_coprime {t t' p k front : ℕ}
-    (hp_prime : p.Prime) (hp_geprimes : nth Nat.Prime front ≤ p)
+    (hp_prime : p.Prime) (hp_geprimes : p_ front ≤ p)
     (hp_min : ∀ q, q.Prime → q ∣ t → p ≤ q) (hpk_t : p ^ k * t' = t)
     (ht'₀ : t' ≠ 0) (hcoprime : Nat.Coprime p t') : t' ∈ P (front + 1) := by
   grind [mem_P_succ_of_factors_gt, hp_prime.coprime_iff_not_dvd]
@@ -270,7 +270,7 @@ with `t ≤ m`, `t ∈ P front`, `t ≥ 2` gives `False`. -/
     (ht2 : 2 ≤ t) (htP : t ∈ P front) (htm : t ≤ m) : False := by
   rw [Finset.Icc_eq_empty (by lia : ¬ front ≤ back), Finset.prod_empty, mul_one] at hlhs
   rw [primesRArray_get_eq_nth hfront_lt, hlhs] at hbig
-  have h1 : nth Nat.Prime front ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
+  have h1 : p_ front ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
   grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
 
 /-- If `t` is a witness, `extend` cannot return `.tooLarge`. -/
