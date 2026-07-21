@@ -387,21 +387,21 @@ private theorem expChildren_witness_walk {B cand goal m p : ℕ} (hp : p.Prime) 
 /-! ### `wheelChildren` and `children` -/
 
 /-- Each entry of `wheelChildren`'s output is either from `acc` or of the form
-`(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ front`, `k ≥ 1` with
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ lo`, `k ≥ 1` with
 `p = p_ i` and `p^k ≤ m`. -/
-private theorem mem_wheelChildren {fuel m2 m goal cand front back lhs rhs : ℕ}
+private theorem mem_wheelChildren {fuel m2 m goal cand lo hi lhs rhs : ℕ}
     {acc : List (ℕ × ℕ × ℕ)} {L : List (ℕ × ℕ × ℕ)}
-    (h : wheelChildren fuel m2 m goal cand front back lhs rhs acc = some L)
+    (h : wheelChildren fuel m2 m goal cand lo hi lhs rhs acc = some L)
     {c : ℕ × ℕ × ℕ} (hc : c ∈ L) :
-    c ∈ acc ∨ ∃ i k, front ≤ i ∧ 1 ≤ k ∧ p_ i ^ k ≤ m ∧
+    c ∈ acc ∨ ∃ i k, lo ≤ i ∧ 1 ≤ k ∧ p_ i ^ k ≤ m ∧
       c = (ceilDiv goal (σ₁ (p_ i ^ k)), cand * p_ i ^ k, i + 1) := by
   fun_induction wheelChildren generalizing L with
-  | case4 front _ _ _ acc _ _ _ _ _ hp p =>
+  | case4 lo _ _ _ acc _ _ _ _ _ hp p =>
     rename_i hrec
-    have hp : p = p_ front := primesRArray_get_eq_nth hp
-    rcases hrec h hc with hcacc | ⟨i, k, hi, hk, hpkm, hceq⟩
+    have hp : p = p_ lo := primesRArray_get_eq_nth hp
+    rcases hrec h hc with hcacc | ⟨i, k, hle, hk, hpkm, hceq⟩
     · rcases List.mem_append.mp hcacc with hcexp | hcorig
-      · obtain ⟨k, hk, hpkm, hceq⟩ := mem_expChildren (prime_nth_prime front) le_rfl
+      · obtain ⟨k, hk, hpkm, hceq⟩ := mem_expChildren (prime_nth_prime lo) le_rfl
           (by rwa [pow_one, ← hp])
         grind
       · exact Or.inl hcorig
@@ -409,47 +409,47 @@ private theorem mem_wheelChildren {fuel m2 m goal cand front back lhs rhs : ℕ}
   | _ => grind
 
 /-- Everything in `acc` on the way in is still in the output `L`. -/
-private lemma wheelChildren_acc_subset {fuel m2 m goal cand front back lhs rhs : ℕ}
+private lemma wheelChildren_acc_subset {fuel m2 m goal cand lo hi lhs rhs : ℕ}
     {acc L : List (ℕ × ℕ × ℕ)}
-    (h : wheelChildren fuel m2 m goal cand front back lhs rhs acc = some L) : acc ⊆ L := by
+    (h : wheelChildren fuel m2 m goal cand lo hi lhs rhs acc = some L) : acc ⊆ L := by
   fun_induction wheelChildren generalizing L with grind [List.mem_append_right]
 
 /-- Given the wheel invariants and a witness `t`, some child in `wheelChildren`'s
 output `L` has a nonempty witness set. -/
 private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / cand)
-    (hcand₀ : 1 ≤ cand) {fuel front back lhs rhs : ℕ} {acc L : List (ℕ × ℕ × ℕ)}
-    (hfuel : 49 + 1 - front ≤ fuel)
-    (hlhs : lhs = m * ∏ i ∈ Icc front back, p_ i)
-    (hrhs : rhs = goal * ∏ i ∈ Icc front back, (p_ i - 1))
-    (hfront_le : front ≤ back + 1)
-    (hwc : wheelChildren fuel (m * m) m goal cand front back lhs rhs acc = some L)
-    {t : ℕ} (ht2 : 2 ≤ t) (htP : t ∈ P front) (hat : cand * t < B) (htσ : goal ≤ σ₁ t) :
+    (hcand₀ : 1 ≤ cand) {fuel lo hi lhs rhs : ℕ} {acc L : List (ℕ × ℕ × ℕ)}
+    (hfuel : 49 + 1 - lo ≤ fuel)
+    (hlhs : lhs = m * ∏ i ∈ Icc lo hi, p_ i)
+    (hrhs : rhs = goal * ∏ i ∈ Icc lo hi, (p_ i - 1))
+    (hlo_le : lo ≤ hi + 1)
+    (hwc : wheelChildren fuel (m * m) m goal cand lo hi lhs rhs acc = some L)
+    {t : ℕ} (ht2 : 2 ≤ t) (htP : t ∈ P lo) (hat : cand * t < B) (htσ : goal ≤ σ₁ t) :
     ∃ c ∈ L, (W B c.1 c.2.1 c.2.2).Nonempty := by
   have htm : t ≤ m := hmdef ▸ (le_div_iff_mul_le hcand₀).mpr (by linarith)
   fun_induction wheelChildren generalizing L with
   | case1 | case2 | case5 => cases hwc
   | case3 => grind
-  | case4 front back lhs rhs acc _ b lhs' rhs' hext hp p =>
+  | case4 lo hi lhs rhs acc _ b lhs' rhs' hext hp p =>
     rename_i hrec
-    have hp : p = p_ front := primesRArray_get_eq_nth hp
-    have hp_prime : (p_ front).Prime := prime_nth_prime front
-    obtain ⟨hlhs', hrhs', _, hfront_b⟩ := extend_window_invariant hlhs hrhs hfront_le hext
-    replace hlhs : lhs' / p = m * ∏ i ∈ Icc (front + 1) b, p_ i := by
-      rw [hp, hlhs', prod_primes_succ_front hfront_b, mul_left_comm,
+    have hp : p = p_ lo := primesRArray_get_eq_nth hp
+    have hp_prime : (p_ lo).Prime := prime_nth_prime lo
+    obtain ⟨hlhs', hrhs', _, hlo_b⟩ := extend_window_invariant hlhs hrhs hlo_le hext
+    replace hlhs : lhs' / p = m * ∏ i ∈ Icc (lo + 1) b, p_ i := by
+      rw [hp, hlhs', prod_primes_succ_lo hlo_b, mul_left_comm,
         Nat.mul_div_cancel_left _ hp_prime.pos]
-    replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (front + 1) b, (p_ i - 1) := by
-      rw [hp, hrhs', prod_primesM1_succ_front hfront_b, mul_left_comm,
+    replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (lo + 1) b, (p_ i - 1) := by
+      rw [hp, hrhs', prod_primesM1_succ_lo hlo_b, mul_left_comm,
         Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
-    by_cases hdvd : p_ front ∣ t
+    by_cases hdvd : p_ lo ∣ t
     · obtain ⟨k, s, hk₀, hpk_t, hs₀, _, hcoprime⟩ :=
         exists_factor_decomp hp_prime hdvd (by lia)
-      have hpkm : p_ front ^ k ≤ m :=
+      have hpkm : p_ lo ^ k ≤ m :=
         (le_of_dvd (by lia) ⟨s, hpk_t.symm⟩).trans htm
-      have htσ' : goal ≤ σ₁ (p_ front ^ k) * σ₁ s := by
+      have htσ' : goal ≤ σ₁ (p_ lo ^ k) * σ₁ s := by
         rwa [← isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k), hpk_t]
-      have hsP : s ∈ P (front + 1) :=
+      have hsP : s ∈ P (lo + 1) :=
         mem_P_succ_of_coprime hp_prime le_rfl htP.2 hpk_t hs₀.ne' hcoprime
-      obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (front + 1) (k - 1) k 1
+      obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (lo + 1) (k - 1) k 1
         (by lia) (by lia) hk₀ hpkm hs₀ hsP
         (by rwa [mul_assoc, hpk_t]) htσ' (m + 1)
         (by have : k ≤ m := (Nat.lt_pow_self hp_prime.one_lt).le.trans hpkm; lia)
