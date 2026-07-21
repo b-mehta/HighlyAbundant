@@ -65,28 +65,28 @@ namespace Sage
 inductive Wheel where
   | exhaustedTable
   | tooLarge
-  | window (back lhs rhs : Nat)
+  | window (hi lhs rhs : Nat)
 
-/-- Grow a prime window from `back` forward, threading `lhs = m * ∏ primes[i]`
+/-- Grow a prime window from `hi` forward, threading `lhs = m * ∏ primes[i]`
 and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
-`b ≥ back` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
+`b ≥ hi` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
 `.exhaustedTable` if fuel or the table runs out. -/
-@[expose] def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
+@[expose] def extend (fuel m2 lo hi lhs rhs : Nat) : Wheel :=
   match fuel with
   | 0 => .exhaustedTable
   | fuel + 1 =>
-    if front ≤ back then
-      if lhs ≥ rhs then .window back lhs rhs
-      else if back + 1 < 49 then
-        let q := primesRArray.get (back + 1)
+    if lo ≤ hi then
+      if lhs ≥ rhs then .window hi lhs rhs
+      else if hi + 1 < 49 then
+        let q := primesRArray.get (hi + 1)
         let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extend fuel m2 front (back + 1) lhs' (rhs * (q - 1))
+        if lhs' > m2 then .tooLarge else extend fuel m2 lo (hi + 1) lhs' (rhs * (q - 1))
       else .exhaustedTable
-    else  -- front = back + 1: the range is empty; start it at index front
-      if front < 49 then
-        let q := primesRArray.get front
+    else  -- lo = hi + 1: the range is empty; start it at index lo
+      if lo < 49 then
+        let q := primesRArray.get lo
         let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extend fuel m2 front front lhs' (rhs * (q - 1))
+        if lhs' > m2 then .tooLarge else extend fuel m2 lo lo lhs' (rhs * (q - 1))
       else .exhaustedTable
 
 /-- Emit children `(⌈goal / σ(p^k)⌉, cand * p^k, next)` for `k ≥ 1` with
@@ -102,21 +102,21 @@ and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the lea
       if spk ≥ goal then [child]
       else child :: expChildren fuel goal cand next m p (pk * p)
 
-/-- Iterate `extend` from `front` onward, collecting `expChildren` at every
+/-- Iterate `extend` from `lo` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
-@[expose] def wheelChildren (fuel m2 m goal cand front back lhs rhs : Nat)
+@[expose] def wheelChildren (fuel m2 m goal cand lo hi lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
   | 0 => none
   | fuel + 1 =>
-    match extend 50 m2 front back lhs rhs with
+    match extend 50 m2 lo hi lhs rhs with
     | .exhaustedTable => none
     | .tooLarge => some acc
     | .window b lhs' rhs' =>
-      if front < 49 then
-        let p := primesRArray.get front
-        wheelChildren fuel m2 m goal cand (front + 1) b (lhs' / p) (rhs' / (p - 1))
-          (expChildren (m + 1) goal cand (front + 1) m p p ++ acc)
+      if lo < 49 then
+        let p := primesRArray.get lo
+        wheelChildren fuel m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
+          (expChildren (m + 1) goal cand (lo + 1) m p p ++ acc)
       else none
 
 /-- Children of node `(goal, cand, idx)` with `m = B / cand`. Each `c ∈ cs` is
