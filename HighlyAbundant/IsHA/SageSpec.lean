@@ -148,15 +148,15 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 /-- Factoring the prime-window product at its low end. -/
 private theorem prod_prime_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
     ∏ i ∈ Icc lo B, p_ i = p_ lo * ∏ i ∈ Icc (lo + 1) B, p_ i := by
-  rw [← Finset.Ico_add_one_right_eq_Icc, Finset.prod_eq_prod_Ico_succ_bot (by lia),
-    Finset.Ico_add_one_right_eq_Icc]
+  rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
+    Ico_add_one_right_eq_Icc]
 
 /-- Factoring the `p - 1` window product at its low end. -/
 private theorem prod_prime_sub_one_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
     ∏ i ∈ Icc lo B, (p_ i - 1)
       = (p_ lo - 1) * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1) := by
-  rw [← Finset.Ico_add_one_right_eq_Icc, Finset.prod_eq_prod_Ico_succ_bot (by lia),
-    Finset.Ico_add_one_right_eq_Icc]
+  rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
+    Ico_add_one_right_eq_Icc]
 
 /-! ### Sigma at a single prime -/
 
@@ -229,7 +229,7 @@ private theorem primesProd_le_t {t lo : ℕ} (ht : t ≠ 0) (hP : t ∈ P lo) (j
             prod_prime_succ_lo (by lia)
         _ ≤ p ^ k * t' := by gcongr
     · obtain rfl : j = 1 := by lia
-      rw [Nat.add_sub_cancel, Finset.Icc_self, Finset.prod_singleton]
+      rw [Nat.add_sub_cancel, Icc_self, prod_singleton]
       exact hpk_ge.trans (Nat.le_mul_of_pos_right _ ht'₀)
 
 /-! ### Ruling out `.tooLarge` from a witness -/
@@ -263,7 +263,7 @@ with `t ≤ m`, `t ∈ P lo`, `t ≥ 2` gives `False`. -/
     (hempty : hi + 1 = lo)
     (hbig : m * m < lhs * p_ lo)
     (ht2 : 2 ≤ t) (htP : t ∈ P lo) (htm : t ≤ m) : False := by
-  rw [Finset.Icc_eq_empty (by lia), Finset.prod_empty, mul_one] at hlhs
+  rw [Icc_eq_empty (by lia), prod_empty, mul_one] at hlhs
   rw [hlhs] at hbig
   have h1 : p_ lo ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
   grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
@@ -277,9 +277,9 @@ with `t ≤ m`, `t ∈ P lo`, `t ≥ 2` gives `False`. -/
   fun_induction extend fuel (m * m) lo hi lhs rhs with
   | case3 fuel hi lhs rhs hle hnsmall hlt =>
     have hb := primesRArray_get_eq_nth hlt
-    grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
+    grind [= prod_Icc_succ_top, Icc_eq_empty]
   | _ =>
-    grind [= prod_Icc_succ_top, Finset.Icc_eq_empty, = prod_prime_succ_lo,
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
       = prod_prime_sub_one_succ_lo]
 
 
@@ -295,7 +295,7 @@ private theorem extend_window_invariant {fuel m goal lo hi lhs rhs b lhs' rhs' :
     lhs' = m * ∏ i ∈ Icc lo b, p_ i ∧ rhs' = goal * ∏ i ∈ Icc lo b, (p_ i - 1) ∧
     hi ≤ b ∧ lo ≤ b := by
   fun_induction extend with
-    grind [= prod_Icc_succ_top, Finset.Icc_eq_empty, = prod_prime_succ_lo,
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
       = prod_prime_sub_one_succ_lo]
 
 /-! ### Degenerate case: `lhs = 0` -/
@@ -514,9 +514,8 @@ private theorem witness_to_child {B goal cand idx : ℕ} {cs : List (ℕ × ℕ 
     split at h
     · rename_i hidx_lt
       obtain ⟨⟨ht₀, htP⟩, htlt, htσ⟩ := ht
-      have e1 : ∏ i ∈ Icc idx idx, p_ i = p_ idx := by rw [Finset.Icc_self, Finset.prod_singleton]
-      have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = p_ idx - 1 := by
-        rw [Finset.Icc_self, Finset.prod_singleton]
+      have e1 : ∏ i ∈ Icc idx idx, p_ i = p_ idx := by rw [Icc_self, prod_singleton]
+      have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = p_ idx - 1 := by rw [Icc_self, prod_singleton]
       rw [primesRArray_get_eq_nth hidx_lt, ← e2,
         mul_comm (p_ idx) (B / cand), ← e1] at h
       exact wheelChildren_witness rfl hcand₀ (by lia) rfl rfl (by lia) h
