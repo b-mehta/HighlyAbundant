@@ -514,8 +514,7 @@ private theorem witness_to_child {B goal cand idx : ℕ} {cs : List (ℕ × ℕ 
     split at h
     · rename_i hidx_lt
       obtain ⟨⟨ht₀, htP⟩, htlt, htσ⟩ := ht
-      have e1 : ∏ i ∈ Icc idx idx, p_ i = p_ idx := by
-        rw [Finset.Icc_self, Finset.prod_singleton]
+      have e1 : ∏ i ∈ Icc idx idx, p_ i = p_ idx := by rw [Finset.Icc_self, Finset.prod_singleton]
       have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = p_ idx - 1 := by
         rw [Finset.Icc_self, Finset.prod_singleton]
       rw [primesRArray_get_eq_nth hidx_lt, ← e2,
