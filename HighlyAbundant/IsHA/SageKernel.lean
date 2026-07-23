@@ -26,10 +26,10 @@ namespace Sage
 structure SageNode where
   goal : Nat
   cand : Nat
-  idx : Nat
+  i : Nat
 
 /-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
-def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.idx)
+def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 
 /-- Append on `List SageNode`, written with `List.rec` so the kernel reduces it directly. -/
 @[expose] noncomputable def appendK (xs ys : List SageNode) : List SageNode :=
@@ -80,16 +80,16 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
           r front.succ b (lhs'.div p) (rhs'.div (p.sub (nat_lit 1)))
             (appendK (expChildrenK m.succ goal cand front.succ m p p) acc))
 
-/-- Children of node `⟨goal, cand, idx⟩` with `m = B / cand`. Each `c ∈ cs` is
-`⟨⌈goal/σ(primes[i]^k)⌉, cand * primes[i]^k, i + 1⟩` for some `i ≥ idx` and
-`k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
+/-- Children of node `⟨goal, cand, i⟩` with `m = B / cand`. Each `c ∈ cs` is
+`⟨⌈goal/σ(primes[j]^k)⌉, cand * primes[j]^k, j + 1⟩` for some `j ≥ i` and
+`k ≥ 1` with `primes[j]^k ≤ m`. Returns `none` if the search needs an index
 `≥ 49`. -/
-@[expose] noncomputable def childrenK (B goal cand idx : Nat) :
+@[expose] noncomputable def childrenK (B goal cand i : Nat) :
     Option (List SageNode) :=
-  (idx.ble (nat_lit 48)).rec none <|
-    let p0 := primesRArray.get idx
+  (i.ble (nat_lit 48)).rec none <|
+    let p0 := primesRArray.get i
     let m := B.div cand
-    wheelChildrenK (nat_lit 50) (m.mul m) m goal cand idx idx (p0.mul m)
+    wheelChildrenK (nat_lit 50) (m.mul m) m goal cand i i (p0.mul m)
       (goal.mul (p0.sub (nat_lit 1))) []
 
 /-- Stack-machine witness search. Returns `some true` if no node on `stack` has a witness,
@@ -97,9 +97,9 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
 @[expose] noncomputable def stepK (B : Nat) : Nat → List SageNode → Option Bool :=
   fun fuel ↦ fuel.rec (fun _ ↦ none) fun _ r stack ↦
     stack.rec (some true) fun node rest _ ↦
-      node.rec fun goal cand idx ↦
+      node.rec fun goal cand i ↦
         (goal.ble (nat_lit 1)).rec
-          ((childrenK B goal cand idx).rec none (fun cs ↦ r (appendK cs rest)))
+          ((childrenK B goal cand i).rec none (fun cs ↦ r (appendK cs rest)))
           ((B.ble cand).rec (some false) (r rest))
 
 /-- Decide whether no `m` with `1 ≤ m < B` has `sL ≤ σ m`. With

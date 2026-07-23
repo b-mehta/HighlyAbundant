@@ -23,7 +23,7 @@ namespace Sage
 
 /-- Structural `beq` on `SageNode` from `Nat.beq` and `Bool.and'`. -/
 @[expose] noncomputable def SageNode.beq (a b : SageNode) : Bool :=
-  (a.goal.beq b.goal).and' ((a.cand.beq b.cand).and' (a.idx.beq b.idx))
+  (a.goal.beq b.goal).and' ((a.cand.beq b.cand).and' (a.i.beq b.i))
 
 /-- Pointwise `SageNode.beq` on two lists, written with `List.rec`. -/
 @[expose] noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
@@ -37,9 +37,9 @@ namespace Sage
 
 /-- `Bool` form of the `childrenK` certificate, phrased on `Option.elim` so the metaprogram builds
 it from literal arguments. -/
-@[expose] noncomputable def childrenKBeqCert (B goal cand idx : Nat) (kids : List SageNode) :
+@[expose] noncomputable def childrenKBeqCert (B goal cand i : Nat) (kids : List SageNode) :
     Bool :=
-  (childrenK B goal cand idx).elim false fun cs ↦ sageListBeq cs kids
+  (childrenK B goal cand i).elim false fun cs ↦ sageListBeq cs kids
 
 /-! ### Proofs -/
 
@@ -54,10 +54,10 @@ theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys = tru
     rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
 /-- Recover `childrenK … = some kids` from its `Bool` certificate. -/
-theorem childrenKBeqCert_eq_some {B goal cand idx : Nat} {kids : List SageNode}
-    (h : childrenKBeqCert B goal cand idx kids) :
-    childrenK B goal cand idx = some kids := by
-  cases hc : childrenK B goal cand idx with grind [childrenKBeqCert, sageListBeq_sound]
+theorem childrenKBeqCert_eq_some {B goal cand i : Nat} {kids : List SageNode}
+    (h : childrenKBeqCert B goal cand i kids) :
+    childrenK B goal cand i = some kids := by
+  cases hc : childrenK B goal cand i with grind [childrenKBeqCert, sageListBeq_sound]
 
 /-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate. -/
 theorem stepK_singleton_of_beqCert {B fuel : Nat} {c : SageNode}
