@@ -119,15 +119,15 @@ and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the lea
           (expChildren (m + 1) goal cand (lo + 1) m p p ++ acc)
       else none
 
-/-- Children of node `(goal, cand, idx)` with `m = B / cand`. Each `c ∈ cs` is
-`(⌈goal/σ(primes[i]^k)⌉, cand * primes[i]^k, i + 1)` for some `i ≥ idx` and
-`k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
+/-- Children of node `(goal, cand, i)` with `m = B / cand`. Each `c ∈ cs` is
+`(⌈goal/σ(primes[j]^k)⌉, cand * primes[j]^k, j + 1)` for some `j ≥ i` and
+`k ≥ 1` with `primes[j]^k ≤ m`. Returns `none` if the search needs an index
 `≥ 49`. -/
-@[expose] def children (B goal cand idx : Nat) : Option (List (Nat × Nat × Nat)) :=
-  if idx < 49 then
-    let p0 := primesRArray.get idx
+@[expose] def children (B goal cand i : Nat) : Option (List (Nat × Nat × Nat)) :=
+  if i < 49 then
+    let p0 := primesRArray.get i
     let m := B / cand
-    wheelChildren 50 (m * m) m goal cand idx idx (p0 * m) (goal * (p0 - 1)) []
+    wheelChildren 50 (m * m) m goal cand i i (p0 * m) (goal * (p0 - 1)) []
   else none
 
 /-- Upper bound on nodes visited by `step`. Experimentally minimal for
@@ -140,10 +140,10 @@ an index `≥ 49`. -/
 @[expose] def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
   | _, [] => some true
-  | fuel + 1, (goal, cand, idx) :: rest =>
+  | fuel + 1, (goal, cand, i) :: rest =>
     if goal ≤ 1 then
       if cand < B then some false else step B fuel rest   -- t = 1 is a witness iff cand < B
-    else match children B goal cand idx with
+    else match children B goal cand i with
       | none => none
       | some cs => step B fuel (cs ++ rest)
 

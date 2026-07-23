@@ -20,7 +20,7 @@ public section
 # Correctness of the `lcm (1..n)` highly-abundant decider
 
 Specification and correctness for the search in `HighlyAbundant.Sage`. The witness set
-`W B goal cand idx` collects the `t` a node `(goal, cand, idx)` still admits: `t ∈ P idx` with
+`W B goal cand i` collects the `t` a node `(goal, cand, i)` still admits: `t ∈ P i` with
 `cand * t < B` and `goal ≤ σ₁ t`, where `P j` is the naturals all of whose prime factors are at
 least the `j`-th prime. The search answers `some true` exactly when the root witness set is empty,
 which for `(B, sL) = (lcmUpto n, σ₁ (lcmUpto n))` says `lcmUpto n` is highly abundant.
@@ -80,12 +80,12 @@ def P (j : ℕ) : Set ℕ :=
 @[simp, grind .] private theorem one_mem_P (j : ℕ) : 1 ∈ P j := by
   grind [Nat.not_prime_one, Nat.dvd_one]
 
-/-- The witness set of a node `(goal, cand, idx)` for bound `B`. -/
-def W (B goal cand idx : ℕ) : Set ℕ :=
-  {t | t ∈ P idx ∧ cand * t < B ∧ goal ≤ σ₁ t}
+/-- The witness set of a node `(goal, cand, i)` for bound `B`. -/
+def W (B goal cand i : ℕ) : Set ℕ :=
+  {t | t ∈ P i ∧ cand * t < B ∧ goal ≤ σ₁ t}
 
-@[simp, grind =] lemma mem_W {B goal cand idx t : ℕ} :
-    t ∈ W B goal cand idx ↔ t ∈ P idx ∧ cand * t < B ∧ goal ≤ σ₁ t :=
+@[simp, grind =] lemma mem_W {B goal cand i t : ℕ} :
+    t ∈ W B goal cand i ↔ t ∈ P i ∧ cand * t < B ∧ goal ≤ σ₁ t :=
   Iff.rfl
 
 /-! ### Membership in `P` -/
