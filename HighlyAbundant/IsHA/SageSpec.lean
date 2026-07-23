@@ -462,34 +462,34 @@ private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / can
           lt_of_le_of_ne (htP.2 q' hq'_prime hq'_dvd) (by grind))
 
 /-- Every `c` in `children`'s output has the form
-`(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ idx`, `k ≥ 1` with
-`p = p_ i` and `p^k ≤ B / cand`. -/
-private theorem mem_children {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (h : children B goal cand idx = some cs) {c : ℕ × ℕ × ℕ} (hc : c ∈ cs) :
-    ∃ i k, idx ≤ i ∧ 1 ≤ k ∧ p_ i ^ k ≤ B / cand ∧
-      c = (ceilDiv goal (σ₁ (p_ i ^ k)),
-        cand * p_ i ^ k, i + 1) := by
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, j + 1)` for some `j ≥ i`, `k ≥ 1` with
+`p = p_ j` and `p^k ≤ B / cand`. -/
+private theorem mem_children {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand i = some cs) {c : ℕ × ℕ × ℕ} (hc : c ∈ cs) :
+    ∃ j k, i ≤ j ∧ 1 ≤ k ∧ p_ j ^ k ≤ B / cand ∧
+      c = (ceilDiv goal (σ₁ (p_ j ^ k)),
+        cand * p_ j ^ k, j + 1) := by
   rw [children] at h
   split at h <;> [grind [mem_wheelChildren h hc]; grind]
 
-/-- If `t'` is a witness of the child `(⌈goal / σ₁(p ^ k)⌉, cand * p ^ k, i + 1)`
-with `p = p_ i`, then `p ^ k * t'` is a nontrivial witness of the
-parent `(goal, cand, idx)`. -/
-private theorem child_witness_to_parent {B goal cand idx i k : ℕ}
-    (hmi : idx ≤ i) (hk : 1 ≤ k) {t' : ℕ}
-    (ht' : t' ∈ W B (ceilDiv goal (σ₁ (p_ i ^ k)))
-      (cand * p_ i ^ k) (i + 1)) :
-    p_ i ^ k * t' ∈ W B goal cand idx ∧
-      p_ i ^ k * t' ≠ 1 := by
-  set p := p_ i
+/-- If `t'` is a witness of the child `(⌈goal / σ₁(p ^ k)⌉, cand * p ^ k, j + 1)`
+with `p = p_ j`, then `p ^ k * t'` is a nontrivial witness of the
+parent `(goal, cand, i)`. -/
+private theorem child_witness_to_parent {B goal cand i j k : ℕ}
+    (hmi : i ≤ j) (hk : 1 ≤ k) {t' : ℕ}
+    (ht' : t' ∈ W B (ceilDiv goal (σ₁ (p_ j ^ k)))
+      (cand * p_ j ^ k) (j + 1)) :
+    p_ j ^ k * t' ∈ W B goal cand i ∧
+      p_ j ^ k * t' ≠ 1 := by
+  set p := p_ j
   obtain ⟨⟨ht'1, ht'P⟩, ht'lt, ht'σ⟩ := ht'
-  have hpPrime : p.Prime := prime_nth_prime i
+  have hpPrime : p.Prime := prime_nth_prime j
   have hpk_ge2 : 2 ≤ p ^ k := hpPrime.two_le.trans (le_self_pow (by lia) p)
   have hpkt'_ge2 : 2 ≤ p ^ k * t' :=
     hpk_ge2.trans (Nat.le_mul_of_pos_right _ (Nat.pos_of_ne_zero ht'1))
   have hcop : Nat.Coprime (p ^ k) t' := by
     refine (hpPrime.coprime_iff_not_dvd.mpr fun hpdvd => ?_).pow_left _
-    linarith [ht'P p hpPrime hpdvd, nth_strictMono infinite_setOf_prime (lt_succ_self i)]
+    linarith [ht'P p hpPrime hpdvd, nth_strictMono infinite_setOf_prime (lt_succ_self j)]
   refine ⟨⟨⟨by lia, fun q hqPrime hqDvd => ?_⟩, by rwa [← mul_assoc], ?_⟩, by lia⟩
   · rcases hqPrime.dvd_mul.mp hqDvd with h1 | h2
     · obtain rfl : q = p :=
@@ -504,9 +504,9 @@ private theorem child_witness_to_parent {B goal cand idx i k : ℕ}
       _ = σ₁ (p ^ k * t') := by rw [hmul, Nat.mul_comm]
 
 /-- A nontrivial witness of the parent gives a witness for some child in `cs`. -/
-private theorem witness_to_child {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (h : children B goal cand idx = some cs) {t : ℕ}
-    (ht : t ∈ W B goal cand idx) (h1 : t ≠ 1) :
+private theorem witness_to_child {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand i = some cs) {t : ℕ}
+    (ht : t ∈ W B goal cand i) (h1 : t ≠ 1) :
     ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
   rcases Nat.eq_zero_or_pos cand with rfl | hcand₀
   · grind [children]
@@ -514,22 +514,22 @@ private theorem witness_to_child {B goal cand idx : ℕ} {cs : List (ℕ × ℕ 
     split at h
     · rename_i hidx_lt
       obtain ⟨⟨ht₀, htP⟩, htlt, htσ⟩ := ht
-      have e1 : ∏ i ∈ Icc idx idx, p_ i = p_ idx := by rw [Icc_self, prod_singleton]
-      have e2 : ∏ i ∈ Icc idx idx, (p_ i - 1) = p_ idx - 1 := by rw [Icc_self, prod_singleton]
+      have e1 : ∏ j ∈ Icc i i, p_ j = p_ i := by rw [Icc_self, prod_singleton]
+      have e2 : ∏ j ∈ Icc i i, (p_ j - 1) = p_ i - 1 := by rw [Icc_self, prod_singleton]
       rw [primesRArray_get_eq_nth hidx_lt, ← e2,
-        mul_comm (p_ idx) (B / cand), ← e1] at h
+        mul_comm (p_ i) (B / cand), ← e1] at h
       exact wheelChildren_witness rfl hcand₀ (by lia) rfl rfl (by lia) h
         (by lia) ⟨ht₀, htP⟩ htlt htσ
     · cases h
 
 /-- `children` reduces nontrivial witnesses of a node to witnesses of its children. -/
-theorem children_spec {B goal cand idx : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (h : children B goal cand idx = some cs) :
-    (∃ t ∈ W B goal cand idx, t ≠ 1) ↔
+theorem children_spec {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand i = some cs) :
+    (∃ t ∈ W B goal cand i, t ≠ 1) ↔
       ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
   refine ⟨fun ⟨t, ht, h1⟩ => witness_to_child h ht h1, ?_⟩
   rintro ⟨c, hc, t', ht'⟩
-  obtain ⟨i, k, hmi, hk, _, hceq⟩ := mem_children h hc
+  obtain ⟨j, k, hmi, hk, _, hceq⟩ := mem_children h hc
   rw [hceq] at ht'
   obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hk ht'
   exact ⟨_, hw, hne⟩
