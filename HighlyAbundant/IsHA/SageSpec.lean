@@ -29,7 +29,7 @@ set_option linter.mathlibStandardSet true
 
 open Nat Finset ArithmeticFunction
 
-local notation:max "p_" i:max => nth Nat.Prime i
+local notation:max "p_ " i:max => nth Nat.Prime i
 
 attribute [grind .] sigma_pos
 
@@ -146,17 +146,17 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 /-! ### Products over prime windows -/
 
 /-- Factoring the prime-window product at its low end. -/
-@[grind =] private theorem prod_primes_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
+private theorem prod_prime_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
     ∏ i ∈ Icc lo B, p_ i = p_ lo * ∏ i ∈ Icc (lo + 1) B, p_ i := by
-  rw [← Finset.Ico_add_one_right_eq_Icc, Finset.prod_eq_prod_Ico_succ_bot (by lia),
-    Finset.Ico_add_one_right_eq_Icc]
+  rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
+    Ico_add_one_right_eq_Icc]
 
 /-- Factoring the `p - 1` window product at its low end. -/
-@[grind =] private theorem prod_primesM1_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
+private theorem prod_prime_sub_one_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
     ∏ i ∈ Icc lo B, (p_ i - 1)
       = (p_ lo - 1) * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1) := by
-  rw [← Finset.Ico_add_one_right_eq_Icc, Finset.prod_eq_prod_Ico_succ_bot (by lia),
-    Finset.Ico_add_one_right_eq_Icc]
+  rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
+    Ico_add_one_right_eq_Icc]
 
 /-! ### Sigma at a single prime -/
 
@@ -187,27 +187,26 @@ private theorem sigma_bound_window {t lo : ℕ} (B : ℕ) (ht : t ≠ 0) (hP : t
     · simpa using prod_le_prod' (g := fun i => p_ i) fun i _ => Nat.sub_le _ 1
     have ht2 : 2 ≤ t := by lia
     obtain ⟨p, k, t', hk₀, rfl, ht'₀, ht'_lt, hcoprime, hmin⟩ := exists_minFac_decomp ht2
-    have hp_prime : p.Prime := hmin.prop.1
-    have hp_geprimes : p_ lo ≤ p := hP.2 p hp_prime hmin.prop.2
-    have hcard := card_primeFactors_coprime hp_prime hk₀.ne' rfl hcoprime
+    have hp_geprimes : p_ lo ≤ p := hP.2 p hmin.prop.1 hmin.prop.2
+    have hcard' := card_primeFactors_coprime hmin.prop.1 hk₀.ne' rfl hcoprime
     have ht'P : t' ∈ P (lo + 1) :=
-      mem_P_succ_of_coprime hp_prime hp_geprimes (fun q hq hqd => hmin.le ⟨hq, hqd⟩)
+      mem_P_succ_of_coprime hmin.prop.1 hp_geprimes (fun q hq hqd => hmin.le ⟨hq, hqd⟩)
         rfl ht'₀.ne' hcoprime
     have IH := ih t' ht'_lt B ht'₀.ne' ht'P hBsize (by lia)
     have hcons : σ₁ (p ^ k) * (p_ lo - 1) ≤ p ^ k * p_ lo :=
-      sigma_pow_le_window_factor hp_prime (prime_nth_prime lo).two_le hp_geprimes
+      sigma_pow_le_window_factor hmin.prop.1 (prime_nth_prime lo).two_le hp_geprimes
     calc σ₁ (p ^ k * t') * ∏ i ∈ Icc lo B, (p_ i - 1)
         = σ₁ (p ^ k) * (p_ lo - 1) * (σ₁ t' * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1)) := by
           rw [isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
-            prod_primesM1_succ_lo (by lia)]
+            prod_prime_sub_one_succ_lo (by lia)]
           ring
       _ ≤ p ^ k * p_ lo * (t' * ∏ i ∈ Icc (lo + 1) B, p_ i) := by gcongr
-      _ = p ^ k * t' * ∏ i ∈ Icc lo B, p_ i := by grind
+      _ = p ^ k * t' * ∏ i ∈ Icc lo B, p_ i := by grind [= prod_prime_succ_lo]
 
 /-- `∏ p_ i ≤ t` over `Icc lo (lo + j - 1)`, for `t ∈ P lo` with `j ≥ 1`
 distinct primes and `lo + j ≤ 49`. -/
 private theorem primesProd_le_t {t lo : ℕ} (ht : t ≠ 0) (hP : t ∈ P lo) (j : ℕ)
-    (hj : j ≠ 0) (hjle : j ≤ t.primeFactors.card) (hsize : lo + j ≤ 49) :
+    (hj : j ≠ 0) (hjle : j ≤ #t.primeFactors) (hsize : lo + j ≤ 49) :
     ∏ i ∈ Icc lo (lo + j - 1), p_ i ≤ t := by
   induction t using Nat.strongRecOn generalizing lo j with
   | ind t ih =>
@@ -227,10 +226,10 @@ private theorem primesProd_le_t {t lo : ℕ} (ht : t ≠ 0) (hP : t ∈ P lo) (j
       rw [(by lia : (lo + 1) + (j - 1) - 1 = lo + j - 1)] at IH
       calc ∏ i ∈ Icc lo (lo + j - 1), p_ i
           = p_ lo * ∏ i ∈ Icc (lo + 1) (lo + j - 1), p_ i :=
-            prod_primes_succ_lo (by lia)
+            prod_prime_succ_lo (by lia)
         _ ≤ p ^ k * t' := by gcongr
     · obtain rfl : j = 1 := by lia
-      rw [Nat.add_sub_cancel, Finset.Icc_self, Finset.prod_singleton]
+      rw [Nat.add_sub_cancel, Icc_self, prod_singleton]
       exact hpk_ge.trans (Nat.le_mul_of_pos_right _ ht'₀)
 
 /-! ### Ruling out `.tooLarge` from a witness -/
@@ -241,35 +240,31 @@ private theorem primesProd_le_t {t lo : ℕ} (ht : t ≠ 0) (hP : t ∈ P lo) (j
     {m goal lo hi lhs rhs t : ℕ}
     (hlhs : lhs = m * ∏ i ∈ Icc lo hi, p_ i)
     (hrhs : rhs = goal * ∏ i ∈ Icc lo hi, (p_ i - 1))
-    (hlo : lo ≤ hi + 1)
-    (hhi_lt : hi + 1 < 49)
-    (hsmall : lhs < rhs)
-    (hbig : m * m < lhs * primesRArray.get (hi + 1))
+    (hlo : lo ≤ hi + 1) (hhi_lt : hi + 1 < 49) (hsmall : lhs < rhs)
+    (hbig : m * m < lhs * p_ (hi + 1))
     (ht2 : 2 ≤ t) (htP : t ∈ P lo) (htm : t ≤ m) (htσ : goal ≤ σ₁ t) : False := by
-  rw [primesRArray_get_eq_nth hhi_lt] at hbig
-  rcases lt_or_ge t.primeFactors.card (hi + 2 - lo) with hcard | hcard
-  · have hbound := sigma_bound_window hi (by lia) htP (by lia) (by lia)
-    have h_chain : σ₁ t * ∏ i ∈ Icc lo hi, (p_ i - 1)
-        < goal * ∏ i ∈ Icc lo hi, (p_ i - 1) := by
-      nlinarith [Nat.mul_le_mul_right (∏ i ∈ Icc lo hi, p_ i) htm]
-    exact absurd htσ (Nat.lt_of_mul_lt_mul_right h_chain).not_ge
+  rcases lt_or_ge #t.primeFactors (hi + 2 - lo) with hcard | hcard
+  · have h_chain : σ₁ t * ∏ i ∈ Icc lo hi, (p_ i - 1) < goal * ∏ i ∈ Icc lo hi, (p_ i - 1) := by
+      grw [sigma_bound_window hi (by lia) htP (by lia) (by lia), htm, ← hlhs, hsmall, hrhs]
+    grind [Nat.lt_of_mul_lt_mul_right h_chain]
   · have hrad := primesProd_le_t (by lia) htP (hi + 2 - lo) (by lia) hcard (by lia)
     have hidx : lo + (hi + 2 - lo) - 1 = hi + 1 := by lia
     rw [hidx] at hrad
-    have hppsm : m < ∏ i ∈ Icc lo (hi + 1), p_ i := Nat.lt_of_mul_lt_mul_left (a := m)
-      (by rwa [prod_Icc_succ_top (by lia : lo ≤ hi + 1) _, ← mul_assoc, ← hlhs])
+    have hppsm : m < ∏ i ∈ Icc lo (hi + 1), p_ i := by
+      apply Nat.lt_of_mul_lt_mul_left (a := m)
+      rwa [prod_Icc_succ_top (by lia), ← mul_assoc, ← hlhs]
     lia
 
 /-- At a wheel `.tooLarge` empty-window state with `lo < 49`, the witness `t`
 with `t ≤ m`, `t ∈ P lo`, `t ≥ 2` gives `False`. -/
 @[grind .] private theorem extend_tooLarge_empty_contra
-    {m lo hi lhs : ℕ} {t : ℕ}
-    (hlhs : lhs = m * ∏ i ∈ Icc lo hi, p_ i) (hlo_lt : lo < 49)
+    {m lo hi lhs t : ℕ}
+    (hlhs : lhs = m * ∏ i ∈ Icc lo hi, p_ i)
     (hempty : hi + 1 = lo)
-    (hbig : m * m < lhs * primesRArray.get lo)
+    (hbig : m * m < lhs * p_ lo)
     (ht2 : 2 ≤ t) (htP : t ∈ P lo) (htm : t ≤ m) : False := by
-  rw [Finset.Icc_eq_empty (by lia : ¬ lo ≤ hi), Finset.prod_empty, mul_one] at hlhs
-  rw [primesRArray_get_eq_nth hlo_lt, hlhs] at hbig
+  rw [Icc_eq_empty (by lia), prod_empty, mul_one] at hlhs
+  rw [hlhs] at hbig
   have h1 : p_ lo ≤ t.minFac := htP.2 _ (minFac_prime (by lia)) (minFac_dvd t)
   grind [Nat.lt_of_mul_lt_mul_left hbig, minFac_le]
 
@@ -280,7 +275,13 @@ with `t ≤ m`, `t ∈ P lo`, `t ≥ 2` gives `False`. -/
     (hrhs : rhs = goal * ∏ i ∈ Icc lo hi, (p_ i - 1)) (hlo : lo ≤ hi + 1) :
     extend fuel (m * m) lo hi lhs rhs ≠ .tooLarge := by
   fun_induction extend fuel (m * m) lo hi lhs rhs with
-    grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
+  | case3 fuel hi lhs rhs hle hnsmall hlt =>
+    have hb := primesRArray_get_eq_nth hlt
+    grind [= prod_Icc_succ_top, Icc_eq_empty]
+  | _ =>
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
+      = prod_prime_sub_one_succ_lo]
+
 
 /-! ### Window invariants -/
 
@@ -293,7 +294,9 @@ private theorem extend_window_invariant {fuel m goal lo hi lhs rhs b lhs' rhs' :
     (heq : extend fuel (m * m) lo hi lhs rhs = Wheel.window b lhs' rhs') :
     lhs' = m * ∏ i ∈ Icc lo b, p_ i ∧ rhs' = goal * ∏ i ∈ Icc lo b, (p_ i - 1) ∧
     hi ≤ b ∧ lo ≤ b := by
-  fun_induction extend with grind [= prod_Icc_succ_top, Finset.Icc_eq_empty]
+  fun_induction extend with
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
+      = prod_prime_sub_one_succ_lo]
 
 /-! ### Degenerate case: `lhs = 0` -/
 
@@ -383,5 +386,152 @@ private theorem expChildren_witness_walk {B cand goal m p : ℕ} (hp : p.Prime) 
     rw [expChildren_step (by lia) hpjm (h_sig_eq.symm ▸ hσg), h_sig_eq, ← pow_succ]
     obtain ⟨c, hc, hwit⟩ := ih (j₀ + 1) (by lia) (by lia) (by lia) (fuel - 1) (by lia)
     grind
+
+/-! ### `wheelChildren` and `children` -/
+
+/-- Each entry of `wheelChildren`'s output is either from `acc` or of the form
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, i + 1)` for some `i ≥ lo`, `k ≥ 1` with
+`p = p_ i` and `p^k ≤ m`. -/
+private theorem mem_wheelChildren {fuel m2 m goal cand lo hi lhs rhs : ℕ}
+    {acc : List (ℕ × ℕ × ℕ)} {L : List (ℕ × ℕ × ℕ)}
+    (h : wheelChildren fuel m2 m goal cand lo hi lhs rhs acc = some L)
+    {c : ℕ × ℕ × ℕ} (hc : c ∈ L) :
+    c ∈ acc ∨ ∃ i k, lo ≤ i ∧ 1 ≤ k ∧ p_ i ^ k ≤ m ∧
+      c = (ceilDiv goal (σ₁ (p_ i ^ k)), cand * p_ i ^ k, i + 1) := by
+  fun_induction wheelChildren generalizing L with
+  | case4 lo _ _ _ acc _ _ _ _ _ hp p =>
+    rename_i hrec
+    have hp : p = p_ lo := primesRArray_get_eq_nth hp
+    rcases hrec h hc with hcacc | ⟨i, k, hle, hk, hpkm, hceq⟩
+    · rcases List.mem_append.mp hcacc with hcexp | hcorig
+      · obtain ⟨k, hk, hpkm, hceq⟩ := mem_expChildren (prime_nth_prime lo) le_rfl
+          (by rwa [pow_one, ← hp])
+        grind
+      · exact Or.inl hcorig
+    · exact Or.inr ⟨i, k, by grind⟩
+  | _ => grind
+
+/-- Everything in `acc` on the way in is still in the output `L`. -/
+private lemma wheelChildren_acc_subset {fuel m2 m goal cand lo hi lhs rhs : ℕ}
+    {acc L : List (ℕ × ℕ × ℕ)}
+    (h : wheelChildren fuel m2 m goal cand lo hi lhs rhs acc = some L) : acc ⊆ L := by
+  fun_induction wheelChildren generalizing L with grind [List.mem_append_right]
+
+/-- Given the wheel invariants and a witness `t`, some child in `wheelChildren`'s
+output `L` has a nonempty witness set. -/
+private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / cand)
+    (hcand₀ : 1 ≤ cand) {fuel lo hi lhs rhs : ℕ} {acc L : List (ℕ × ℕ × ℕ)}
+    (hfuel : 49 + 1 - lo ≤ fuel)
+    (hlhs : lhs = m * ∏ i ∈ Icc lo hi, p_ i)
+    (hrhs : rhs = goal * ∏ i ∈ Icc lo hi, (p_ i - 1))
+    (hlo_le : lo ≤ hi + 1)
+    (hwc : wheelChildren fuel (m * m) m goal cand lo hi lhs rhs acc = some L)
+    {t : ℕ} (ht2 : 2 ≤ t) (htP : t ∈ P lo) (hat : cand * t < B) (htσ : goal ≤ σ₁ t) :
+    ∃ c ∈ L, (W B c.1 c.2.1 c.2.2).Nonempty := by
+  have htm : t ≤ m := hmdef ▸ (le_div_iff_mul_le hcand₀).mpr (by linarith)
+  fun_induction wheelChildren generalizing L with
+  | case1 | case2 | case5 => cases hwc
+  | case3 => grind
+  | case4 lo hi lhs rhs acc _ b lhs' rhs' hext hp p =>
+    rename_i hrec
+    have hp : p = p_ lo := primesRArray_get_eq_nth hp
+    have hp_prime : (p_ lo).Prime := prime_nth_prime lo
+    obtain ⟨hlhs', hrhs', _, hlo_b⟩ := extend_window_invariant hlhs hrhs hlo_le hext
+    replace hlhs : lhs' / p = m * ∏ i ∈ Icc (lo + 1) b, p_ i := by
+      rw [hp, hlhs', prod_prime_succ_lo hlo_b, mul_left_comm,
+        Nat.mul_div_cancel_left _ hp_prime.pos]
+    replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (lo + 1) b, (p_ i - 1) := by
+      rw [hp, hrhs', prod_prime_sub_one_succ_lo hlo_b, mul_left_comm,
+        Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
+    by_cases hdvd : p_ lo ∣ t
+    · obtain ⟨k, s, hk₀, hpk_t, hs₀, _, hcoprime⟩ :=
+        exists_factor_decomp hp_prime hdvd (by lia)
+      have hpkm : p_ lo ^ k ≤ m :=
+        (le_of_dvd (by lia) ⟨s, hpk_t.symm⟩).trans htm
+      have htσ' : goal ≤ σ₁ (p_ lo ^ k) * σ₁ s := by
+        rwa [← isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k), hpk_t]
+      have hsP : s ∈ P (lo + 1) :=
+        mem_P_succ_of_coprime hp_prime le_rfl htP.2 hpk_t hs₀.ne' hcoprime
+      obtain ⟨c, hc, hwit⟩ := expChildren_witness_walk hp_prime (lo + 1) (k - 1) k 1
+        (by lia) (by lia) hk₀ hpkm hs₀ hsP
+        (by rwa [mul_assoc, hpk_t]) htσ' (m + 1)
+        (by have : k ≤ m := (Nat.lt_pow_self hp_prime.one_lt).le.trans hpkm; lia)
+      exact ⟨c, wheelChildren_acc_subset hwc (List.mem_append_left _ (by grind)), hwit⟩
+    · exact hrec (by lia) hlhs hrhs (by lia) hwc
+        (mem_P_succ_of_factors_gt (by lia) fun q' hq'_prime hq'_dvd =>
+          lt_of_le_of_ne (htP.2 q' hq'_prime hq'_dvd) (by grind))
+
+/-- Every `c` in `children`'s output has the form
+`(⌈goal / σ₁(p^k)⌉, cand * p^k, j + 1)` for some `j ≥ i`, `k ≥ 1` with
+`p = p_ j` and `p^k ≤ B / cand`. -/
+private theorem mem_children {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand i = some cs) {c : ℕ × ℕ × ℕ} (hc : c ∈ cs) :
+    ∃ j k, i ≤ j ∧ 1 ≤ k ∧ p_ j ^ k ≤ B / cand ∧
+      c = (ceilDiv goal (σ₁ (p_ j ^ k)),
+        cand * p_ j ^ k, j + 1) := by
+  rw [children] at h
+  split at h <;> [grind [mem_wheelChildren h hc]; grind]
+
+/-- If `t'` is a witness of the child `(⌈goal / σ₁(p ^ k)⌉, cand * p ^ k, j + 1)`
+with `p = p_ j`, then `p ^ k * t'` is a nontrivial witness of the
+parent `(goal, cand, i)`. -/
+private theorem child_witness_to_parent {B goal cand i j k : ℕ}
+    (hmi : i ≤ j) (hk : 1 ≤ k) {t' : ℕ}
+    (ht' : t' ∈ W B (ceilDiv goal (σ₁ (p_ j ^ k)))
+      (cand * p_ j ^ k) (j + 1)) :
+    p_ j ^ k * t' ∈ W B goal cand i ∧
+      p_ j ^ k * t' ≠ 1 := by
+  set p := p_ j
+  obtain ⟨⟨ht'1, ht'P⟩, ht'lt, ht'σ⟩ := ht'
+  have hpPrime : p.Prime := prime_nth_prime j
+  have hpk_ge2 : 2 ≤ p ^ k := hpPrime.two_le.trans (le_self_pow (by lia) p)
+  have hpkt'_ge2 : 2 ≤ p ^ k * t' :=
+    hpk_ge2.trans (Nat.le_mul_of_pos_right _ (Nat.pos_of_ne_zero ht'1))
+  have hcop : Nat.Coprime (p ^ k) t' := by
+    refine (hpPrime.coprime_iff_not_dvd.mpr fun hpdvd => ?_).pow_left _
+    linarith [ht'P p hpPrime hpdvd, nth_strictMono infinite_setOf_prime (lt_succ_self j)]
+  refine ⟨⟨⟨by lia, fun q hqPrime hqDvd => ?_⟩, by rwa [← mul_assoc], ?_⟩, by lia⟩
+  · rcases hqPrime.dvd_mul.mp hqDvd with h1 | h2
+    · obtain rfl : q = p :=
+        (prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
+      exact (nth_strictMono infinite_setOf_prime).monotone hmi
+    · exact ((nth_strictMono infinite_setOf_prime).monotone (by lia)).trans (ht'P q hqPrime h2)
+  · have hmul : σ₁ (p ^ k * t') = σ₁ (p ^ k) * σ₁ t' :=
+      isMultiplicative_sigma.map_mul_of_coprime hcop
+    have hpk_pos : σ₁ (p ^ k) ≠ 0 := by grind [sigma_pos, pow_ne_zero, hpPrime.pos]
+    calc goal ≤ ceilDiv goal (σ₁ (p ^ k)) * σ₁ (p ^ k) := le_ceilDiv_mul hpk_pos
+      _ ≤ σ₁ t' * σ₁ (p ^ k) := by gcongr
+      _ = σ₁ (p ^ k * t') := by rw [hmul, Nat.mul_comm]
+
+/-- A nontrivial witness of the parent gives a witness for some child in `cs`. -/
+private theorem witness_to_child {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand i = some cs) {t : ℕ}
+    (ht : t ∈ W B goal cand i) (h1 : t ≠ 1) :
+    ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
+  rcases Nat.eq_zero_or_pos cand with rfl | hcand₀
+  · grind [children]
+  · simp only [children] at h
+    split at h
+    · rename_i hidx_lt
+      obtain ⟨⟨ht₀, htP⟩, htlt, htσ⟩ := ht
+      have e1 : ∏ j ∈ Icc i i, p_ j = p_ i := by rw [Icc_self, prod_singleton]
+      have e2 : ∏ j ∈ Icc i i, (p_ j - 1) = p_ i - 1 := by rw [Icc_self, prod_singleton]
+      rw [primesRArray_get_eq_nth hidx_lt, ← e2,
+        mul_comm (p_ i) (B / cand), ← e1] at h
+      exact wheelChildren_witness rfl hcand₀ (by lia) rfl rfl (by lia) h
+        (by lia) ⟨ht₀, htP⟩ htlt htσ
+    · cases h
+
+/-- `children` reduces nontrivial witnesses of a node to witnesses of its children. -/
+theorem children_spec {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (h : children B goal cand i = some cs) :
+    (∃ t ∈ W B goal cand i, t ≠ 1) ↔
+      ∃ c ∈ cs, (W B c.1 c.2.1 c.2.2).Nonempty := by
+  refine ⟨fun ⟨t, ht, h1⟩ => witness_to_child h ht h1, ?_⟩
+  rintro ⟨c, hc, t', ht'⟩
+  obtain ⟨j, k, hmi, hk, _, hceq⟩ := mem_children h hc
+  rw [hceq] at ht'
+  obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hk ht'
+  exact ⟨_, hw, hne⟩
 
 end Sage
