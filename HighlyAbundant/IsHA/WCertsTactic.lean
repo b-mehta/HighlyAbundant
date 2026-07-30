@@ -111,6 +111,9 @@ private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr 
 
 /-! ### Auto-heuristic recursive expansion -/
 
+/-- Fuel for the meta-side subtree walk, above any subtree size the search reaches. -/
+private def sizeFuel : Nat := 200_000_000
+
 /-- Count nodes visited by `step` to assess subtree size; bounded by `fuel`.
 Operates on `(goal, cand, i)` Nat triples since this is a metaprogram-side
 compiled helper with no kernel involvement. -/
@@ -131,10 +134,10 @@ where
 subtree size is ≤ `threshold`, generate a leaf kernel cert; otherwise expand
 one level via `Sage.children` and recurse on each grandchild. The Nat triple
 is threaded directly so the recursion never calls `whnf` to re-extract Nats
-from an Expr we built from those same Nats one level up. -/
+from an Expr we built from those same Nats one level up. `size` is the node's
+own subtree size, measured by the caller during its own walk. -/
 private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
-    (t n m : Nat) (threshold : Nat) : MetaM Expr := do
-  let size := subtreeSize Bval 200_000_000 (t, n, m)
+    (t n m : Nat) (size : Nat) (threshold : Nat) : MetaM Expr := do
   if size ≤ threshold then
     buildLeafWWitness ce B fuel (nodeExpr t n m)
   else
@@ -142,9 +145,12 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
       | throwError "Sage.children returned none for ({t}, {n}, {m})"
     let grandchildren := grandchildren.toArray
     let grandchildExprs := grandchildren.map fun (a, b, d) => nodeExpr a b d
+    -- One walk per grandchild covers this node's subtree exactly once, and each
+    -- size travels down with its node, so a level's sizes are measured once.
+    let grandchildSizes := grandchildren.map (subtreeSize Bval sizeFuel)
     -- Recursively build each grandchild's W = ∅ witness, threading Nats directly.
-    let grandchildWitnesses ← grandchildren.mapM
-      fun (a, b, d) => buildWWitnessAuto ce B fuel Bval a b d threshold
+    let grandchildWitnesses ← (grandchildren.zip grandchildSizes).mapM
+      fun ((a, b, d), sz) => buildWWitnessAuto ce B fuel Bval a b d sz threshold
     -- Chain the grandchild witnesses into `WCerts B grandchildren`.
     let mut xsExpr := ce.nilExpr
     let mut grandchildrenChain := mkApp (mkConst ``Sage.w_certs_nil) B
@@ -175,7 +181,7 @@ private def buildWCertsAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
     (kidExprs : Array Expr) (kidNats : Array (Nat × Nat × Nat)) (threshold : Nat) :
     MetaM Expr := do
   let witnesses ← kidNats.mapM
-    fun (t, n, m) => buildWWitnessAuto ce B fuel Bval t n m threshold
+    fun c => buildWWitnessAuto ce B fuel Bval c.1 c.2.1 c.2.2 (subtreeSize Bval sizeFuel c) threshold
   let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
   let mut xsExpr := ce.nilExpr
   for w in witnesses.reverse, x in kidExprs.reverse do
