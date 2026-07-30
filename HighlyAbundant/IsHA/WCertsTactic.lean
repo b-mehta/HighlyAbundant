@@ -156,12 +156,9 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     let tExpr := mkNatLit t
     let nExpr := mkNatLit n
     let mExpr := mkNatLit m
-    let bleApp := mkApp2 (mkConst ``Nat.ble) (mkNatLit 2) tExpr
     let boolTy := mkConst ``Bool
     let trueExpr := mkConst ``Bool.true
-    let bleType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
-    let bleName ← mkAuxLemma [] bleType Lean.reflBoolTrue
-    let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr (mkConst bleName)
+    let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr Lean.reflBoolTrue
     let cbcApp := mkAppN (mkConst ``Sage.childrenKBeqCert) #[B, tExpr, nExpr, mExpr, xsExpr]
     let cbcType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
     let cbcName ← mkAuxLemma [] cbcType Lean.reflBoolTrue
@@ -265,11 +262,8 @@ elab "ha_lcm_compose" nStx:num thr:num : tactic => do
       #[BExpr, gExpr, mkNatLit 1, mkNatLit 0, kidsE]
     let cbcTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
     let hch := mkConst (← mkAuxLemma [] cbcTy Lean.reflBoolTrue)
-    -- (6) `hsL : 2 ≤ g` via `Nat.le_of_ble_eq_true` + a `Nat.ble 2 g = true` cert.
-    let bleApp := mkApp2 (mkConst ``Nat.ble) (mkNatLit 2) gExpr
-    let bleTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy bleApp trueExpr
-    let hsL := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) gExpr
-      (mkConst (← mkAuxLemma [] bleTy Lean.reflBoolTrue))
+    -- (6) `hsL : 2 ≤ g` via `Nat.le_of_ble_eq_true` on an inline `Nat.ble 2 g = true` cert.
+    let hsL := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) gExpr Lean.reflBoolTrue
     -- (7) assemble via the bridge (transports literal certs to `lcmUpto n` form).
     g.assign <| mkAppN (mkConst ``Sage.ha_lcm_compose_bridge)
       #[nExpr, BExpr, gExpr, kidsE, eBexpr, egexpr, hsL, hch, hcs]
