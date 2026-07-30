@@ -5,7 +5,7 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.Basic
-import HighlyAbundant.IsHA.Primes
+import HighlyAbundant.Prime.TrialDivision
 
 open Nat
 

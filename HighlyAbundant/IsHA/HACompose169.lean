@@ -6,10 +6,13 @@ Authors: Bhavik Mehta
 
 import HighlyAbundant.IsHA.WCertsTactic
 import HighlyAbundant.IsHA.SageKernelBeq
+import HighlyAbundant.IsHA.QuickRfl
 import HighlyAbundant.IsHA.HACompose169a
 import HighlyAbundant.IsHA.HACompose169b
 
 open Nat
+
+set_option maxRecDepth 100000
 
 /-!
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmUpto 169)`
@@ -31,9 +34,9 @@ private theorem hcs_lcm_169 :
   w_certs_append hcs_lcm_169a hcs_lcm_169b
 
 private theorem childrenK_lcm_169 :
-    (childrenK 41640927904370300154508936603455936348626591748630593262827592445686864000
-      374867757601140118512603512682984851689582369732924776330622402560000000000 1 0).elim false
-        (fun cs ↦ sageListBeq cs kids169) = true := by
+    childrenKBeqCert 41640927904370300154508936603455936348626591748630593262827592445686864000
+      374867757601140118512603512682984851689582369732924776330622402560000000000 1 0
+      kids169 = true := by
   quickRfl
 
 /-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
@@ -43,7 +46,7 @@ theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
   lcm_upto_facts 169
   apply highlyAbundantLcm_correct_partialK_W (cs := kids169)
   · rw [eg]; norm_num
-  · rw [eg, eB]; exact childrenK_eq_of_beq childrenK_lcm_169
+  · rw [eg, eB]; exact childrenKBeqCert_eq_some childrenK_lcm_169
   · rw [eB]; exact hcs_lcm_169
 
 end Sage

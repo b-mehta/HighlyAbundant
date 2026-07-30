@@ -22,7 +22,7 @@ slower and less efficiently than the one here.
 open Nat
 
 /-- The pow-mod function, named explicitly to allow more precise control of reduction. -/
-def powMod (a b n : ℕ) : ℕ := a ^ b % n
+@[expose] def powMod (a b n : ℕ) : ℕ := a ^ b % n
 /-- The pow-mod auxiliary function, named explicitly to allow more precise control of reduction. -/
 def powModAux (a b c n : ℕ) : ℕ := (a ^ b * c) % n
 

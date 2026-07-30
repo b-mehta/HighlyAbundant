@@ -6,6 +6,8 @@ Authors: Bhavik Mehta
 
 import HighlyAbundant.IsHA.WCertsTactic
 
+set_option maxRecDepth 100000
+
 namespace Sage
 
 /-- Heaviest in-order slice (children 1-10, ~53% of subtree weight) of n=169's

@@ -14,13 +14,14 @@ import HighlyAbundant.Prime.PowMod
 import HighlyAbundant.Prime.PowModTactic
 import HighlyAbundant.Prime.Pratt
 import HighlyAbundant.Prime.Prime
+import HighlyAbundant.Prime.TrialDivision
 import HighlyAbundant.IsHA.Sage
 import HighlyAbundant.IsHA.SageKernel
 import HighlyAbundant.IsHA.SageKernelBeq
 import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageSpec
+import HighlyAbundant.IsHA.QuickRfl
 import HighlyAbundant.IsHA.WCertsTactic
-import HighlyAbundant.IsHA.Primes
 import HighlyAbundant.IsHA.SigmaFactor
 import HighlyAbundant.IsHA.HAComposeSmall
 import HighlyAbundant.IsHA.HACompose67

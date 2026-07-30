@@ -13,7 +13,7 @@ open Nat
 /-!
 # `WCerts`, the `w_certs_auto` tactic, and `ha_lcm_compose`
 
-`WCerts B xs := ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅`. Built by composing
+`WCerts B xs := ∀ c ∈ xs, W B c.goal c.cand c.i = ∅`. Built by composing
 leaf-level kernel certificates (`stepK [c] = some true`) with the recursive-split
 lemma `W_eq_empty_of_partialK` for heavy children.
 
@@ -29,16 +29,16 @@ open Lean Meta Elab Tactic
 
 namespace Sage
 
-/-- `∀ c ∈ xs, W B c.target c.num c.minIdx = ∅`, wrapped opaquely so the kernel
+/-- `∀ c ∈ xs, W B c.goal c.cand c.i = ∅`, wrapped opaquely so the kernel
 doesn't descend through the binders during chain construction. -/
 def WCerts (B : Nat) (xs : List SageNode) : Prop :=
-  ∀ c ∈ xs, W B c.target c.num c.minIdx = ∅
+  ∀ c ∈ xs, W B c.goal c.cand c.i = ∅
 
 theorem w_certs_nil (B : Nat) : WCerts B [] :=
   fun _ h => nomatch h
 
 theorem w_certs_cons {B : Nat} {x : SageNode} {xs : List SageNode}
-    (h : W B x.target x.num x.minIdx = ∅) (hs : WCerts B xs) :
+    (h : W B x.goal x.cand x.i = ∅) (hs : WCerts B xs) :
     WCerts B (x :: xs) := fun c hc =>
   match hc with
   | .head _ => h
@@ -56,7 +56,7 @@ The leaf-level cert produced by kernel reduction lands here, then enters the
 `w_certs_cons` chain. -/
 theorem W_eq_empty_of_stepK_singleton {B fuel : ℕ} {c : SageNode}
     (h : stepK B fuel [c] = some true) :
-    W B c.target c.num c.minIdx = ∅ := by
+    W B c.goal c.cand c.i = ∅ := by
   rw [stepK_eq_step] at h
   simpa [List.map_cons, List.map_nil, fromSageNode]
     using step_true h (fromSageNode c) List.mem_cons_self
@@ -76,9 +76,9 @@ private def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
   let c ← whnf c
   match_expr c with
   | Sage.SageNode.mk tExpr nExpr mExpr =>
-    let some t := tExpr.nat? | throwError "node target not a literal"
-    let some n := nExpr.nat? | throwError "node num not a literal"
-    let some m := mExpr.nat? | throwError "node minIdx not a literal"
+    let some t := tExpr.nat? | throwError "node goal not a literal"
+    let some n := nExpr.nat? | throwError "node cand not a literal"
+    let some m := mExpr.nat? | throwError "node index not a literal"
     return (t, n, m)
   | _ => throwError "child not a `SageNode.mk`"
 
@@ -98,7 +98,7 @@ private def mkCommonExprs : CommonExprs :=
   let nilExpr := mkApp (mkConst ``List.nil [.zero]) nodeTy
   { nodeTy, nilExpr, boolTy := mkConst ``Bool, trueExpr := mkConst ``Bool.true }
 
-/-- Build a leaf `W B c.target c.num c.minIdx = ∅` witness for child `c`: a `Bool`
+/-- Build a leaf `W B c.goal c.cand c.i = ∅` witness for child `c`: a `Bool`
 cert `stepKSingletonBeqCert B searchFuel c = true` discharged by `Lean.reflBoolTrue`,
 converted to `stepK B searchFuel [c] = some true`, then `W_eq_empty_of_stepK_singleton`. -/
 private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
@@ -112,7 +112,7 @@ private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr 
 /-! ### Auto-heuristic recursive expansion -/
 
 /-- Count nodes visited by `step` to assess subtree size; bounded by `fuel`.
-Operates on `(target, num, minIdx)` Nat triples since this is a metaprogram-side
+Operates on `(goal, cand, i)` Nat triples since this is a metaprogram-side
 compiled helper with no kernel involvement. -/
 private def subtreeSize (B : Nat) (fuel : Nat) (c : Nat × Nat × Nat) : Nat :=
   go fuel [c] 0
@@ -120,10 +120,10 @@ where
   go : Nat → List (Nat × Nat × Nat) → Nat → Nat
     | 0, _, acc => acc
     | _, [], acc => acc
-    | fuel + 1, (target, num, minIdx) :: rest, acc =>
-      if target ≤ 1 then
-        if num < B then acc else go fuel rest (acc + 1)
-      else match children B target num minIdx with
+    | fuel + 1, (goal, cand, i) :: rest, acc =>
+      if goal ≤ 1 then
+        if cand < B then acc else go fuel rest (acc + 1)
+      else match children B goal cand i with
         | none => acc
         | some cs => go fuel (cs ++ rest) (acc + 1)
 

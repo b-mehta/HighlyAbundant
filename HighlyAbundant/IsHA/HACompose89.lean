@@ -9,6 +9,8 @@ import HighlyAbundant.IsHA.SageKernelBeq
 
 open Nat
 
+set_option maxRecDepth 100000
+
 /-!
 # Kernel certificate for `IsHighlyAbundant (lcmUpto 89)`
 

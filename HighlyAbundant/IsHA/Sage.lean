@@ -4,7 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import Lean.Data.RArray
+module
+
+public import Lean.Data.RArray
+
+public section
 
 /-!
 # Decider for "is `lcm (1..n)` highly abundant?"
@@ -17,15 +21,9 @@ with `sL ≤ σ m` as products of prime powers in increasing-prime order. With
 
 namespace Sage
 
-/-- The first 49 primes, `2` to `227`. Read only through `primes[i]?` so the
-table can be extended for larger `n` without invalidating proofs. -/
-def primes : Array Nat := #[
-    2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53,
-    59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103, 107, 109, 113, 127, 131,
-    137, 139, 149, 151, 157, 163, 167, 173, 179, 181, 191, 193, 197, 199, 211, 223,
-    227]
-
-def primesRArray : Lean.RArray Nat :=
+/-- The first 49 primes, `2` to `227`, as an `RArray` for fast kernel lookup. Read only through
+`primesRArray.get i` so the table can be extended for larger `n` without invalidating proofs. -/
+@[expose] def primesRArray : Lean.RArray Nat :=
   .branch (nat_lit 24)
     (.branch (nat_lit 12)
       (.branch (nat_lit 6)
@@ -60,117 +58,76 @@ def primesRArray : Lean.RArray Nat :=
             (.branch (nat_lit 46) (.leaf (nat_lit 199)) (.leaf (nat_lit 211)))
             (.branch (nat_lit 48) (.leaf (nat_lit 223)) (.leaf (nat_lit 227)))))))
 
-theorem primesRArray_get_eq_primes_get (i : Nat) (hi : i < 49) :
-    primesRArray.get i = primes[i] := by
-  change primesRArray[i] = primes[i]
-  decide +kernel +revert
-
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
-def ceilDiv (a b : Nat) : Nat := (a + b - 1) / b
+@[expose] def ceilDiv (a b : Nat) : Nat := (a + b - 1) / b
 
 /-- Result of `extend`. -/
 inductive Wheel where
   | exhaustedTable
   | tooLarge
-  | window (back lhs rhs : Nat)
+  | window (hi lhs rhs : Nat)
 
-/-- Grow a prime window from `back` forward, threading `lhs = m * ∏ primes[i]`
-and `rhs = target * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
-`b ≥ back` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
+/-- Grow a prime window from `hi` forward, threading `lhs = m * ∏ primes[i]`
+and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least
+`b ≥ hi` with `lhs ≥ rhs`; `.tooLarge` if the next prime would push `lhs > m2`;
 `.exhaustedTable` if fuel or the table runs out. -/
-def extend (fuel m2 front back lhs rhs : Nat) : Wheel :=
+@[expose] def extend (fuel m2 lo hi lhs rhs : Nat) : Wheel :=
   match fuel with
   | 0 => .exhaustedTable
   | fuel + 1 =>
-    if front ≤ back then
-      if lhs ≥ rhs then .window back lhs rhs
-      else if back + 1 < 49 then
-        let q := primesRArray.get (back + 1)
+    if lo ≤ hi then
+      if lhs ≥ rhs then .window hi lhs rhs
+      else if hi + 1 < 49 then
+        let q := primesRArray.get (hi + 1)
         let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extend fuel m2 front (back + 1) lhs' (rhs * (q - 1))
+        if lhs' > m2 then .tooLarge else extend fuel m2 lo (hi + 1) lhs' (rhs * (q - 1))
       else .exhaustedTable
-    else  -- front = back + 1: the range is empty; start it at index front
-      if front < 49 then
-        let q := primesRArray.get front
+    else  -- lo = hi + 1: the range is empty; start it at index lo
+      if lo < 49 then
+        let q := primesRArray.get lo
         let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extend fuel m2 front front lhs' (rhs * (q - 1))
+        if lhs' > m2 then .tooLarge else extend fuel m2 lo lo lhs' (rhs * (q - 1))
       else .exhaustedTable
 
-/-- Well-founded form of `extend`. Not used by the search; kept as a spec-level
-reference equivalent to `extend` when fuel is sufficient. -/
-def extendWF (m2 front back lhs rhs : Nat) : Wheel :=
-  if front ≤ back then
-    if lhs ≥ rhs then .window back lhs rhs
-    else if back + 1 < 49 then
-      let q := primesRArray.get (back + 1)
-      let lhs' := lhs * q
-      if lhs' > m2 then .tooLarge else extendWF m2 front (back + 1) lhs' (rhs * (q - 1))
-    else .exhaustedTable
-  else
-    if front < 49 then
-      let q := primesRArray.get front
-      let lhs' := lhs * q
-      if lhs' > m2 then .tooLarge else extendWF m2 front front lhs' (rhs * (q - 1))
-    else .exhaustedTable
-  termination_by 49 - back
-  decreasing_by all_goals omega
-
-/-- Emit children `(⌈target / σ(p^k)⌉, num * p^k, next)` for `k ≥ 1` with
-`p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ target`. -/
-def expChildren (fuel target num next m p pk : Nat) : List (Nat × Nat × Nat) :=
+/-- Emit children `(⌈goal / σ(p^k)⌉, cand * p^k, next)` for `k ≥ 1` with
+`p^k ≤ m`, stopping after the first `k` with `σ(p^k) ≥ goal`. -/
+@[expose] def expChildren (fuel goal cand next m p pk : Nat) : List (Nat × Nat × Nat) :=
   match fuel with
   | 0 => []
   | fuel + 1 =>
     if pk > m then []
     else
       let spk := (pk * p - 1) / (p - 1)              -- σ(p^k); pk * p = p^(k+1)
-      let child := (ceilDiv target spk, num * pk, next)
-      if spk ≥ target then [child]
-      else child :: expChildren fuel target num next m p (pk * p)
+      let child := (ceilDiv goal spk, cand * pk, next)
+      if spk ≥ goal then [child]
+      else child :: expChildren fuel goal cand next m p (pk * p)
 
-/-- Iterate `extend` from `front` onward, collecting `expChildren` at every
+/-- Iterate `extend` from `lo` onward, collecting `expChildren` at every
 `.window` index. Returns `none` if an index `≥ 49` is read. -/
-def wheelChildren (fuel m2 m target num front back lhs rhs : Nat)
+@[expose] def wheelChildren (fuel m2 m goal cand lo hi lhs rhs : Nat)
     (acc : List (Nat × Nat × Nat)) : Option (List (Nat × Nat × Nat)) :=
   match fuel with
   | 0 => none
   | fuel + 1 =>
-    match extend 50 m2 front back lhs rhs with
+    match extend 50 m2 lo hi lhs rhs with
     | .exhaustedTable => none
     | .tooLarge => some acc
     | .window b lhs' rhs' =>
-      if front < 49 then
-        let p := primesRArray.get front
-        wheelChildren fuel m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1))
-          (expChildren (m + 1) target num (front + 1) m p p ++ acc)
+      if lo < 49 then
+        let p := primesRArray.get lo
+        wheelChildren fuel m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
+          (expChildren (m + 1) goal cand (lo + 1) m p p ++ acc)
       else none
 
-/-- Well-founded form of `wheelChildren`. Not used by the search; kept as a
-spec-level reference. -/
-def wheelChildrenWF (m2 m target num front back lhs rhs : Nat) :
-    Option (List (Nat × Nat × Nat)) :=
-  if front ≥ 49 then none
-  else
-    match extendWF m2 front back lhs rhs with
-    | .exhaustedTable => none
-    | .tooLarge => some []
-    | .window b lhs' rhs' =>
-      let p := primesRArray.get front
-      match wheelChildrenWF m2 m target num (front + 1) b (lhs' / p) (rhs' / (p - 1)) with
-      | none => none
-      | some rest => some (rest ++ expChildren (m + 1) target num (front + 1) m p p)
-  termination_by 49 - front
-  decreasing_by omega
-
-/-- Children of node `(target, num, minIdx)` with `m = B / num`. Each `c ∈ cs` is
-`(⌈target/σ(primes[i]^k)⌉, num * primes[i]^k, i + 1)` for some `i ≥ minIdx` and
-`k ≥ 1` with `primes[i]^k ≤ m`. Returns `none` if the search needs an index
+/-- Children of node `(goal, cand, i)` with `m = B / cand`. Each `c ∈ cs` is
+`(⌈goal/σ(primes[j]^k)⌉, cand * primes[j]^k, j + 1)` for some `j ≥ i` and
+`k ≥ 1` with `primes[j]^k ≤ m`. Returns `none` if the search needs an index
 `≥ 49`. -/
-def children (B target num minIdx : Nat) : Option (List (Nat × Nat × Nat)) :=
-  if minIdx < 49 then
-    let p0 := primesRArray.get minIdx
-    let m := B / num
-    wheelChildren 50 (m * m) m target num minIdx minIdx (p0 * m) (target * (p0 - 1)) []
+@[expose] def children (B goal cand i : Nat) : Option (List (Nat × Nat × Nat)) :=
+  if i < 49 then
+    let p0 := primesRArray.get i
+    let m := B / cand
+    wheelChildren 50 (m * m) m goal cand i i (p0 * m) (goal * (p0 - 1)) []
   else none
 
 /-- Upper bound on nodes visited by `step`. Experimentally minimal for
@@ -180,13 +137,13 @@ def searchFuel : Nat := 6400000
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read
 an index `≥ 49`. -/
-def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
+@[expose] def step (B : Nat) : Nat → List (Nat × Nat × Nat) → Option Bool
   | 0, _ => none
   | _, [] => some true
-  | fuel + 1, (target, num, minIdx) :: rest =>
-    if target ≤ 1 then
-      if num < B then some false else step B fuel rest   -- t = 1 is a witness iff num < B
-    else match children B target num minIdx with
+  | fuel + 1, (goal, cand, i) :: rest =>
+    if goal ≤ 1 then
+      if cand < B then some false else step B fuel rest   -- t = 1 is a witness iff cand < B
+    else match children B goal cand i with
       | none => none
       | some cs => step B fuel (cs ++ rest)
 
