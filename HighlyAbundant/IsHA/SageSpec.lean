@@ -534,4 +534,70 @@ theorem children_spec {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
   obtain ⟨hw, hne⟩ := child_witness_to_parent hmi hk ht'
   exact ⟨_, hw, hne⟩
 
+/-! ### Step correctness and top-level result -/
+
+/-- `step = some true` gives an empty witness set for every node on the stack. -/
+theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
+    (h : step B fuel stack = some true) :
+    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := by
+  fun_induction step with
+  | case1 | case2 | case3 | case5 => grind
+  | case4 _ _ cand _ _ _ _ ih =>
+    simp only [List.mem_cons, forall_eq_or_imp, Prod.forall]
+    refine ⟨?_, fun a b c hm => ih h (a, b, c) hm⟩
+    rw [Set.eq_empty_iff_forall_notMem]
+    rintro t ⟨⟨ht1, _⟩, htlt, _⟩
+    linarith [Nat.le_mul_of_pos_right cand (Nat.pos_of_ne_zero ht1)]
+  | case6 _ _ _ _ _ _ _ hch ih1 =>
+    intro node hnode
+    rcases List.mem_cons.mp hnode with rfl | hnode
+    · rw [Set.eq_empty_iff_forall_notMem]
+      intro t htW
+      obtain rfl | h1 := eq_or_ne t 1
+      · grind [sigma_one]
+      obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
+      grind [Set.not_nonempty_iff_eq_empty]
+    · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
+
+/-- A node with `2 ≤ goal` has an empty witness set once all its children do. -/
+theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hgoal : 2 ≤ goal)
+    (hch : children B goal cand i = some cs)
+    (hcs : ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅) :
+    W B goal cand i = ∅ := by
+  rw [Set.eq_empty_iff_forall_notMem]
+  intro t ht
+  obtain rfl | h1 := eq_or_ne t 1
+  · grind [sigma_one]
+  · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
+    grind [Set.not_nonempty_iff_eq_empty]
+
+/-- An empty root witness set makes `lcm (1..n)` highly abundant. -/
+theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
+    (hW : W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = ∅) :
+    IsHighlyAbundant (lcmUpto n) := by
+  intro m hm₀ hm_lt
+  by_contra! hcontra
+  have h2 : p_ 0 = 2 := Nat.nth_prime_zero_eq_two
+  have hmW : m ∈ W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 := by grind [Nat.Prime.two_le]
+  rwa [hW] at hmW
+
+/-- Certify `lcm (1..n)` from an empty witness set for each root child. -/
+theorem highlyAbundantLcm_correct_partial_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, W (lcmUpto n) c.1 c.2.1 c.2.2 = ∅) :
+    IsHighlyAbundant (lcmUpto n) :=
+  isHighlyAbundant_of_root_W_eq_empty (W_eq_empty_of_partial hsL hch hcs)
+
+/-- Certify `lcm (1..n)` by expanding the root with `children` and running `step` on
+each child subtree separately. -/
+theorem highlyAbundantLcm_correct_partial {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
+    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
+    (hcs : ∀ c ∈ cs, step (lcmUpto n) searchFuel [c] = some true) :
+    IsHighlyAbundant (lcmUpto n) :=
+  highlyAbundantLcm_correct_partial_W hsL hch
+    (fun c hc => step_true (hcs c hc) c List.mem_cons_self)
+
 end Sage
