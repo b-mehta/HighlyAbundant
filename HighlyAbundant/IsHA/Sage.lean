@@ -150,7 +150,7 @@ an index `≥ 49`. -/
 /-- Decide whether no `m` with `1 ≤ m < B` has `sL ≤ σ m`. With
 `(B, sL) = (lcm (1..n), σ (lcm (1..n)))`, `some true` certifies that
 `lcm (1..n)` is highly abundant. -/
-def highlyAbundantLcm? (B sL : Nat) : Option Bool :=
+@[expose] def highlyAbundantLcm? (B sL : Nat) : Option Bool :=
   if B ≤ 1 then some true else step B searchFuel [(sL, 1, 0)]
 
 end Sage
