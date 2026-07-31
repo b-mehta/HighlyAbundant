@@ -30,16 +30,19 @@ jobs:
           lake exe cache get || true
           lake build HighlyAbundant.IsHA.WCertsTactic
 
-      - name: Peak memory of the whole build
+      - name: Peak memory of the whole build, resident and swapped apart
         shell: bash
         env:
           LEAN_NUM_THREADS: "3"
         run: |
           set -u
 
-          # Max of (VmRSS + VmSwap) summed over the process tree, sampled while the build runs.
+          # Sample the tree once a second, keeping resident and swapped apart, the
+          # largest single process, and how much the machine still had available.
           sample_tree () {
-            local root=$1 peak=0 tot p kids queue pids
+            local root=$1
+            local peak_rss=0 peak_swap=0 peak_one=0 min_avail=99999999
+            local tot_rss tot_swap one p r s kids queue pids avail
             while kill -0 "$root" 2>/dev/null; do
               pids=$root; queue=$root
               while [ -n "$queue" ]; do
@@ -47,26 +50,39 @@ jobs:
                 for p in $queue; do kids="$kids $(pgrep -P "$p" 2>/dev/null | tr '\n' ' ')"; done
                 queue=$(echo $kids); pids="$pids $queue"
               done
-              tot=0
+              tot_rss=0; tot_swap=0; one=0
               for p in $pids; do
-                tot=$(( tot + $(awk '/^VmRSS|^VmSwap/ {s+=$2} END {print s+0}' "/proc/$p/status" 2>/dev/null || echo 0) ))
+                r=$(awk '/^VmRSS/ {print $2; exit}' "/proc/$p/status" 2>/dev/null)
+                s=$(awk '/^VmSwap/ {print $2; exit}' "/proc/$p/status" 2>/dev/null)
+                r=${r:-0}; s=${s:-0}
+                tot_rss=$(( tot_rss + r )); tot_swap=$(( tot_swap + s ))
+                if [ "$r" -gt "$one" ]; then one=$r; fi
               done
-              if [ "$tot" -gt "$peak" ]; then peak=$tot; fi
-              sleep 0.5
+              avail=$(awk '/^MemAvailable/ {print $2}' /proc/meminfo)
+              if [ "$tot_rss"  -gt "$peak_rss" ];  then peak_rss=$tot_rss;   fi
+              if [ "$tot_swap" -gt "$peak_swap" ]; then peak_swap=$tot_swap; fi
+              if [ "$one"      -gt "$peak_one" ];  then peak_one=$one;       fi
+              if [ "$avail"    -lt "$min_avail" ]; then min_avail=$avail;    fi
+              sleep 1
             done
-            echo "$peak"
+            echo "$peak_rss $peak_swap $peak_one $min_avail"
           }
 
-          echo "runner memory:"
-          free -m | head -2
+          gb () { awk "BEGIN{printf \"%.2f\", $1/1048576}"; }
 
-          # The real build, modules in parallel, sampled as one tree.
+          echo "runner memory before:"; free -m | head -2
+          echo "swap devices:"; swapon --show 2>/dev/null || echo "(none reported)"
+
           start=$(date +%s)
           lake build > /tmp/build.log 2>&1 &
           pid=$!
-          peak=$(sample_tree $pid)
+          read -r prss pswap pone mavail <<< "$(sample_tree $pid)"
           wait $pid; rc=$?
           secs=$(( $(date +%s) - start ))
-          echo "whole_build exit=$rc wall_s=$secs peak_kb=$peak peak_gb=$(awk "BEGIN{printf \"%.2f\", $peak/1048576}")"
-          echo "runner memory after:"
-          free -m | head -2
+
+          echo "exit=$rc wall_s=$secs"
+          echo "peak summed resident    : $(gb $prss) GB"
+          echo "peak summed swapped     : $(gb $pswap) GB"
+          echo "peak single process rss : $(gb $pone) GB"
+          echo "min MemAvailable        : $(gb $mavail) GB"
+          echo "runner memory after:"; free -m | head -2
