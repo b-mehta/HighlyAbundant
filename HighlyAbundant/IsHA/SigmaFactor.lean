@@ -115,6 +115,11 @@ lemma lcmUpto_aux (n : ℕ) {L : ℕ} (h : (lcmUptoFoldr n).beq L = true) : lcmU
 def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
   (List.range (n + 1)).filterMap fun p => if p.Prime then some (p, Nat.log p n) else none
 
+/-- Meta-side `(lcmUpto n, σ₁ (lcmUpto n))` for a literal `n`, as values alone. -/
+def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
+  ((List.range' 1 n).foldr Nat.lcm 1,
+    (factorLcmUptoMeta n).foldr (fun pk r => (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1)
+
 /-- For a literal `n`, compute `B = lcmUpto n` and `g = σ₁ (lcmUpto n)`, returning
 `(B, g, proof of lcmUpto n = B, proof of σ₁ (lcmUpto n) = g)`. The factorization is
 found meta-side; the kernel verifies `lcmUpto n = B` and `∏ p^k = B` (via `Nat.beq`),

@@ -78,9 +78,11 @@ private def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
   let c ← whnf c
   match_expr c with
   | Sage.SageNode.mk tExpr nExpr mExpr =>
-    let some t := tExpr.nat? | throwError "node goal not a literal"
-    let some n := nExpr.nat? | throwError "node cand not a literal"
-    let some m := mExpr.nat? | throwError "node index not a literal"
+    -- Accepts both the `OfNat` form written in source and the raw form the tactic builds.
+    let natOf (e : Expr) : Option Nat := e.rawNatLit? <|> e.nat?
+    let some t := natOf tExpr | throwError "node goal not a literal"
+    let some n := natOf nExpr | throwError "node cand not a literal"
+    let some m := natOf mExpr | throwError "node index not a literal"
     return (t, n, m)
   | _ => throwError "child not a `SageNode.mk`"
 
@@ -293,6 +295,27 @@ elab "lcm_upto_facts" nStx:num : tactic => do
     let (_, g) ← g.intro1P
     return [g]
 
+/-- `gen_root_kids name n lo hi` defines `name : List SageNode` as children `[lo, hi)`
+of the root of the search for `lcmUpto n`, computed meta-side by `Sage.children`. The
+assembly's `childrenKBeqCert` kernel-checks that the pieces concatenate to the real
+root children, so a wrong range fails loudly there. -/
+elab "gen_root_kids " id:ident n:num lo:num hi:num : command =>
+  Elab.Command.liftTermElabM do
+    let (Bval, gval) := Sage.lcmUptoValues n.getNat
+    let some rootKids := Sage.children Bval gval 1 0
+      | throwError "Sage.children returned none for the root of lcmUpto {n.getNat}"
+    let lo := lo.getNat
+    let slice := (rootKids.drop lo).take (hi.getNat - lo)
+    let ce := mkCommonExprs
+    let mut value := ce.nilExpr
+    for (a, b, d) in slice.reverse do
+      value := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy (nodeExpr a b d) value
+    addDecl <| .defnDecl {
+      name := (← getCurrNamespace) ++ id.getId
+      levelParams := []
+      type := mkApp (mkConst ``List [.zero]) ce.nodeTy
+      value, hints := .abbrev, safety := .safe }
+
 /-! ### Sanity tests -/
 
 /-- The 9 children of n=8's root (B=840, sL=2880). Used by the sanity tests below. -/
@@ -304,5 +327,14 @@ private def kids_test_n8 : List SageNode :=
 recursively. Exercises the expansion codepath; n=8 children are all small, so it
 recurses only a few levels deep. -/
 private example : WCerts 840 kids_test_n8 := by ha_lcm_compose 50
+
+gen_root_kids kids_gen_n8 8 0 9
+
+/-- The generator reproduces the hand-written list, so the two agree on order and
+on every field. -/
+private example : kids_gen_n8 = kids_test_n8 := rfl
+
+/-- The slice form accepts a generated list, which carries raw numerals. -/
+private example : WCerts 840 kids_gen_n8 := by ha_lcm_compose 50
 
 end Sage
