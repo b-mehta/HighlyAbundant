@@ -30,20 +30,20 @@ jobs:
           lake exe cache get || true
           lake build HighlyAbundant.IsHA.WCertsTactic
 
-      - name: Whole build at a higher thread count
+      - name: Anonymous memory of the two heaviest modules
         shell: bash
         env:
-          LEAN_NUM_THREADS: "6"
+          LEAN_NUM_THREADS: "2"
         run: |
           set -u
-          echo "nproc: $(nproc)"
+          echo "nproc: $(nproc)"; free -m | head -2
 
-          # Sample the tree once a second, keeping resident and swapped apart, the
-          # largest single process, and how much the machine still had available.
+          # Anonymous is the memory the process genuinely needs resident; the rest of
+          # Rss is mapped oleans the OS can evict.
           sample_tree () {
             local root=$1
-            local peak_rss=0 peak_swap=0 peak_one=0 min_avail=99999999
-            local tot_rss tot_swap one p r s kids queue pids avail
+            local peak_rss=0 peak_anon=0 peak_file=0 min_avail=99999999
+            local rss anon file p a r kids queue pids avail
             while kill -0 "$root" 2>/dev/null; do
               pids=$root; queue=$root
               while [ -n "$queue" ]; do
@@ -51,39 +51,32 @@ jobs:
                 for p in $queue; do kids="$kids $(pgrep -P "$p" 2>/dev/null | tr '\n' ' ')"; done
                 queue=$(echo $kids); pids="$pids $queue"
               done
-              tot_rss=0; tot_swap=0; one=0
+              rss=0; anon=0
               for p in $pids; do
-                r=$(awk '/^VmRSS/ {print $2; exit}' "/proc/$p/status" 2>/dev/null)
-                s=$(awk '/^VmSwap/ {print $2; exit}' "/proc/$p/status" 2>/dev/null)
-                r=${r:-0}; s=${s:-0}
-                tot_rss=$(( tot_rss + r )); tot_swap=$(( tot_swap + s ))
-                if [ "$r" -gt "$one" ]; then one=$r; fi
+                if [ -r "/proc/$p/smaps_rollup" ]; then
+                  set -- $(awk '/^Rss:/{r=$2} /^Anonymous:/{a=$2} END{print r+0, a+0}' "/proc/$p/smaps_rollup" 2>/dev/null)
+                  rss=$(( rss + ${1:-0} )); anon=$(( anon + ${2:-0} ))
+                fi
               done
+              file=$(( rss - anon ))
               avail=$(awk '/^MemAvailable/ {print $2}' /proc/meminfo)
-              if [ "$tot_rss"  -gt "$peak_rss" ];  then peak_rss=$tot_rss;   fi
-              if [ "$tot_swap" -gt "$peak_swap" ]; then peak_swap=$tot_swap; fi
-              if [ "$one"      -gt "$peak_one" ];  then peak_one=$one;       fi
-              if [ "$avail"    -lt "$min_avail" ]; then min_avail=$avail;    fi
+              if [ "$rss"   -gt "$peak_rss" ];   then peak_rss=$rss;   fi
+              if [ "$anon"  -gt "$peak_anon" ];  then peak_anon=$anon; fi
+              if [ "$file"  -gt "$peak_file" ];  then peak_file=$file; fi
+              if [ "$avail" -lt "$min_avail" ];  then min_avail=$avail; fi
               sleep 1
             done
-            echo "$peak_rss $peak_swap $peak_one $min_avail"
+            echo "$peak_rss $peak_anon $peak_file $min_avail"
           }
 
           gb () { awk "BEGIN{printf \"%.2f\", $1/1048576}"; }
 
-          echo "runner memory before:"; free -m | head -2
-          echo "swap devices:"; swapon --show 2>/dev/null || echo "(none reported)"
-
-          start=$(date +%s)
-          lake build > /tmp/build.log 2>&1 &
-          pid=$!
-          read -r prss pswap pone mavail <<< "$(sample_tree $pid)"
-          wait $pid; rc=$?
-          secs=$(( $(date +%s) - start ))
-
-          echo "exit=$rc wall_s=$secs"
-          echo "peak summed resident    : $(gb $prss) GB"
-          echo "peak summed swapped     : $(gb $pswap) GB"
-          echo "peak single process rss : $(gb $pone) GB"
-          echo "min MemAvailable        : $(gb $mavail) GB"
-          echo "runner memory after:"; free -m | head -2
+          for m in HACompose169a HACompose169b; do
+            start=$(date +%s)
+            lake env lean -j 2 "HighlyAbundant/IsHA/$m.lean" > "/tmp/$m.log" 2>&1 &
+            pid=$!
+            read -r prss panon pfile mavail <<< "$(sample_tree $pid)"
+            wait $pid; rc=$?
+            secs=$(( $(date +%s) - start ))
+            echo "$m exit=$rc wall_s=$secs rss=$(gb $prss) GB anon=$(gb $panon) GB file=$(gb $pfile) GB minAvail=$(gb $mavail) GB"
+          done
