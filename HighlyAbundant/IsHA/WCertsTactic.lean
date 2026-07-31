@@ -310,11 +310,13 @@ elab "gen_root_kids " id:ident n:num lo:num hi:num : command =>
     let mut value := ce.nilExpr
     for (a, b, d) in slice.reverse do
       value := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy (nodeExpr a b d) value
+    -- Same reducibility hint an ordinary `def` receives (Lean/Meta/Closure.lean:438).
+    let hints := ReducibilityHints.regular (getMaxHeight (← getEnv) value + 1)
     addDecl <| .defnDecl {
       name := (← getCurrNamespace) ++ id.getId
       levelParams := []
       type := mkApp (mkConst ``List [.zero]) ce.nodeTy
-      value, hints := .abbrev, safety := .safe }
+      value, hints, safety := .safe }
 
 /-! ### Sanity tests -/
 
