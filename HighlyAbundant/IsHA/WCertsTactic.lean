@@ -82,9 +82,9 @@ private def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
     return (t, n, m)
   | _ => throwError "child not a `SageNode.mk`"
 
-/-- Build a `SageNode` Expr from three `Nat`s. -/
+/-- Build a `SageNode` Expr from three `Nat`s, as raw literals for the kernel to read directly. -/
 private def nodeExpr (t n m : Nat) : Expr :=
-  mkApp3 (mkConst ``Sage.SageNode.mk) (mkNatLit t) (mkNatLit n) (mkNatLit m)
+  mkApp3 (mkConst ``Sage.SageNode.mk) (mkRawNatLit t) (mkRawNatLit n) (mkRawNatLit m)
 
 /-- Common Exprs cached for chain construction. -/
 private structure CommonExprs where
@@ -159,12 +159,12 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
         #[B, x, xsExpr, w, grandchildrenChain]
       xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
     -- Apply `W_eq_empty_of_partialK` to combine.
-    let tExpr := mkNatLit t
-    let nExpr := mkNatLit n
-    let mExpr := mkNatLit m
+    let tExpr := mkRawNatLit t
+    let nExpr := mkRawNatLit n
+    let mExpr := mkRawNatLit m
     let boolTy := mkConst ``Bool
     let trueExpr := mkConst ``Bool.true
-    let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) tExpr Lean.reflBoolTrue
+    let twoLeT := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkRawNatLit 2) tExpr Lean.reflBoolTrue
     let cbcApp := mkAppN (mkConst ``Sage.childrenKBeqCert) #[B, tExpr, nExpr, mExpr, xsExpr]
     let cbcType := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
     let cbcName ← mkAuxLemma [] cbcType Lean.reflBoolTrue
