@@ -1,0 +1,71 @@
+name: Bench
+
+on:
+  push:
+    branches:
+      - 'bench/**'
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Lean
+        uses: leanprover/lean-action@v1
+        with:
+          build: false
+
+      - name: Build dependencies once
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "3"
+        run: |
+          lake exe cache get || true
+          lake build HighlyAbundant.IsHA.WCertsTactic
+
+      - name: Peak memory of the heaviest modules
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "2"
+        run: |
+          set -u
+
+          # Max of (VmRSS + VmSwap) summed over the process tree, sampled while the build runs.
+          sample_tree () {
+            local root=$1 peak=0 tot p kids queue pids
+            while kill -0 "$root" 2>/dev/null; do
+              pids=$root; queue=$root
+              while [ -n "$queue" ]; do
+                kids=""
+                for p in $queue; do kids="$kids $(pgrep -P "$p" 2>/dev/null | tr '\n' ' ')"; done
+                queue=$(echo $kids); pids="$pids $queue"
+              done
+              tot=0
+              for p in $pids; do
+                tot=$(( tot + $(awk '/^VmRSS|^VmSwap/ {s+=$2} END {print s+0}' "/proc/$p/status" 2>/dev/null || echo 0) ))
+              done
+              if [ "$tot" -gt "$peak" ]; then peak=$tot; fi
+              sleep 0.5
+            done
+            echo "$peak"
+          }
+
+          echo "runner memory:"
+          free -m | head -2
+
+          for m in HACompose169a HACompose169b; do
+            start=$(date +%s)
+            lake env lean -j 2 "HighlyAbundant/IsHA/$m.lean" > "/tmp/$m.log" 2>&1 &
+            pid=$!
+            peak=$(sample_tree $pid)
+            wait $pid; rc=$?
+            secs=$(( $(date +%s) - start ))
+            echo "module=$m exit=$rc wall_s=$secs peak_kb=$peak peak_gb=$(awk "BEGIN{printf \"%.2f\", $peak/1048576}")"
+          done
