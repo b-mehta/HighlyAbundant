@@ -30,10 +30,10 @@ jobs:
           lake exe cache get || true
           lake build HighlyAbundant.IsHA.WCertsTactic
 
-      - name: Peak memory of the heaviest modules
+      - name: Peak memory of the whole build
         shell: bash
         env:
-          LEAN_NUM_THREADS: "2"
+          LEAN_NUM_THREADS: "3"
         run: |
           set -u
 
@@ -60,12 +60,13 @@ jobs:
           echo "runner memory:"
           free -m | head -2
 
-          for m in HACompose169a HACompose169b; do
-            start=$(date +%s)
-            lake env lean -j 2 "HighlyAbundant/IsHA/$m.lean" > "/tmp/$m.log" 2>&1 &
-            pid=$!
-            peak=$(sample_tree $pid)
-            wait $pid; rc=$?
-            secs=$(( $(date +%s) - start ))
-            echo "module=$m exit=$rc wall_s=$secs peak_kb=$peak peak_gb=$(awk "BEGIN{printf \"%.2f\", $peak/1048576}")"
-          done
+          # The real build, modules in parallel, sampled as one tree.
+          start=$(date +%s)
+          lake build > /tmp/build.log 2>&1 &
+          pid=$!
+          peak=$(sample_tree $pid)
+          wait $pid; rc=$?
+          secs=$(( $(date +%s) - start ))
+          echo "whole_build exit=$rc wall_s=$secs peak_kb=$peak peak_gb=$(awk "BEGIN{printf \"%.2f\", $peak/1048576}")"
+          echo "runner memory after:"
+          free -m | head -2
