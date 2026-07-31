@@ -313,7 +313,7 @@ elab doc:(docComment)? "gen_root_kids " id:ident n:num lo:num hi:num : command =
     -- Same reducibility hint an ordinary `def` receives (Lean/Meta/Closure.lean:438).
     let hints := ReducibilityHints.regular (getMaxHeight (← getEnv) value + 1)
     let declName := (← getCurrNamespace) ++ id.getId
-    addDecl <| .defnDecl {
+    addAndCompile <| .defnDecl {
       name := declName
       levelParams := []
       type := mkApp (mkConst ``List [.zero]) ce.nodeTy
@@ -341,5 +341,15 @@ private example : kids_gen_n8 = kids_test_n8 := rfl
 
 /-- The slice form accepts a generated list, which carries raw numerals. -/
 private example : WCerts 840 kids_gen_n8 := by ha_lcm_compose 50
+
+/-! Two generated slices concatenated, as the split n=169 proof does. This shape needs the
+generated definitions to carry compiled code. -/
+
+gen_root_kids kids_gen_n8_lo 8 0 4
+gen_root_kids kids_gen_n8_hi 8 4 9
+
+private def kids_gen_n8_all : List SageNode := kids_gen_n8_lo ++ kids_gen_n8_hi
+
+private example : kids_gen_n8_all = kids_test_n8 := rfl
 
 end Sage
