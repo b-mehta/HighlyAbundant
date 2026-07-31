@@ -299,7 +299,7 @@ elab "lcm_upto_facts" nStx:num : tactic => do
 of the root of the search for `lcmUpto n`, computed meta-side by `Sage.children`. The
 assembly's `childrenKBeqCert` kernel-checks that the pieces concatenate to the real
 root children, so a wrong range fails loudly there. -/
-elab "gen_root_kids " id:ident n:num lo:num hi:num : command =>
+elab doc:(docComment)? "gen_root_kids " id:ident n:num lo:num hi:num : command =>
   Elab.Command.liftTermElabM do
     let (Bval, gval) := Sage.lcmUptoValues n.getNat
     let some rootKids := Sage.children Bval gval 1 0
@@ -312,11 +312,13 @@ elab "gen_root_kids " id:ident n:num lo:num hi:num : command =>
       value := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy (nodeExpr a b d) value
     -- Same reducibility hint an ordinary `def` receives (Lean/Meta/Closure.lean:438).
     let hints := ReducibilityHints.regular (getMaxHeight (← getEnv) value + 1)
+    let declName := (← getCurrNamespace) ++ id.getId
     addDecl <| .defnDecl {
-      name := (← getCurrNamespace) ++ id.getId
+      name := declName
       levelParams := []
       type := mkApp (mkConst ``List [.zero]) ce.nodeTy
       value, hints, safety := .safe }
+    addDocString' declName Syntax.missing doc
 
 /-! ### Sanity tests -/
 
@@ -330,6 +332,7 @@ recursively. Exercises the expansion codepath; n=8 children are all small, so it
 recurses only a few levels deep. -/
 private example : WCerts 840 kids_test_n8 := by ha_lcm_compose 50
 
+/-- The 9 root children of n=8, generated. Carries a docstring, as the n=169 slices do. -/
 gen_root_kids kids_gen_n8 8 0 9
 
 /-- The generator reproduces the hand-written list, so the two agree on order and
