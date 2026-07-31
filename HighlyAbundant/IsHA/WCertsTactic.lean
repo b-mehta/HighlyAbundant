@@ -11,18 +11,20 @@ import HighlyAbundant.IsHA.SigmaFactor
 open Nat
 
 /-!
-# `WCerts`, the `w_certs_auto` tactic, and `ha_lcm_compose`
+# `WCerts` and the `ha_lcm_compose` tactic
 
 `WCerts B xs := ∀ c ∈ xs, W B c.goal c.cand c.i = ∅`. Built by composing
 leaf-level kernel certificates (`stepK [c] = some true`) with the recursive-split
 lemma `W_eq_empty_of_partialK` for heavy children.
 
-- `w_certs_auto <threshold>` closes `WCerts B kids`: any child whose subtree
-  exceeds `threshold` nodes is expanded one level via `childrenK`, recursing until
-  every leaf cert fits.
-- `ha_lcm_compose eB eg <threshold>` closes `IsHighlyAbundant (lcmUpto n)`
-  directly: emits the root children as an auxiliary `kids` def, builds the `WCerts`
-  proof via the same auto heuristic, and combines with the `childrenK` cert.
+`ha_lcm_compose` takes two forms sharing one code path:
+
+- `ha_lcm_compose <threshold>` closes `WCerts B kids`, for a `kids` list certified
+  across several modules building in parallel.
+- `ha_lcm_compose <n> <threshold>` closes `IsHighlyAbundant (lcmUpto n)` outright.
+
+In both, a child whose subtree exceeds `threshold` nodes is expanded one level via
+`childrenK`, recursing until every leaf cert fits.
 -/
 
 open Lean Meta Elab Tactic
@@ -205,17 +207,14 @@ private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := d
     g.assign chain
   | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
 
-/-- Close a goal `Sage.WCerts B <kids>` using the auto-heuristic: any child
-whose subtree exceeds `threshold` nodes is expanded one level, recursing
-until every leaf cert fits. Example: `w_certs_auto 10000`. -/
-elab "w_certs_auto" sz:num : tactic =>
-  liftMetaFinishingTactic fun g => closeWCertsGoalAuto g sz.getNat
+/-! ### The composition tactic `ha_lcm_compose`
 
-/-! ### One-shot composition tactic `ha_lcm_compose`
-
-Closes a goal `IsHighlyAbundant (lcmUpto n)` in one invocation: it emits the root
-children as an aux def, builds the `WCerts` proof, and combines with the
-`childrenK` cert.
+Two forms, one code path. `ha_lcm_compose <threshold>` closes a `WCerts B kids`
+goal, expanding any child whose subtree exceeds `threshold` nodes one level and
+recursing until every leaf cert fits. `ha_lcm_compose <n> <threshold>` closes
+`IsHighlyAbundant (lcmUpto n)` outright, computing the root children itself,
+emitting them as an aux def, proving `WCerts` over them by the same expansion,
+and combining with the `childrenK` cert.
 -/
 
 /-- Bridges the literal-`B`/`g`-phrased certificates produced by `ha_lcm_compose`
@@ -229,10 +228,17 @@ theorem ha_lcm_compose_bridge {n B g : ℕ} {cs : List SageNode}
   subst eB eg
   exact highlyAbundantLcm_correct_partialK_W hsL (childrenKBeqCert_eq_some hch) hcs
 
+/-- `ha_lcm_compose threshold` closes a goal `Sage.WCerts B <kids>`: any child whose
+subtree exceeds `threshold` nodes is expanded one level, recursing until every leaf
+cert fits. This is the slice form, used where one `kids` list is certified across
+several modules building in parallel. -/
+elab "ha_lcm_compose" sz:num : tactic =>
+  liftMetaFinishingTactic fun g => closeWCertsGoalAuto g sz.getNat
+
 /-- `ha_lcm_compose n threshold` closes a goal `IsHighlyAbundant (lcmUpto n)` for a
 literal `n`. The value `B = lcmUpto n` and `g = σ₁ (lcmUpto n)` are computed and
 kernel-certified by `Sage.proveLcmUptoValues` (no standalone literal lemmas needed);
-`threshold` is the `w_certs_auto` subtree-size bound. The root children are computed
+`threshold` is the subtree-size bound. The root children are computed
 meta-side, emitted as a named auxiliary `def` (`kids`), and three aux lemmas
 (`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and combined
 via `ha_lcm_compose_bridge`. No inline `kids` list appears at the call site. -/
@@ -294,9 +300,9 @@ private def kids_test_n8 : List SageNode :=
   [⟨960, 2, 1⟩, ⟨412, 4, 1⟩, ⟨192, 8, 1⟩, ⟨93, 16, 1⟩, ⟨46, 32, 1⟩, ⟨23, 64, 1⟩,
    ⟨12, 128, 1⟩, ⟨6, 256, 1⟩, ⟨3, 512, 1⟩]
 
-/-- Auto-heuristic path: threshold 50. Any child with subtree > 50 nodes is
-expanded recursively. Exercises the auto codepath; n=8 children are all
-small, so it recurses only a few levels deep. -/
-private example : WCerts 840 kids_test_n8 := by w_certs_auto 50
+/-- Slice form at threshold 50. Any child with subtree > 50 nodes is expanded
+recursively. Exercises the expansion codepath; n=8 children are all small, so it
+recurses only a few levels deep. -/
+private example : WCerts 840 kids_test_n8 := by ha_lcm_compose 50
 
 end Sage
