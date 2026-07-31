@@ -30,12 +30,13 @@ jobs:
           lake exe cache get || true
           lake build HighlyAbundant.IsHA.WCertsTactic
 
-      - name: Peak memory of the whole build, resident and swapped apart
+      - name: Whole build at a higher thread count
         shell: bash
         env:
-          LEAN_NUM_THREADS: "3"
+          LEAN_NUM_THREADS: "6"
         run: |
           set -u
+          echo "nproc: $(nproc)"
 
           # Sample the tree once a second, keeping resident and swapped apart, the
           # largest single process, and how much the machine still had available.
