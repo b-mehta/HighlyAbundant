@@ -12,14 +12,18 @@ open Nat
 set_option maxRecDepth 100000
 
 /-!
-# Kernel certificate for `IsHighlyAbundant (lcmUpto 127)`
+# Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, `n = 127` and `n = 131`
 
-Proof that `lcmUpto 127` is highly abundant, closed by the `ha_lcm_compose` tactic.
+Each theorem is a single `ha_lcm_compose` invocation. Together they stay under the build's
+critical path, so they share one module.
 -/
 
 namespace Sage
 
 theorem isHighlyAbundant_lcmUpto_127 : IsHighlyAbundant (lcmUpto 127) := by
   ha_lcm_compose 127 10000
+
+theorem isHighlyAbundant_lcmUpto_131 : IsHighlyAbundant (lcmUpto 131) := by
+  ha_lcm_compose 131 10000
 
 end Sage
