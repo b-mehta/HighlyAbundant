@@ -5,47 +5,24 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.IsHA.WCertsTactic
-import HighlyAbundant.IsHA.SageKernelBeq
-import HighlyAbundant.IsHA.QuickRfl
-import HighlyAbundant.IsHA.HACompose169a
-import HighlyAbundant.IsHA.HACompose169b
 
 open Nat
 
 set_option maxRecDepth 100000
+set_option Elab.async false
 
 /-!
-# Partial-form kernel certificate for `IsHighlyAbundant (lcmUpto 169)`
+# Kernel certificate for `IsHighlyAbundant (lcmUpto 169)`
 
-Empirically the heaviest root-children have subtree sizes
-of 200k to 870k nodes. We use `ha_lcm_compose 10000`: any node whose subtree exceeds
-10000 nodes is expanded one level via `childrenK`, recursing until every leaf
-cert fits the budget. The children are split across `HACompose169a`/`169b` so
-the kernel work runs as two parallel modules.
+Empirically the heaviest root-children have subtree sizes of 200k to 870k nodes. We use
+`ha_lcm_compose 2000`: any node whose subtree exceeds 2000 nodes is expanded one level via
+`childrenK`, recursing until every leaf cert fits the budget.
 -/
 
 namespace Sage
 
-private def kids169 : List SageNode := kids169a ++ kids169b
-
-private theorem hcs_lcm_169 :
-    WCerts 41640927904370300154508936603455936348626591748630593262827592445686864000 kids169 :=
-  w_certs_append hcs_lcm_169a hcs_lcm_169b
-
-private theorem childrenK_lcm_169 :
-    childrenKBeqCert 41640927904370300154508936603455936348626591748630593262827592445686864000
-      374867757601140118512603512682984851689582369732924776330622402560000000000 1 0
-      kids169 = true := by
-  quickRfl
-
-/-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
-path. The `ha_lcm_compose 10000` heuristic decides per node whether to give the
-kernel a direct subtree search or to split via `childrenK`. -/
+set_option maxHeartbeats 8000000 in
 theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
-  lcm_upto_facts 169
-  apply highlyAbundantLcm_correct_partialK_W (cs := kids169)
-  · rw [eg]; norm_num
-  · rw [eg, eB]; exact childrenKBeqCert_eq_some childrenK_lcm_169
-  · rw [eB]; exact hcs_lcm_169
+  ha_lcm_compose 169 2000
 
 end Sage
