@@ -5,7 +5,6 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.IsHA.WCertsTactic
-import Mathlib.Util.CountHeartbeats
 
 open Nat
 
@@ -22,8 +21,7 @@ Empirically the heaviest root-children have subtree sizes of 200k to 870k nodes.
 
 namespace Sage
 
-#count_heartbeats in
-set_option maxHeartbeats 8000000 in
+set_option maxHeartbeats 51200000 in
 theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
   ha_lcm_compose 169 2000
 
