@@ -26,8 +26,6 @@ import HighlyAbundant.IsHA.SigmaFactor
 import HighlyAbundant.IsHA.HAComposeSmall
 import HighlyAbundant.IsHA.HACompose125
 import HighlyAbundant.IsHA.HACompose127
-import HighlyAbundant.IsHA.HACompose128
-import HighlyAbundant.IsHA.HACompose131
 import HighlyAbundant.IsHA.HACompose137
 import HighlyAbundant.IsHA.HACompose139
 import HighlyAbundant.IsHA.HACompose169
