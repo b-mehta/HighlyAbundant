@@ -12,11 +12,11 @@ open Nat
 set_option maxRecDepth 100000
 
 /-!
-# Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, prime powers `n ≤ 64`
+# Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, prime powers `n ≤ 89`
 
-Each theorem is a single `ha_lcm_compose` invocation. These cases are cheap, so
-they share one module; the heavier `n ≥ 67` proofs stay in their own files to
-keep CI module-parallelism.
+Each theorem is a single `ha_lcm_compose` invocation. These cases together take a few minutes,
+well under the build's critical path, so they share one module; the heavier `n ≥ 125` proofs
+stay in their own files to keep CI module-parallelism.
 -/
 
 namespace Sage
@@ -101,5 +101,17 @@ theorem isHighlyAbundant_lcmUpto_61 : IsHighlyAbundant (lcmUpto 61) := by
 
 theorem isHighlyAbundant_lcmUpto_64 : IsHighlyAbundant (lcmUpto 64) := by
   ha_lcm_compose 64 10000
+
+theorem isHighlyAbundant_lcmUpto_67 : IsHighlyAbundant (lcmUpto 67) := by
+  ha_lcm_compose 67 10000
+
+theorem isHighlyAbundant_lcmUpto_81 : IsHighlyAbundant (lcmUpto 81) := by
+  ha_lcm_compose 81 10000
+
+theorem isHighlyAbundant_lcmUpto_83 : IsHighlyAbundant (lcmUpto 83) := by
+  ha_lcm_compose 83 10000
+
+theorem isHighlyAbundant_lcmUpto_89 : IsHighlyAbundant (lcmUpto 89) := by
+  ha_lcm_compose 89 10000
 
 end Sage

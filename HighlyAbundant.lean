@@ -24,10 +24,6 @@ import HighlyAbundant.IsHA.QuickRfl
 import HighlyAbundant.IsHA.WCertsTactic
 import HighlyAbundant.IsHA.SigmaFactor
 import HighlyAbundant.IsHA.HAComposeSmall
-import HighlyAbundant.IsHA.HACompose67
-import HighlyAbundant.IsHA.HACompose81
-import HighlyAbundant.IsHA.HACompose83
-import HighlyAbundant.IsHA.HACompose89
 import HighlyAbundant.IsHA.HACompose125
 import HighlyAbundant.IsHA.HACompose127
 import HighlyAbundant.IsHA.HACompose128
