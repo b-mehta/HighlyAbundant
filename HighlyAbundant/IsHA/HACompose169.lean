@@ -18,8 +18,8 @@ set_option maxRecDepth 100000
 # Partial-form kernel certificate for `IsHighlyAbundant (lcmUpto 169)`
 
 Empirically the heaviest root-children have subtree sizes
-of 200k to 870k nodes. We use `ha_lcm_compose 10000`: any node whose subtree exceeds
-10000 nodes is expanded one level via `childrenK`, recursing until every leaf
+of 200k to 870k nodes. We use `ha_lcm_compose 40000`: any node whose subtree exceeds
+40000 nodes is expanded one level via `childrenK`, recursing until every leaf
 cert fits the budget. The children are split across `HACompose169a`/`169b` so
 the kernel work runs as two parallel modules.
 -/
@@ -39,7 +39,7 @@ private theorem childrenK_lcm_169 :
   quickRfl
 
 /-- `lcm (1..169)` is highly abundant, proven via the W-based partial-verification
-path. The `ha_lcm_compose 10000` heuristic decides per node whether to give the
+path. The `ha_lcm_compose 40000` heuristic decides per node whether to give the
 kernel a direct subtree search or to split via `childrenK`. -/
 theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
   lcm_upto_facts 169

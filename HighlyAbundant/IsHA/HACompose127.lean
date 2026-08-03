@@ -21,9 +21,9 @@ critical path, so they share one module.
 namespace Sage
 
 theorem isHighlyAbundant_lcmUpto_127 : IsHighlyAbundant (lcmUpto 127) := by
-  ha_lcm_compose 127 10000
+  ha_lcm_compose 127 40000
 
 theorem isHighlyAbundant_lcmUpto_131 : IsHighlyAbundant (lcmUpto 131) := by
-  ha_lcm_compose 131 10000
+  ha_lcm_compose 131 40000
 
 end Sage
