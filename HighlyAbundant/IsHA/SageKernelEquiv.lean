@@ -10,11 +10,11 @@ import HighlyAbundant.IsHA.SageSpec
 open Nat
 
 /-!
-# Equivalence of kernel-friendly and ordinary decider functions
+# Equality of the kernel and specification deciders
 
-The kernel form in `HighlyAbundant.SageKernel` represents search-tree nodes as `SageNode` while the
-spec form in `HighlyAbundant.Sage` uses `Nat × Nat × Nat`. `fromSageNode` bridges the two, and each
-kernel-form definition equals the spec-form definition under that bridge.
+Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Nat` in
+`HighlyAbundant.Sage`. Each kernel definition equals its specification counterpart along
+`fromSageNode`.
 -/
 
 namespace Sage
@@ -153,14 +153,13 @@ private theorem stepK_succ_cons (B n goal cand i : Nat) (rest : List SageNode) :
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append,
     ← Nat.not_le, ite_not]
 
-/-- Translate a `childrenK = some cs` cert (kernel form, `cs : List SageNode`) to the corresponding
-`children = some (cs.map fromSageNode)` cert (spec form). -/
+/-- Read a `childrenK = some cs` certificate as `children = some (cs.map fromSageNode)`. -/
 private theorem children_of_childrenK {B goal cand i : Nat} {cs : List SageNode}
     (hch : childrenK B goal cand i = some cs) :
     children B goal cand i = some (cs.map fromSageNode) := by
   simpa [hch] using (childrenK_eq_children B goal cand i).symm
 
-/-- Translate a `childrenK = none` cert to `children = none`. -/
+/-- Read a `childrenK = none` certificate as `children = none`. -/
 private theorem children_of_childrenK_none {B goal cand i : Nat}
     (hch : childrenK B goal cand i = none) : children B goal cand i = none := by
   simpa [hch] using (childrenK_eq_children B goal cand i).symm
@@ -181,21 +180,19 @@ theorem stepK_eq_step (B fuel : Nat) (xs : List SageNode) :
         | none => rw [children_of_childrenK_none hck]
         | some cs => simp [children_of_childrenK hck, ih, List.map_append]
 
-/-- `W = ∅` recursive split phrased with `childrenK`: from `W = ∅` on each child of a node,
-conclude `W = ∅` on the node itself. -/
-theorem W_eq_empty_of_partialK {B g a i : ℕ} {cs : List SageNode}
-    (hg : 2 ≤ g)
-    (hch : childrenK B g a i = some cs)
+/-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
+theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
+    (hgoal : 2 ≤ goal)
+    (hch : childrenK B goal cand i = some cs)
     (hcs : ∀ c ∈ cs, W B c.goal c.cand c.i = ∅) :
-    W B g a i = ∅ := by
-  refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hg
+    W B goal cand i = ∅ := by
+  refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hgoal
     (children_of_childrenK hch) ?_
   intro c' hc'
   obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
   simpa [fromSageNode] using hcs c hc
 
-/-- `W`-based partial verification using `childrenK`: takes `W = ∅` for each root child, so the
-metaprogram can expand large children recursively. -/
+/-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
 theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
     (hsL : 2 ≤ σ₁ (lcmUpto n))
     (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
