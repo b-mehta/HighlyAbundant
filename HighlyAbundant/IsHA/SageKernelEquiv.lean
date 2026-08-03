@@ -39,8 +39,8 @@ private theorem extendK_succ (n m2 lo hi lhs rhs : Nat) :
           let lhs' := lhs * q
           if lhs' > m2 then .tooLarge else extendK n m2 lo lo lhs' (rhs * (q - 1))
         else .exhaustedTable := by
-  simp only [extendK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    Nat.succ_le_succ_iff, ← Nat.not_le, ite_not]
+  simp only [extendK, brecPhase, brecBound, brecSize, brecStop, Bool.rec_eq, Nat.ble_eq,
+    Nat.lt_succ_iff, Nat.succ_le_succ_iff, ← Nat.not_le, ite_not]
   rfl
 
 private theorem extendK_eq_extend : extendK = extend := by
@@ -59,7 +59,8 @@ private theorem expChildrenK_succ (n goal cand next m p pk : Nat) :
         let child : SageNode := ⟨ceilDiv goal spk, cand * pk, next⟩
         if spk ≥ goal then [child]
         else child :: expChildrenK n goal cand next m p (pk * p) := by
-  simp only [expChildrenK, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
+  simp only [expChildrenK, brecExpBound, brecExpStop, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le,
+    ite_not]
   rfl
 
 private theorem expChildrenK_eq_expChildren (fuel goal cand next m p pk : Nat) :
@@ -88,7 +89,7 @@ private theorem wheelChildrenK_succ (n m2 m goal cand lo hi lhs rhs : Nat)
           wheelChildrenK n m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
             (expChildrenK (m + 1) goal cand (lo + 1) m p p ++ acc)
         else none := by
-  simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
+  simp only [wheelChildrenK, brecWheelBound, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
     extendK_eq_extend, appendK_eq_append]
   cases extend 50 m2 lo hi lhs rhs <;> rfl
 
@@ -109,7 +110,7 @@ private theorem wheelChildrenK_eq_wheelChildren (fuel m2 m goal cand lo hi lhs r
 
 private theorem childrenK_eq_children (B goal cand i : Nat) :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
-  simp only [childrenK, children, Bool.rec_eq, Nat.ble_eq, ← Nat.lt_succ_iff]
+  simp only [childrenK, children, brecChildBound, Bool.rec_eq, Nat.ble_eq, ← Nat.lt_succ_iff]
   by_cases h : i < 49
   · simp only [h, ↓reduceIte]
     exact wheelChildrenK_eq_wheelChildren 50 ((B / cand) * (B / cand)) (B / cand) goal cand
@@ -121,7 +122,7 @@ private theorem stepK_succ_cons (B n goal cand i : Nat) (rest : List SageNode) :
       if goal ≤ 1 then
         if cand < B then some false else stepK B n rest
       else (childrenK B goal cand i).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
-  simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append,
+  simp only [stepK, brecStepGoal, brecStepCand, Bool.rec_eq, Nat.ble_eq, appendK_eq_append,
     ← Nat.not_le, ite_not]
 
 /-- Translate a `childrenK = some cs` cert (kernel form, `cs : List SageNode`) to the corresponding
