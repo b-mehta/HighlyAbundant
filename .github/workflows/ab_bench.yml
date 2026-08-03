@@ -1,0 +1,62 @@
+name: Bench
+
+on:
+  push:
+    branches:
+      - 'bench/**'
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Lean
+        uses: leanprover/lean-action@v1
+        with:
+          build: false
+
+      - name: Build dependencies once
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "3"
+        run: |
+          lake exe cache get || true
+          lake build HighlyAbundant.IsHA.WCertsTactic HighlyAbundant.IsHA.SageKernelBeq
+
+      - name: Branch-test counts at n=83
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "2"
+        run: |
+          set -u
+          start=$(date +%s)
+          lake env lean -j 2 -D diagnostics=true -D diagnostics.threshold=1 \
+            HighlyAbundant/IsHA/HACompose83.lean > /tmp/brec83.log 2>&1
+          echo "n=83 pass exit=$? wall_s=$(( $(date +%s) - start ))"
+          cat /tmp/brec83.log
+
+      - name: Branch-test counts at n=169
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "2"
+        run: |
+          set -u
+          start=$(date +%s)
+          lake env lean -j 2 -D diagnostics=true -D diagnostics.threshold=1 \
+            HighlyAbundant/IsHA/HACompose169a.lean > /tmp/brec169.log 2>&1
+          echo "n=169a pass exit=$? wall_s=$(( $(date +%s) - start ))"
+          cat /tmp/brec169.log
+
+      - name: Upload raw logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: brec-attrib
+          path: /tmp/brec*.log

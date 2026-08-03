@@ -42,18 +42,29 @@ def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the least `b ≥ back` with
 `lhs ≥ rhs`, `.tooLarge` if the next prime pushes `lhs > m2`, and `.exhaustedTable` if fuel or the
 table runs out. -/
+@[expose] noncomputable def brecPhase {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecBound {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecSize {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecStop {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecExpBound {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecExpStop {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecWheelBound {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecChildBound {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecStepGoal {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+@[expose] noncomputable def brecStepCand {α : Type} (b : Bool) (f t : α) : α := b.rec f t
+
 @[expose] noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel :=
   fuel.rec (fun _ _ _ ↦ .exhaustedTable) fun _ r back lhs rhs ↦
-    (front.ble back).rec
-      ((front.ble (nat_lit 48)).rec .exhaustedTable <|
+    brecPhase (front.ble back)
+      (brecBound (front.ble (nat_lit 48)) .exhaustedTable <|
         let q := primesRArray.get front
         let lhs' := lhs.mul q
-        (lhs'.ble m2).rec .tooLarge (r front lhs' (rhs.mul (q.sub (nat_lit 1)))))
-      ((rhs.ble lhs).rec
-        ((back.ble (nat_lit 47)).rec .exhaustedTable <|
+        brecSize (lhs'.ble m2) .tooLarge (r front lhs' (rhs.mul (q.sub (nat_lit 1)))))
+      (brecStop (rhs.ble lhs)
+        (brecBound (back.ble (nat_lit 47)) .exhaustedTable <|
           let q := primesRArray.get back.succ
           let lhs' := lhs.mul q
-          (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
+          brecSize (lhs'.ble m2) .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
         (.window back lhs rhs))
 
 /-- Emit children `⟨⌈goal / σ(p^k)⌉, cand * p^k, next⟩` for `k ≥ 1` with `p^k ≤ m`, up to and
@@ -61,10 +72,10 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
 @[expose] noncomputable def expChildrenK (fuel goal cand next m p : Nat) :
     Nat → List SageNode :=
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
-    (pk.ble m).rec []
+    brecExpBound (pk.ble m) []
       (let spk := ((pk.mul p).sub (nat_lit 1)).div (p.sub (nat_lit 1))
        let child : SageNode := ⟨ceilDivK goal spk, cand.mul pk, next⟩
-       (goal.ble spk).rec (child :: r (pk.mul p)) [child])
+       brecExpStop (goal.ble spk) (child :: r (pk.mul p)) [child])
 
 /-- Iterate `extend` from `front` onward and gather `expChildren` at each `.window` index. Returns
 `none` if it reads an index `≥ 49`. -/
@@ -75,7 +86,7 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
       none
       (some acc)
       (fun b lhs' rhs' ↦
-        (front.ble (nat_lit 48)).rec none <|
+        brecWheelBound (front.ble (nat_lit 48)) none <|
           let p := primesRArray.get front
           r front.succ b (lhs'.div p) (rhs'.div (p.sub (nat_lit 1)))
             (appendK (expChildrenK m.succ goal cand front.succ m p p) acc))
@@ -86,7 +97,7 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
 `≥ 49`. -/
 @[expose] noncomputable def childrenK (B goal cand i : Nat) :
     Option (List SageNode) :=
-  (i.ble (nat_lit 48)).rec none <|
+  brecChildBound (i.ble (nat_lit 48)) none <|
     let p0 := primesRArray.get i
     let m := B.div cand
     wheelChildrenK (nat_lit 50) (m.mul m) m goal cand i i (p0.mul m)
@@ -98,9 +109,9 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
   fun fuel ↦ fuel.rec (fun _ ↦ none) fun _ r stack ↦
     stack.rec (some true) fun node rest _ ↦
       node.rec fun goal cand i ↦
-        (goal.ble (nat_lit 1)).rec
+        brecStepGoal (goal.ble (nat_lit 1))
           ((childrenK B goal cand i).rec none (fun cs ↦ r (appendK cs rest)))
-          ((B.ble cand).rec (some false) (r rest))
+          (brecStepCand (B.ble cand) (some false) (r rest))
 
 /-- Decide whether no `m` with `1 ≤ m < B` has `sL ≤ σ m`. With
 `(B, sL) = (lcm (1..n), σ (lcm (1..n)))`, `some true` certifies that
