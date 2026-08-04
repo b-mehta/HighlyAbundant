@@ -194,11 +194,11 @@ theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
 
 /-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
 theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
-    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hn : 2 ≤ n)
     (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
     IsHighlyAbundant (lcmUpto n) := by
-  refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL
+  refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hn
     (children_of_childrenK hch) ?_
   intro c' hc'
   obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
