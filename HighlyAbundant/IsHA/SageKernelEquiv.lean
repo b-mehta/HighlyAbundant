@@ -19,12 +19,13 @@ Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Na
 
 namespace Sage
 
-private theorem appendK_eq_append (xs ys : List SageNode) : appendK xs ys = xs ++ ys := by
+@[simp, grind =] private theorem appendK_eq_append {xs ys : List SageNode} :
+    appendK xs ys = xs ++ ys := by
   induction xs with
   | nil => rfl
   | cons x _ ih => exact congrArg (x :: ·) ih
 
-private theorem extendKLoop_succ (n m2 hi lhs rhs : Nat) :
+private theorem extendKLoop_succ {n m2 hi lhs rhs : Nat} :
     extendKLoop (n + 1) m2 hi lhs rhs =
       if lhs ≥ rhs then .window hi lhs rhs
       else if hi + 1 < 49 then
@@ -32,26 +33,14 @@ private theorem extendKLoop_succ (n m2 hi lhs rhs : Nat) :
         let lhs' := lhs * q
         if lhs' > m2 then .tooLarge else extendKLoop n m2 (hi + 1) lhs' (rhs * (q - 1))
       else .exhaustedTable := by
-  simp only [extendKLoop, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    Nat.succ_le_succ_iff, ← Nat.not_le, ite_not]
-  rfl
+  simp only [extendKLoop, Bool.rec_eq, Nat.ble_eq]
+  grind
 
-private theorem extendKLoop_eq_extend (fuel m2 lo : Nat) :
-    ∀ hi lhs rhs, lo ≤ hi → extendKLoop fuel m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
-  induction fuel with
-  | zero => intro hi lhs rhs _; rfl
-  | succ n ih =>
-    intro hi lhs rhs hle
-    rw [extend, extendKLoop_succ, if_pos hle]
-    by_cases hw : lhs ≥ rhs
-    · simp only [hw, if_pos]
-    · simp only [hw, if_false]
-      by_cases hb : hi + 1 < 49
-      · simp only [hb, if_true]
-        by_cases ht : lhs * primesRArray.get (hi + 1) > m2
-        · simp only [ht, if_pos]
-        · simp only [ht, if_false, ih _ _ _ (hle.trans (Nat.le_succ hi))]
-      · simp only [hb, if_false]
+private theorem extendKLoop_eq_extend (fuel m2 lo hi lhs rhs : Nat) (hle : lo ≤ hi) :
+    extendKLoop fuel m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
+  induction fuel generalizing hi lhs rhs with
+  | zero => rfl
+  | succ n ih => grind [extend, extendKLoop_succ]
 
 private theorem extendK_eq_extend : extendK = extend := by
   funext fuel m2 lo hi lhs rhs
@@ -80,7 +69,7 @@ private theorem extendK_eq_extend : extendK = extend := by
             extendKLoop_eq_extend n m2 lo lo _ _ (Nat.le_refl lo)]
       · simp only [hb, if_false]
 
-private theorem expChildrenK_succ (n goal cand next m p pk : Nat) :
+private theorem expChildrenK_succ {n goal cand next m p pk : Nat} :
     expChildrenK (n + 1) goal cand next m p pk =
       if pk > m then []
       else
@@ -96,17 +85,10 @@ private theorem expChildrenK_eq_expChildren (fuel goal cand next m p pk : Nat) :
       expChildren fuel goal cand next m p pk := by
   induction fuel generalizing pk with
   | zero => rfl
-  | succ n ih =>
-    rw [expChildren, expChildrenK_succ]
-    by_cases hm : pk > m
-    · simp [hm]
-    · simp only [hm, if_false]
-      by_cases ht : (pk * p - 1) / (p - 1) ≥ goal
-      · simp [ht, List.map_cons, List.map_nil, fromSageNode]
-      · simp [ht, List.map_cons, fromSageNode, ih]
+  | succ n ih => grind [expChildren, expChildrenK_succ, fromSageNode]
 
-private theorem wheelChildrenK_succ (n m2 m goal cand lo hi lhs rhs : Nat)
-    (acc : List SageNode) :
+private theorem wheelChildrenK_succ {n m2 m goal cand lo hi lhs rhs : Nat}
+    {acc : List SageNode} :
     wheelChildrenK (n + 1) m2 m goal cand lo hi lhs rhs acc =
       match extend 50 m2 lo hi lhs rhs with
       | .exhaustedTable => none
@@ -117,8 +99,8 @@ private theorem wheelChildrenK_succ (n m2 m goal cand lo hi lhs rhs : Nat)
           wheelChildrenK n m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
             (expChildrenK (m + 1) goal cand (lo + 1) m p p ++ acc)
         else none := by
-  simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    extendK_eq_extend, appendK_eq_append]
+  simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff, extendK_eq_extend,
+    appendK_eq_append]
   cases extend 50 m2 lo hi lhs rhs <;> rfl
 
 private theorem wheelChildrenK_eq_wheelChildren (fuel m2 m goal cand lo hi lhs rhs : Nat)
@@ -132,9 +114,7 @@ private theorem wheelChildrenK_eq_wheelChildren (fuel m2 m goal cand lo hi lhs r
     cases extend 50 m2 lo hi lhs rhs with
     | exhaustedTable | tooLarge => rfl
     | window b lhs' rhs' =>
-      by_cases h : lo < 49
-      · simp only [h, if_true, ih, List.map_append, expChildrenK_eq_expChildren]
-      · simp only [h, if_false, Option.map]
+      grind [expChildrenK_eq_expChildren]
 
 private theorem childrenK_eq_children (B goal cand i : Nat) :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
@@ -145,7 +125,7 @@ private theorem childrenK_eq_children (B goal cand i : Nat) :
       i i (primesRArray.get i * (B / cand)) (goal * (primesRArray.get i - 1)) []
   · simp only [h, ↓reduceIte, Option.map_none]
 
-private theorem stepK_succ_cons (B n goal cand i : Nat) (rest : List SageNode) :
+private theorem stepK_succ_cons {B n goal cand i : Nat} {rest : List SageNode} :
     stepK B (n + 1) (⟨goal, cand, i⟩ :: rest) =
       if goal ≤ 1 then
         if cand < B then some false else stepK B n rest
