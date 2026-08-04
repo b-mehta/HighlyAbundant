@@ -25,6 +25,7 @@ Specification and correctness for the search in `HighlyAbundant.Sage`. The witne
 least the `j`-th prime. The search answers `some true` exactly when the root witness set is empty,
 which for `(B, sL) = (lcmUpto n, σ₁ (lcmUpto n))` says `lcmUpto n` is highly abundant.
 -/
+-- todo: put this in the lakefile not just here
 set_option linter.mathlibStandardSet true
 
 open Nat Finset ArithmeticFunction
@@ -65,6 +66,12 @@ private lemma primesRArray_get_eq_nth_aux (i : Fin 49) :
 private lemma primesRArray_get_eq_nth {i : ℕ} (hi : i < 49) :
     primesRArray.get i = p_ i :=
   primesRArray_get_eq_nth_aux ⟨i, hi⟩
+
+private lemma nth_prime_strictMono : StrictMono (nth Nat.Prime) :=
+  nth_strictMono infinite_setOfPred_prime
+
+private lemma nth_prime_le {i j : ℕ} (h : i ≤ j) : p_ i ≤ p_ j :=
+  nth_prime_strictMono.monotone h
 
 /-! ### Specification: `P` and `W` -/
 
@@ -145,16 +152,9 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Products over prime windows -/
 
-/-- Factoring the prime-window product at its low end. -/
-private theorem prod_prime_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
-    ∏ i ∈ Icc lo B, p_ i = p_ lo * ∏ i ∈ Icc (lo + 1) B, p_ i := by
-  rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
-    Ico_add_one_right_eq_Icc]
-
-/-- Factoring the `p - 1` window product at its low end. -/
-private theorem prod_prime_sub_one_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
-    ∏ i ∈ Icc lo B, (p_ i - 1)
-      = (p_ lo - 1) * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1) := by
+/-- Factoring a product over `Icc lo B` at its low end. -/
+private theorem prod_Icc_succ_lo {M : Type*} [CommMonoid M] {lo B : ℕ} (f : ℕ → M) (hB : lo ≤ B) :
+    ∏ i ∈ Icc lo B, f i = f lo * ∏ i ∈ Icc (lo + 1) B, f i := by
   rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
     Ico_add_one_right_eq_Icc]
 
@@ -198,10 +198,10 @@ private theorem sigma_bound_window {t lo : ℕ} (B : ℕ) (ht : t ≠ 0) (hP : t
     calc σ₁ (p ^ k * t') * ∏ i ∈ Icc lo B, (p_ i - 1)
         = σ₁ (p ^ k) * (p_ lo - 1) * (σ₁ t' * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1)) := by
           rw [isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
-            prod_prime_sub_one_succ_lo (by lia)]
+            prod_Icc_succ_lo (fun i ↦ p_ i - 1) (by lia)]
           ring
       _ ≤ p ^ k * p_ lo * (t' * ∏ i ∈ Icc (lo + 1) B, p_ i) := by gcongr
-      _ = p ^ k * t' * ∏ i ∈ Icc lo B, p_ i := by grind [= prod_prime_succ_lo]
+      _ = p ^ k * t' * ∏ i ∈ Icc lo B, p_ i := by grind [= prod_Icc_succ_lo]
 
 /-- `∏ p_ i ≤ t` over `Icc lo (lo + j - 1)`, for `t ∈ P lo` with `j ≥ 1`
 distinct primes and `lo + j ≤ 49`. -/
@@ -226,7 +226,7 @@ private theorem primesProd_le_t {t lo : ℕ} (ht : t ≠ 0) (hP : t ∈ P lo) (j
       rw [(by lia : (lo + 1) + (j - 1) - 1 = lo + j - 1)] at IH
       calc ∏ i ∈ Icc lo (lo + j - 1), p_ i
           = p_ lo * ∏ i ∈ Icc (lo + 1) (lo + j - 1), p_ i :=
-            prod_prime_succ_lo (by lia)
+            prod_Icc_succ_lo _ (by lia)
         _ ≤ p ^ k * t' := by gcongr
     · obtain rfl : j = 1 := by lia
       rw [Nat.add_sub_cancel, Icc_self, prod_singleton]
@@ -279,8 +279,7 @@ with `t ≤ m`, `t ∈ P lo`, `t ≥ 2` gives `False`. -/
     have hb := primesRArray_get_eq_nth hlt
     grind [= prod_Icc_succ_top, Icc_eq_empty]
   | _ =>
-    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
-      = prod_prime_sub_one_succ_lo]
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_Icc_succ_lo]
 
 
 /-! ### Window invariants -/
@@ -295,8 +294,7 @@ private theorem extend_window_invariant {fuel m goal lo hi lhs rhs b lhs' rhs' :
     lhs' = m * ∏ i ∈ Icc lo b, p_ i ∧ rhs' = goal * ∏ i ∈ Icc lo b, (p_ i - 1) ∧
     hi ≤ b ∧ lo ≤ b := by
   fun_induction extend with
-    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
-      = prod_prime_sub_one_succ_lo]
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_Icc_succ_lo]
 
 /-! ### Degenerate case: `lhs = 0` -/
 
@@ -438,10 +436,10 @@ private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / can
     have hp_prime : (p_ lo).Prime := prime_nth_prime lo
     obtain ⟨hlhs', hrhs', _, hlo_b⟩ := extend_window_invariant hlhs hrhs hlo_le hext
     replace hlhs : lhs' / p = m * ∏ i ∈ Icc (lo + 1) b, p_ i := by
-      rw [hp, hlhs', prod_prime_succ_lo hlo_b, mul_left_comm,
+      rw [hp, hlhs', prod_Icc_succ_lo _ hlo_b, mul_left_comm,
         Nat.mul_div_cancel_left _ hp_prime.pos]
     replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (lo + 1) b, (p_ i - 1) := by
-      rw [hp, hrhs', prod_prime_sub_one_succ_lo hlo_b, mul_left_comm,
+      rw [hp, hrhs', prod_Icc_succ_lo _ hlo_b, mul_left_comm,
         Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
     by_cases hdvd : p_ lo ∣ t
     · obtain ⟨k, s, hk₀, hpk_t, hs₀, _, hcoprime⟩ :=
@@ -489,13 +487,13 @@ private theorem child_witness_to_parent {B goal cand i j k : ℕ}
     hpk_ge2.trans (Nat.le_mul_of_pos_right _ (Nat.pos_of_ne_zero ht'1))
   have hcop : Nat.Coprime (p ^ k) t' := by
     refine (hpPrime.coprime_iff_not_dvd.mpr fun hpdvd => ?_).pow_left _
-    linarith [ht'P p hpPrime hpdvd, nth_strictMono infinite_setOf_prime (lt_succ_self j)]
+    linarith [ht'P p hpPrime hpdvd, nth_prime_strictMono (lt_succ_self j)]
   refine ⟨⟨⟨by lia, fun q hqPrime hqDvd => ?_⟩, by rwa [← mul_assoc], ?_⟩, by lia⟩
   · rcases hqPrime.dvd_mul.mp hqDvd with h1 | h2
     · obtain rfl : q = p :=
         (prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
-      exact (nth_strictMono infinite_setOf_prime).monotone hmi
-    · exact ((nth_strictMono infinite_setOf_prime).monotone (by lia)).trans (ht'P q hqPrime h2)
+      exact nth_prime_le hmi
+    · exact (nth_prime_le (by lia)).trans (ht'P q hqPrime h2)
   · have hmul : σ₁ (p ^ k * t') = σ₁ (p ^ k) * σ₁ t' :=
       isMultiplicative_sigma.map_mul_of_coprime hcop
     have hpk_pos : σ₁ (p ^ k) ≠ 0 := by grind [sigma_pos, pow_ne_zero, hpPrime.pos]
@@ -536,29 +534,6 @@ theorem children_spec {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
 
 /-! ### Step correctness and top-level result -/
 
-/-- `step = some true` gives an empty witness set for every node on the stack. -/
-theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
-    (h : step B fuel stack = some true) :
-    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := by
-  fun_induction step with
-  | case1 | case2 | case3 | case5 => grind
-  | case4 _ _ cand _ _ _ _ ih =>
-    simp only [List.mem_cons, forall_eq_or_imp, Prod.forall]
-    refine ⟨?_, fun a b c hm => ih h (a, b, c) hm⟩
-    rw [Set.eq_empty_iff_forall_notMem]
-    rintro t ⟨⟨ht1, _⟩, htlt, _⟩
-    linarith [Nat.le_mul_of_pos_right cand (Nat.pos_of_ne_zero ht1)]
-  | case6 _ _ _ _ _ _ _ hch ih1 =>
-    intro node hnode
-    rcases List.mem_cons.mp hnode with rfl | hnode
-    · rw [Set.eq_empty_iff_forall_notMem]
-      intro t htW
-      obtain rfl | h1 := eq_or_ne t 1
-      · grind [sigma_one]
-      obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
-      grind [Set.not_nonempty_iff_eq_empty]
-    · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
-
 /-- A node with `2 ≤ goal` has an empty witness set once all its children do. -/
 theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
     (hgoal : 2 ≤ goal)
@@ -572,6 +547,20 @@ theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × �
   · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
     grind [Set.not_nonempty_iff_eq_empty]
 
+/-- `step = some true` gives an empty witness set for every node on the stack. -/
+theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
+    (h : step B fuel stack = some true) :
+    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := by
+  fun_induction step with
+  | case1 | case2 | case3 | case5 => grind
+  | case4 _ goal cand i _ _ _ ih =>
+    suffices ∀ t ∈ W B goal cand i, False by grind
+    intro t
+    have := Nat.le_mul_of_pos_right (m := t) cand
+    grind
+  | case6 _ _ _ _ _ _ _ hch ih1 =>
+    simp_all [W_eq_empty_of_partial (by lia) hch (fun c ↦ by grind)]
+
 /-- An empty root witness set makes `lcm (1..n)` highly abundant. -/
 theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
     (hW : W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = ∅) :
@@ -584,20 +573,11 @@ theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
 
 /-- Certify `lcm (1..n)` from an empty witness set for each root child. -/
 theorem highlyAbundantLcm_correct_partial_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (hsL : 2 ≤ σ₁ (lcmUpto n))
+    (hn : 2 ≤ n)
     (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, W (lcmUpto n) c.1 c.2.1 c.2.2 = ∅) :
     IsHighlyAbundant (lcmUpto n) :=
-  isHighlyAbundant_of_root_W_eq_empty (W_eq_empty_of_partial hsL hch hcs)
-
-/-- Certify `lcm (1..n)` by expanding the root with `children` and running `step` on
-each child subtree separately. -/
-theorem highlyAbundantLcm_correct_partial {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
-    (hsL : 2 ≤ σ₁ (lcmUpto n))
-    (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, step (lcmUpto n) searchFuel [c] = some true) :
-    IsHighlyAbundant (lcmUpto n) :=
-  highlyAbundantLcm_correct_partial_W hsL hch
-    (fun c hc => step_true (hcs c hc) c List.mem_cons_self)
+  isHighlyAbundant_of_root_W_eq_empty
+    (W_eq_empty_of_partial (two_le_sigma_lcmUpto hn) hch hcs)
 
 end Sage
