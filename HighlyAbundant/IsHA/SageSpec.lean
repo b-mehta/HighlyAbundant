@@ -67,6 +67,12 @@ private lemma primesRArray_get_eq_nth {i : ℕ} (hi : i < 49) :
     primesRArray.get i = p_ i :=
   primesRArray_get_eq_nth_aux ⟨i, hi⟩
 
+private lemma nth_prime_lt {i j : ℕ} (h : i < j) : p_ i < p_ j :=
+  nth_strictMono infinite_setOfPred_prime h
+
+private lemma nth_prime_le {i j : ℕ} (h : i ≤ j) : p_ i ≤ p_ j :=
+  (nth_strictMono infinite_setOfPred_prime).monotone h
+
 /-! ### Specification: `P` and `W` -/
 
 /-- `P j`: nonzero naturals whose every prime factor is at least the `j`-th prime. -/
@@ -481,13 +487,13 @@ private theorem child_witness_to_parent {B goal cand i j k : ℕ}
     hpk_ge2.trans (Nat.le_mul_of_pos_right _ (Nat.pos_of_ne_zero ht'1))
   have hcop : Nat.Coprime (p ^ k) t' := by
     refine (hpPrime.coprime_iff_not_dvd.mpr fun hpdvd => ?_).pow_left _
-    linarith [ht'P p hpPrime hpdvd, nth_strictMono infinite_setOfPred_prime (lt_succ_self j)]
+    linarith [ht'P p hpPrime hpdvd, nth_prime_lt (lt_succ_self j)]
   refine ⟨⟨⟨by lia, fun q hqPrime hqDvd => ?_⟩, by rwa [← mul_assoc], ?_⟩, by lia⟩
   · rcases hqPrime.dvd_mul.mp hqDvd with h1 | h2
     · obtain rfl : q = p :=
         (prime_dvd_prime_iff_eq hqPrime hpPrime).mp (hqPrime.dvd_of_dvd_pow h1)
-      exact (nth_strictMono infinite_setOfPred_prime).monotone hmi
-    · exact ((nth_strictMono infinite_setOfPred_prime).monotone (by lia)).trans (ht'P q hqPrime h2)
+      exact nth_prime_le hmi
+    · exact (nth_prime_le (by lia)).trans (ht'P q hqPrime h2)
   · have hmul : σ₁ (p ^ k * t') = σ₁ (p ^ k) * σ₁ t' :=
       isMultiplicative_sigma.map_mul_of_coprime hcop
     have hpk_pos : σ₁ (p ^ k) ≠ 0 := by grind [sigma_pos, pow_ne_zero, hpPrime.pos]
