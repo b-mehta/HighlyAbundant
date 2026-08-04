@@ -55,10 +55,13 @@ lemma pow_le_sigma {k n : ℕ} (hn : n ≠ 0) : n ^ k ≤ ArithmeticFunction.sig
 lemma le_sigma_one {n : ℕ} (hn : n ≠ 0) : n ≤ σ₁ n := by
   simpa using pow_le_sigma (k := 1) hn
 
+/-- Every `m` in `1..n` divides `lcm (1..n)`. -/
+lemma dvd_lcmUpto {m n : ℕ} (hm : 1 ≤ m) (hmn : m ≤ n) : m ∣ lcmUpto n :=
+  Finset.dvd_lcm (f := id) (Finset.mem_Icc.mpr ⟨hm, hmn⟩)
+
 /-- For `2 ≤ n` the divisor sum of `lcm (1..n)` is at least `2`. -/
 lemma two_le_sigma_lcmUpto {n : ℕ} (hn : 2 ≤ n) : 2 ≤ σ₁ (lcmUpto n) :=
-  le_trans
-    (Nat.le_of_dvd (lcmUpto_pos n) (Finset.dvd_lcm (f := id) (Finset.mem_Icc.mpr ⟨one_le_two, hn⟩)))
+  le_trans (Nat.le_of_dvd (lcmUpto_pos n) (dvd_lcmUpto one_le_two hn))
     (le_sigma_one (lcmUpto_ne_zero n))
 
 lemma cast_sigma_one_apply_prime_pow_aux' {α : Type*} [Field α] [CharZero α] {p k : ℕ}
