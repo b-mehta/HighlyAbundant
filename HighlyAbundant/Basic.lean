@@ -55,7 +55,6 @@ lemma pow_le_sigma {k n : ℕ} (hn : n ≠ 0) : n ^ k ≤ ArithmeticFunction.sig
 lemma le_sigma_one {n : ℕ} (hn : n ≠ 0) : n ≤ σ₁ n := by
   simpa using pow_le_sigma (k := 1) hn
 
-
 lemma cast_sigma_one_apply_prime_pow_aux' {α : Type*} [Field α] [CharZero α] {p k : ℕ}
     (hp : p.Prime) :
     (σ₁ (p ^ k) : α) = (p ^ (k + 1) - 1 : ℕ) / (p - 1 : ℕ) := by
