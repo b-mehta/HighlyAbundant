@@ -25,6 +25,7 @@ Specification and correctness for the search in `HighlyAbundant.Sage`. The witne
 least the `j`-th prime. The search answers `some true` exactly when the root witness set is empty,
 which for `(B, sL) = (lcmUpto n, σ₁ (lcmUpto n))` says `lcmUpto n` is highly abundant.
 -/
+-- todo: put this in the lakefile not just here
 set_option linter.mathlibStandardSet true
 
 open Nat Finset ArithmeticFunction
@@ -536,29 +537,6 @@ theorem children_spec {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
 
 /-! ### Step correctness and top-level result -/
 
-/-- `step = some true` gives an empty witness set for every node on the stack. -/
-theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
-    (h : step B fuel stack = some true) :
-    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := by
-  fun_induction step with
-  | case1 | case2 | case3 | case5 => grind
-  | case4 _ _ cand _ _ _ _ ih =>
-    simp only [List.mem_cons, forall_eq_or_imp, Prod.forall]
-    refine ⟨?_, fun a b c hm => ih h (a, b, c) hm⟩
-    rw [Set.eq_empty_iff_forall_notMem]
-    rintro t ⟨⟨ht1, _⟩, htlt, _⟩
-    linarith [Nat.le_mul_of_pos_right cand (Nat.pos_of_ne_zero ht1)]
-  | case6 _ _ _ _ _ _ _ hch ih1 =>
-    intro node hnode
-    rcases List.mem_cons.mp hnode with rfl | hnode
-    · rw [Set.eq_empty_iff_forall_notMem]
-      intro t htW
-      obtain rfl | h1 := eq_or_ne t 1
-      · grind [sigma_one]
-      obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, htW, h1⟩
-      grind [Set.not_nonempty_iff_eq_empty]
-    · exact ih1 h _ (List.mem_append.mpr (Or.inr hnode))
-
 /-- A node with `2 ≤ goal` has an empty witness set once all its children do. -/
 theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
     (hgoal : 2 ≤ goal)
@@ -571,6 +549,20 @@ theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × �
   · grind [sigma_one]
   · obtain ⟨c, hc, hwc⟩ := (children_spec hch).mp ⟨t, ht, h1⟩
     grind [Set.not_nonempty_iff_eq_empty]
+
+/-- `step = some true` gives an empty witness set for every node on the stack. -/
+theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
+    (h : step B fuel stack = some true) :
+    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := by
+  fun_induction step with
+  | case1 | case2 | case3 | case5 => grind
+  | case4 _ goal cand i _ _ _ ih =>
+    suffices ∀ t ∈ W B goal cand i, False by grind
+    intro t
+    have := Nat.le_mul_of_pos_right (m := t) cand
+    grind
+  | case6 _ _ _ _ _ _ _ hch ih1 =>
+    simp_all [W_eq_empty_of_partial (by lia) hch (fun c ↦ by grind)]
 
 /-- An empty root witness set makes `lcm (1..n)` highly abundant. -/
 theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
