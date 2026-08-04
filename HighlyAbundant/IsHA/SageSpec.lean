@@ -146,16 +146,9 @@ private lemma card_primeFactors_coprime {t t' p k : ℕ} (hp_prime : p.Prime)
 
 /-! ### Products over prime windows -/
 
-/-- Factoring the prime-window product at its low end. -/
-private theorem prod_prime_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
-    ∏ i ∈ Icc lo B, p_ i = p_ lo * ∏ i ∈ Icc (lo + 1) B, p_ i := by
-  rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
-    Ico_add_one_right_eq_Icc]
-
-/-- Factoring the `p - 1` window product at its low end. -/
-private theorem prod_prime_sub_one_succ_lo {lo B : ℕ} (hB : lo ≤ B) :
-    ∏ i ∈ Icc lo B, (p_ i - 1)
-      = (p_ lo - 1) * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1) := by
+/-- Factoring a product over `Icc lo B` at its low end. -/
+private theorem prod_Icc_succ_lo {M : Type*} [CommMonoid M] {lo B : ℕ} (f : ℕ → M) (hB : lo ≤ B) :
+    ∏ i ∈ Icc lo B, f i = f lo * ∏ i ∈ Icc (lo + 1) B, f i := by
   rw [← Ico_add_one_right_eq_Icc, prod_eq_prod_Ico_succ_bot (by lia),
     Ico_add_one_right_eq_Icc]
 
@@ -199,10 +192,10 @@ private theorem sigma_bound_window {t lo : ℕ} (B : ℕ) (ht : t ≠ 0) (hP : t
     calc σ₁ (p ^ k * t') * ∏ i ∈ Icc lo B, (p_ i - 1)
         = σ₁ (p ^ k) * (p_ lo - 1) * (σ₁ t' * ∏ i ∈ Icc (lo + 1) B, (p_ i - 1)) := by
           rw [isMultiplicative_sigma.map_mul_of_coprime (hcoprime.pow_left k),
-            prod_prime_sub_one_succ_lo (by lia)]
+            prod_Icc_succ_lo (fun i ↦ p_ i - 1) (by lia)]
           ring
       _ ≤ p ^ k * p_ lo * (t' * ∏ i ∈ Icc (lo + 1) B, p_ i) := by gcongr
-      _ = p ^ k * t' * ∏ i ∈ Icc lo B, p_ i := by grind [= prod_prime_succ_lo]
+      _ = p ^ k * t' * ∏ i ∈ Icc lo B, p_ i := by grind [= prod_Icc_succ_lo]
 
 /-- `∏ p_ i ≤ t` over `Icc lo (lo + j - 1)`, for `t ∈ P lo` with `j ≥ 1`
 distinct primes and `lo + j ≤ 49`. -/
@@ -227,7 +220,7 @@ private theorem primesProd_le_t {t lo : ℕ} (ht : t ≠ 0) (hP : t ∈ P lo) (j
       rw [(by lia : (lo + 1) + (j - 1) - 1 = lo + j - 1)] at IH
       calc ∏ i ∈ Icc lo (lo + j - 1), p_ i
           = p_ lo * ∏ i ∈ Icc (lo + 1) (lo + j - 1), p_ i :=
-            prod_prime_succ_lo (by lia)
+            prod_Icc_succ_lo _ (by lia)
         _ ≤ p ^ k * t' := by gcongr
     · obtain rfl : j = 1 := by lia
       rw [Nat.add_sub_cancel, Icc_self, prod_singleton]
@@ -280,8 +273,7 @@ with `t ≤ m`, `t ∈ P lo`, `t ≥ 2` gives `False`. -/
     have hb := primesRArray_get_eq_nth hlt
     grind [= prod_Icc_succ_top, Icc_eq_empty]
   | _ =>
-    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
-      = prod_prime_sub_one_succ_lo]
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_Icc_succ_lo]
 
 
 /-! ### Window invariants -/
@@ -296,8 +288,7 @@ private theorem extend_window_invariant {fuel m goal lo hi lhs rhs b lhs' rhs' :
     lhs' = m * ∏ i ∈ Icc lo b, p_ i ∧ rhs' = goal * ∏ i ∈ Icc lo b, (p_ i - 1) ∧
     hi ≤ b ∧ lo ≤ b := by
   fun_induction extend with
-    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_prime_succ_lo,
-      = prod_prime_sub_one_succ_lo]
+    grind [= prod_Icc_succ_top, Icc_eq_empty, = prod_Icc_succ_lo]
 
 /-! ### Degenerate case: `lhs = 0` -/
 
@@ -439,10 +430,10 @@ private theorem wheelChildren_witness {B cand m goal : ℕ} (hmdef : m = B / can
     have hp_prime : (p_ lo).Prime := prime_nth_prime lo
     obtain ⟨hlhs', hrhs', _, hlo_b⟩ := extend_window_invariant hlhs hrhs hlo_le hext
     replace hlhs : lhs' / p = m * ∏ i ∈ Icc (lo + 1) b, p_ i := by
-      rw [hp, hlhs', prod_prime_succ_lo hlo_b, mul_left_comm,
+      rw [hp, hlhs', prod_Icc_succ_lo _ hlo_b, mul_left_comm,
         Nat.mul_div_cancel_left _ hp_prime.pos]
     replace hrhs : rhs' / (p - 1) = goal * ∏ i ∈ Icc (lo + 1) b, (p_ i - 1) := by
-      rw [hp, hrhs', prod_prime_sub_one_succ_lo hlo_b, mul_left_comm,
+      rw [hp, hrhs', prod_Icc_succ_lo _ hlo_b, mul_left_comm,
         Nat.mul_div_cancel_left _ (Nat.sub_pos_of_lt hp_prime.one_lt)]
     by_cases hdvd : p_ lo ∣ t
     · obtain ⟨k, s, hk₀, hpk_t, hs₀, _, hcoprime⟩ :=
