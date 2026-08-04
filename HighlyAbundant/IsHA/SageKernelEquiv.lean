@@ -24,61 +24,76 @@ private theorem appendK_eq_append (xs ys : List SageNode) : appendK xs ys = xs +
   | nil => rfl
   | cons x _ ih => exact congrArg (x :: ·) ih
 
-private theorem extendKLoop_succ (n m2 hi lhs rhs : Nat) :
-    extendKLoop (n + 1) m2 hi lhs rhs =
-      if lhs ≥ rhs then .window hi lhs rhs
-      else if hi + 1 < 49 then
-        let q := primesRArray.get (hi + 1)
-        let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extendKLoop n m2 (hi + 1) lhs' (rhs * (q - 1))
-      else .exhaustedTable := by
-  simp only [extendKLoop, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    Nat.succ_le_succ_iff, ← Nat.not_le, ite_not]
+private theorem extendKGas_zero (m2 hi lhs rhs : Nat) :
+    extendKGas m2 0 hi lhs rhs = if lhs ≥ rhs then .window hi lhs rhs else .exhaustedTable := by
+  simp only [extendKGas, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
   rfl
 
-private theorem extendKLoop_eq_extend (fuel m2 lo : Nat) :
-    ∀ hi lhs rhs, lo ≤ hi → extendKLoop fuel m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
-  induction fuel with
-  | zero => intro hi lhs rhs _; rfl
-  | succ n ih =>
-    intro hi lhs rhs hle
-    rw [extend, extendKLoop_succ, if_pos hle]
+private theorem extendKGas_succ (m2 g hi lhs rhs : Nat) :
+    extendKGas m2 (g + 1) hi lhs rhs =
+      if lhs ≥ rhs then .window hi lhs rhs
+      else
+        let q := primesRArray.get (hi + 1)
+        let lhs' := lhs * q
+        if lhs' > m2 then .tooLarge else extendKGas m2 g (hi + 1) lhs' (rhs * (q - 1)) := by
+  simp only [extendKGas, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
+  rfl
+
+private theorem extendKGas_eq_extend (m2 lo : Nat) :
+    ∀ gas fuel hi lhs rhs, gas = 48 - hi → lo ≤ hi → gas < fuel →
+      extendKGas m2 gas hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
+  intro gas
+  induction gas with
+  | zero =>
+    intro fuel hi lhs rhs hgas hle hgf
+    obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by lia⟩
+    rw [extendKGas_zero, extend, if_pos hle]
     by_cases hw : lhs ≥ rhs
     · simp only [hw, if_pos]
-    · simp only [hw, if_false]
-      by_cases hb : hi + 1 < 49
-      · simp only [hb, if_true]
-        by_cases ht : lhs * primesRArray.get (hi + 1) > m2
-        · simp only [ht, if_pos]
-        · simp only [ht, if_false, ih _ _ _ (hle.trans (Nat.le_succ hi))]
-      · simp only [hb, if_false]
+    · have hb : ¬ (hi + 1 < 49) := by lia
+      simp only [hw, if_false, hb]
+  | succ g ih =>
+    intro fuel hi lhs rhs hgas hle hgf
+    obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by lia⟩
+    rw [extendKGas_succ, extend, if_pos hle]
+    by_cases hw : lhs ≥ rhs
+    · simp only [hw, if_pos]
+    · have hb : hi + 1 < 49 := by lia
+      simp only [hw, if_false, hb, if_true]
+      by_cases ht : lhs * primesRArray.get (hi + 1) > m2
+      · simp only [ht, if_pos]
+      · simp only [ht, if_false]
+        exact ih f (hi + 1) _ _ (by lia) (hle.trans (Nat.le_succ hi)) (by lia)
 
-private theorem extendK_eq_extend : extendK = extend := by
-  funext fuel m2 lo hi lhs rhs
-  cases fuel with
-  | zero => rfl
-  | succ n =>
-    by_cases hle : lo ≤ hi
-    · have h1 : extendK (n + 1) m2 lo hi lhs rhs = extendKLoop (n + 1) m2 hi lhs rhs := by
-        simp only [extendK, Bool.rec_eq, Nat.ble_eq, if_pos hle]
-      rw [h1, extendKLoop_eq_extend (n + 1) m2 lo hi lhs rhs hle]
-    · have h1 : extendK (n + 1) m2 lo hi lhs rhs =
-          if lo < 49 then
-            let q := primesRArray.get lo
-            let lhs' := lhs * q
-            if lhs' > m2 then .tooLarge else extendKLoop n m2 lo lhs' (rhs * (q - 1))
-          else .exhaustedTable := by
-        simp only [extendK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff, if_neg hle,
-          ← Nat.not_le, ite_not]
-        rfl
-      rw [h1, extend, if_neg hle]
-      by_cases hb : lo < 49
-      · simp only [hb, if_true]
-        by_cases ht : lhs * primesRArray.get lo > m2
-        · simp only [ht, if_pos]
-        · simp only [ht, if_false,
-            extendKLoop_eq_extend n m2 lo lo _ _ (Nat.le_refl lo)]
-      · simp only [hb, if_false]
+private theorem extendKLoop_eq_extend (m2 lo fuel hi lhs rhs : Nat)
+    (hle : lo ≤ hi) (hf : 49 ≤ fuel) :
+    extendKLoop m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs :=
+  extendKGas_eq_extend m2 lo (48 - hi) fuel hi lhs rhs rfl hle (by lia)
+
+private theorem extendK_eq_extend (fuel m2 lo hi lhs rhs : Nat) (hf : 50 ≤ fuel) :
+    extendK fuel m2 lo hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
+  obtain ⟨n, rfl⟩ : ∃ n, fuel = n + 1 := ⟨fuel - 1, by lia⟩
+  by_cases hle : lo ≤ hi
+  · have h1 : extendK (n + 1) m2 lo hi lhs rhs = extendKLoop m2 hi lhs rhs := by
+      simp only [extendK, Bool.rec_eq, Nat.ble_eq, if_pos hle]
+    rw [h1, extendKLoop_eq_extend m2 lo (n + 1) hi lhs rhs hle (by lia)]
+  · have h1 : extendK (n + 1) m2 lo hi lhs rhs =
+        if lo < 49 then
+          let q := primesRArray.get lo
+          let lhs' := lhs * q
+          if lhs' > m2 then .tooLarge else extendKLoop m2 lo lhs' (rhs * (q - 1))
+        else .exhaustedTable := by
+      simp only [extendK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff, if_neg hle,
+        ← Nat.not_le, ite_not]
+      rfl
+    rw [h1, extend, if_neg hle]
+    by_cases hb : lo < 49
+    · simp only [hb, if_true]
+      by_cases ht : lhs * primesRArray.get lo > m2
+      · simp only [ht, if_pos]
+      · simp only [ht, if_false,
+          extendKLoop_eq_extend m2 lo n lo _ _ (Nat.le_refl lo) (by lia)]
+    · simp only [hb, if_false]
 
 private theorem expChildrenK_succ (n goal cand next m p pk : Nat) :
     expChildrenK (n + 1) goal cand next m p pk =
@@ -118,7 +133,7 @@ private theorem wheelChildrenK_succ (n m2 m goal cand lo hi lhs rhs : Nat)
             (expChildrenK (m + 1) goal cand (lo + 1) m p p ++ acc)
         else none := by
   simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    extendK_eq_extend, appendK_eq_append]
+    extendK_eq_extend 50 m2 lo hi lhs rhs (Nat.le_refl 50), appendK_eq_append]
   cases extend 50 m2 lo hi lhs rhs <;> rfl
 
 private theorem wheelChildrenK_eq_wheelChildren (fuel m2 m goal cand lo hi lhs rhs : Nat)
