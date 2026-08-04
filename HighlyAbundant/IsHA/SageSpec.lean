@@ -582,15 +582,6 @@ theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
   have hmW : m ∈ W (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 := by grind [Nat.Prime.two_le]
   rwa [hW] at hmW
 
-/-- For `2 ≤ n` the divisor sum of `lcm (1..n)` is at least `2`. -/
-lemma two_le_sigma_lcmUpto {n : ℕ} (hn : 2 ≤ n) : 2 ≤ σ₁ (lcmUpto n) :=
-  calc (2 : ℕ) ≤ lcmUpto n :=
-        Nat.le_of_dvd (lcmUpto_pos n) (Finset.dvd_lcm (f := id) (Finset.mem_Icc.mpr ⟨one_le_two, hn⟩))
-    _ ≤ σ₁ (lcmUpto n) := by
-        rw [sigma_one_apply]
-        exact Finset.single_le_sum (f := id) (fun i _ ↦ Nat.zero_le i)
-          (Nat.mem_divisors_self _ (lcmUpto_ne_zero n))
-
 /-- Certify `lcm (1..n)` from an empty witness set for each root child. -/
 theorem highlyAbundantLcm_correct_partial_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
     (hn : 2 ≤ n)
