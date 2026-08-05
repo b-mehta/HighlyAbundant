@@ -36,7 +36,7 @@ jobs:
           LEAN_NUM_THREADS: "2"
         run: |
           set -u
-          git checkout HEAD~1 -- HighlyAbundant/IsHA/SageKernel.lean \
+          git checkout 3a07f34 -- HighlyAbundant/IsHA/SageKernel.lean \
             HighlyAbundant/IsHA/SageKernelEquiv.lean
           lake build HighlyAbundant.IsHA.WCertsTactic HighlyAbundant.IsHA.SageKernelBeq
           start=$(date +%s)
@@ -51,7 +51,7 @@ jobs:
           LEAN_NUM_THREADS: "2"
         run: |
           set -u
-          git checkout HEAD -- HighlyAbundant/IsHA/SageKernel.lean \
+          git checkout 49b2df8 -- HighlyAbundant/IsHA/SageKernel.lean \
             HighlyAbundant/IsHA/SageKernelEquiv.lean
           lake build HighlyAbundant.IsHA.WCertsTactic HighlyAbundant.IsHA.SageKernelBeq
           start=$(date +%s)
