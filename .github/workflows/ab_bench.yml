@@ -30,6 +30,28 @@ jobs:
           lake exe cache get || true
           lake build HighlyAbundant.IsHA.WCertsTactic HighlyAbundant.IsHA.SageKernelBeq
 
+      - name: Interleaved wall times at the small size
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "2"
+        run: |
+          set -u
+          for round in 1 2 3; do
+            for v in 3a07f34:base 49b2df8:emit; do
+              sha=${v%%:*}; lbl=${v##*:}
+              if [ $(( round % 2 )) -eq 0 ]; then
+                case $lbl in base) sha=49b2df8; lbl=emit;; emit) sha=3a07f34; lbl=base;; esac
+              fi
+              git checkout $sha -- HighlyAbundant/IsHA/SageKernel.lean \
+                HighlyAbundant/IsHA/SageKernelEquiv.lean
+              lake build HighlyAbundant.IsHA.WCertsTactic HighlyAbundant.IsHA.SageKernelBeq \
+                > /dev/null 2>&1
+              start=$(date +%s%N)
+              lake env lean -j 2 HighlyAbundant/IsHA/BenchN83.lean > /dev/null 2>&1
+              echo "round=$round variant=$lbl exit=$? ms=$(( ($(date +%s%N) - start) / 1000000 ))"
+            done
+          done
+
       - name: Unfold counts before the change
         shell: bash
         env:
