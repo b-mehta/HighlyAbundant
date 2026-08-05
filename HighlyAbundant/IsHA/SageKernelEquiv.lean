@@ -19,6 +19,9 @@ Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Na
 
 namespace Sage
 
+/-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
+def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
+
 @[simp, grind =] private theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
