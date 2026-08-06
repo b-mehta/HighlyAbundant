@@ -4,8 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.IsHA.SageKernel
-import HighlyAbundant.IsHA.SageSpec
+module
+
+public import HighlyAbundant.IsHA.SageKernel
+public import HighlyAbundant.IsHA.SageSpec
+
+public section
 
 open Nat
 
