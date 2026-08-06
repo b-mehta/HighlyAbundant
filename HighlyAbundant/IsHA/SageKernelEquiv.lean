@@ -60,9 +60,8 @@ private theorem expChildrenK_succ {n goal cand next m p pk : Nat} :
       if pk > m then []
       else
         let spk := (pk * p - 1) / (p - 1)
-        let child : SageNode := ⟨ceilDiv goal spk, cand * pk, next⟩
-        if spk ≥ goal then [child]
-        else child :: expChildrenK n goal cand next m p (pk * p) := by
+        ⟨ceilDiv goal spk, cand * pk, next⟩ ::
+          (if spk ≥ goal then [] else expChildrenK n goal cand next m p (pk * p)) := by
   rw [← ite_not]
   simp [expChildrenK, Bool.rec_eq, Nat.ble_eq, not_lt, ceilDivK_eq_ceilDiv]
 
