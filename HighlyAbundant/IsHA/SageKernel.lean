@@ -65,8 +65,7 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
     (pk.ble m).rec []
       (let spk := ((pk.mul p).sub (nat_lit 1)).div (p.sub (nat_lit 1))
-       let child : SageNode := ⟨ceilDivK goal spk, cand.mul pk, next⟩
-       (goal.ble spk).rec (child :: r (pk.mul p)) [child])
+       ⟨ceilDivK goal spk, cand.mul pk, next⟩ :: (goal.ble spk).rec (r (pk.mul p)) [])
 
 /-- Iterate `extend` from `front` onward and gather `expChildren` at each `.window` index. Returns
 `none` if it reads an index `≥ 49`. -/
