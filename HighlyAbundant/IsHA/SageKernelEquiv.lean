@@ -6,6 +6,7 @@ Authors: Bhavik Mehta
 
 module
 
+public import HighlyAbundant.ForLean
 public import HighlyAbundant.IsHA.SageKernel
 public import HighlyAbundant.IsHA.SageSpec
 
@@ -56,8 +57,6 @@ private theorem extendK_eq_extend : extendK = extend := by
   cases fuel with
   | zero => rfl
   | succ n => grind [extendK, extend, Bool.rec_eq, Nat.ble_eq]
-
-@[simp, grind =] lemma Nat.div_eq_div {a b : Nat} : Nat.div a b = a / b := rfl
 
 private theorem expChildrenK_succ {n goal cand next m p pk : Nat} :
     expChildrenK (n + 1) goal cand next m p pk =
