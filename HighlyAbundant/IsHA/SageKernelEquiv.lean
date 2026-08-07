@@ -10,7 +10,7 @@ public import HighlyAbundant.ForLean
 public import HighlyAbundant.IsHA.SageKernel
 public import HighlyAbundant.IsHA.SageSpec
 
-public section
+section
 
 open Nat
 
@@ -25,7 +25,7 @@ Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Na
 namespace Sage
 
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
-def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
+public def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 
 @[simp, grind =] private theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
@@ -121,7 +121,7 @@ private theorem children_of_childrenK_none {B goal cand i : Nat}
     (hch : childrenK B goal cand i = none) : children B goal cand i = none := by
   simp [← childrenK_eq_children, hch]
 
-theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
+public theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
   induction fuel generalizing xs with
   | zero => rfl
@@ -133,7 +133,7 @@ theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
       cases hck : childrenK B goal cand i with grind [childrenK_eq_children, fromSageNode]
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
-theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
+public theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
     (hgoal : 2 ≤ goal)
     (hch : childrenK B goal cand i = some cs)
     (hcs : ∀ c ∈ cs, W B c.goal c.cand c.i = ∅) :
@@ -141,7 +141,7 @@ theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
   W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode])
 
 /-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
-theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
+public theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
     (hn : 2 ≤ n)
     (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
