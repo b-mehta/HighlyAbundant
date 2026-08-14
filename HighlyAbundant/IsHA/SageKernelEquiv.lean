@@ -116,11 +116,6 @@ private theorem children_of_childrenK {B goal cand i : Nat} {cs : List SageNode}
     children B goal cand i = some (cs.map fromSageNode) := by
   simp [← childrenK_eq_children, hch]
 
-/-- Read a `childrenK = none` certificate as `children = none`. -/
-private theorem children_of_childrenK_none {B goal cand i : Nat}
-    (hch : childrenK B goal cand i = none) : children B goal cand i = none := by
-  simp [← childrenK_eq_children, hch]
-
 public theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
   induction fuel generalizing xs with
