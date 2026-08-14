@@ -6,6 +6,7 @@ Authors: Bhavik Mehta
 
 module
 
+public import HighlyAbundant.ForLean
 public import Mathlib.Algebra.Group.Nat.Even
 public import Mathlib.Data.Nat.Basic
 public import Mathlib.Tactic.NormNum.PowMod
@@ -51,10 +52,6 @@ def powModTR' (a b n : ℕ) : ℕ :=
 
 lemma Bool.rec_eq_ite {α : Type*} {b : Bool} {t f : α} : b.rec f t = if b then t else f := by
   cases b <;> simp
-
-@[simp] lemma Nat.mod_eq_mod {a b : ℕ} : a.mod b = a % b := rfl
-@[simp] lemma Nat.div_eq_div {a b : ℕ} : a.div b = a / b := rfl
-@[simp] lemma Nat.land_eq_land {a b : ℕ} : a.land b = a &&& b := rfl
 
 @[simp] private lemma powModTR_aux_zero_eq {n a b c : ℕ} :
     powModTR.aux n 0 a b c = 0 := rfl
