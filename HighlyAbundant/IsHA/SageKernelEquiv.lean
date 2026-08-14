@@ -12,8 +12,6 @@ public import HighlyAbundant.IsHA.SageSpec
 
 section
 
-open Nat
-
 /-!
 # Equality of the kernel and specification deciders
 
