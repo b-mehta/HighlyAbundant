@@ -135,7 +135,7 @@ theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
   simp [← childrenK_eq_children, hch]
 
 /-- The kernel search step agrees with the specification step on nodes read by `fromSageNode`. -/
-public theorem stepK_eq_step :
+theorem stepK_eq_step :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
   induction fuel generalizing xs with
   | zero => rfl
