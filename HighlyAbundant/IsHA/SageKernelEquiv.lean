@@ -31,13 +31,13 @@ variable {B fuel n m m2 goal cand next i lo hi lhs rhs p pk : Nat}
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
 public def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 
-@[simp, grind =] private theorem appendK_eq_append :
+@[simp, grind =] theorem appendK_eq_append :
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
 
-@[simp] private theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
+@[simp] theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
 
-private theorem extendKLoop_succ :
+theorem extendKLoop_succ :
     extendKLoop (fuel + 1) m2 hi lhs rhs =
       if lhs ≥ rhs then .window hi lhs rhs
       else if hi + 1 < 49 then
@@ -49,20 +49,20 @@ private theorem extendKLoop_succ :
   grind [Nat.ble_eq, Bool.rec_eq]
 
 @[grind <=]
-private theorem extendKLoop_eq_extend (hle : lo ≤ hi) :
+theorem extendKLoop_eq_extend (hle : lo ≤ hi) :
     extendKLoop fuel m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
   induction fuel generalizing hi lhs rhs with
   | zero => rfl
   | succ n ih => grind [extend, extendKLoop_succ]
 
 @[simp, grind =]
-private theorem extendK_eq_extend : extendK = extend := by
+theorem extendK_eq_extend : extendK = extend := by
   funext fuel m2 lo hi lhs rhs
   cases fuel with
   | zero => rfl
   | succ n => grind [extendK, extend, Bool.rec_eq, Nat.ble_eq]
 
-private theorem expChildrenK_succ :
+theorem expChildrenK_succ :
     expChildrenK (fuel + 1) goal cand next m p pk =
       if pk > m then []
       else
@@ -72,14 +72,14 @@ private theorem expChildrenK_succ :
   rw [← ite_not]
   simp [expChildrenK, Bool.rec_eq, Nat.ble_eq, not_lt, ceilDivK_eq_ceilDiv]
 
-private theorem expChildrenK_eq_expChildren :
+theorem expChildrenK_eq_expChildren :
     (expChildrenK fuel goal cand next m p pk).map fromSageNode =
       expChildren fuel goal cand next m p pk := by
   induction fuel generalizing pk with
   | zero => rfl
   | succ n ih => grind [expChildren, expChildrenK_succ, fromSageNode]
 
-private theorem wheelChildrenK_succ :
+theorem wheelChildrenK_succ :
     wheelChildrenK (fuel + 1) m2 m goal cand lo hi lhs rhs acc =
       match extend 50 m2 lo hi lhs rhs with
       | .exhaustedTable => none
@@ -94,18 +94,18 @@ private theorem wheelChildrenK_succ :
     appendK_eq_append]
   cases extend 50 m2 lo hi lhs rhs <;> rfl
 
-private theorem wheelChildrenK_eq_wheelChildren :
+theorem wheelChildrenK_eq_wheelChildren :
     (wheelChildrenK fuel m2 m goal cand lo hi lhs rhs acc).map (·.map fromSageNode) =
       wheelChildren fuel m2 m goal cand lo hi lhs rhs (acc.map fromSageNode) := by
   induction fuel generalizing lo hi lhs rhs acc with
   | zero => rfl
   | succ n ih => grind [wheelChildren, wheelChildrenK_succ, expChildrenK_eq_expChildren]
 
-private theorem childrenK_eq_children :
+theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
   grind [childrenK, children, Bool.rec_eq, Nat.ble_eq, wheelChildrenK_eq_wheelChildren]
 
-private theorem stepK_succ_cons :
+theorem stepK_succ_cons :
     stepK B (fuel + 1) (⟨goal, cand, i⟩ :: rest) =
       if goal ≤ 1 then
         if cand < B then some false else stepK B fuel rest
@@ -113,7 +113,7 @@ private theorem stepK_succ_cons :
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append, ← Nat.not_le, ite_not]
 
 /-- Read a `childrenK = some cs` certificate as `children = some (cs.map fromSageNode)`. -/
-private theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
+theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
     children B goal cand i = some (cs.map fromSageNode) := by
   simp [← childrenK_eq_children, hch]
 
