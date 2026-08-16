@@ -6,9 +6,10 @@ Authors: Bhavik Mehta
 
 module
 
-public import HighlyAbundant.ForLean
 public import HighlyAbundant.IsHA.SageKernel
 public import HighlyAbundant.IsHA.SageSpec
+
+import HighlyAbundant.ForLean
 
 section
 
@@ -116,6 +117,7 @@ private theorem children_of_childrenK {B goal cand i : Nat} {cs : List SageNode}
     children B goal cand i = some (cs.map fromSageNode) := by
   simp [← childrenK_eq_children, hch]
 
+/-- The kernel search step agrees with the specification step on nodes read by `fromSageNode`. -/
 public theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
   induction fuel generalizing xs with
