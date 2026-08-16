@@ -25,17 +25,20 @@ Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Na
 
 namespace Sage
 
-variable {B fuel n m m2 goal cand next i lo hi lhs rhs p pk : Nat}
-  {xs ys cs rest acc : List SageNode}
+variable {fuel : Nat}
 
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
 public def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 
-@[simp, grind =] theorem appendK_eq_append :
+@[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
 
 @[simp] theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
+
+section Window
+
+variable {m2 lo hi lhs rhs : Nat}
 
 theorem extendKLoop_succ :
     extendKLoop (fuel + 1) m2 hi lhs rhs =
@@ -62,6 +65,12 @@ theorem extendK_eq_extend : extendK = extend := by
   | zero => rfl
   | succ n => grind [extendK, extend, Bool.rec_eq, Nat.ble_eq]
 
+end Window
+
+section Children
+
+variable {goal cand next m p pk : Nat}
+
 theorem expChildrenK_succ :
     expChildrenK (fuel + 1) goal cand next m p pk =
       if pk > m then []
@@ -78,6 +87,8 @@ theorem expChildrenK_eq_expChildren :
   induction fuel generalizing pk with
   | zero => rfl
   | succ n ih => grind [expChildren, expChildrenK_succ, fromSageNode]
+
+variable {m2 lo hi lhs rhs : Nat} {acc : List SageNode}
 
 theorem wheelChildrenK_succ :
     wheelChildrenK (fuel + 1) m2 m goal cand lo hi lhs rhs acc =
@@ -100,6 +111,12 @@ theorem wheelChildrenK_eq_wheelChildren :
   induction fuel generalizing lo hi lhs rhs acc with
   | zero => rfl
   | succ n ih => grind [wheelChildren, wheelChildrenK_succ, expChildrenK_eq_expChildren]
+
+end Children
+
+section Step
+
+variable {B n goal cand i : Nat} {cs rest xs : List SageNode}
 
 theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
@@ -142,5 +159,7 @@ public theorem highlyAbundantLcm_correct_partialK_W (hn : 2 ≤ n)
     (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
     IsHighlyAbundant (lcmUpto n) :=
   highlyAbundantLcm_correct_partial_W hn (children_of_childrenK hch) (by grind [fromSageNode])
+
+end Step
 
 end Sage
