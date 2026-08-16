@@ -25,16 +25,19 @@ Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Na
 
 namespace Sage
 
+variable {a b B fuel n m m2 goal cand next i lo hi lhs rhs p pk : Nat}
+  {xs ys cs rest acc : List SageNode}
+
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
 public def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 
-@[simp, grind =] private theorem appendK_eq_append {xs ys : List SageNode} :
+@[simp, grind =] private theorem appendK_eq_append :
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
 
-@[simp] private theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
+@[simp] private theorem ceilDivK_eq_ceilDiv : ceilDivK a b = ceilDiv a b := rfl
 
-private theorem extendKLoop_succ {n m2 hi lhs rhs : Nat} :
+private theorem extendKLoop_succ :
     extendKLoop (n + 1) m2 hi lhs rhs =
       if lhs ≥ rhs then .window hi lhs rhs
       else if hi + 1 < 49 then
@@ -46,7 +49,7 @@ private theorem extendKLoop_succ {n m2 hi lhs rhs : Nat} :
   grind [Nat.ble_eq, Bool.rec_eq]
 
 @[grind <=]
-private theorem extendKLoop_eq_extend {fuel m2 lo hi lhs rhs : Nat} (hle : lo ≤ hi) :
+private theorem extendKLoop_eq_extend (hle : lo ≤ hi) :
     extendKLoop fuel m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
   induction fuel generalizing hi lhs rhs with
   | zero => rfl
@@ -59,7 +62,7 @@ private theorem extendK_eq_extend : extendK = extend := by
   | zero => rfl
   | succ n => grind [extendK, extend, Bool.rec_eq, Nat.ble_eq]
 
-private theorem expChildrenK_succ {n goal cand next m p pk : Nat} :
+private theorem expChildrenK_succ :
     expChildrenK (n + 1) goal cand next m p pk =
       if pk > m then []
       else
@@ -69,15 +72,14 @@ private theorem expChildrenK_succ {n goal cand next m p pk : Nat} :
   rw [← ite_not]
   simp [expChildrenK, Bool.rec_eq, Nat.ble_eq, not_lt, ceilDivK_eq_ceilDiv]
 
-private theorem expChildrenK_eq_expChildren {fuel goal cand next m p pk : Nat} :
+private theorem expChildrenK_eq_expChildren :
     (expChildrenK fuel goal cand next m p pk).map fromSageNode =
       expChildren fuel goal cand next m p pk := by
   induction fuel generalizing pk with
   | zero => rfl
   | succ n ih => grind [expChildren, expChildrenK_succ, fromSageNode]
 
-private theorem wheelChildrenK_succ {n m2 m goal cand lo hi lhs rhs : Nat}
-    {acc : List SageNode} :
+private theorem wheelChildrenK_succ :
     wheelChildrenK (n + 1) m2 m goal cand lo hi lhs rhs acc =
       match extend 50 m2 lo hi lhs rhs with
       | .exhaustedTable => none
@@ -92,19 +94,18 @@ private theorem wheelChildrenK_succ {n m2 m goal cand lo hi lhs rhs : Nat}
     appendK_eq_append]
   cases extend 50 m2 lo hi lhs rhs <;> rfl
 
-private theorem wheelChildrenK_eq_wheelChildren {fuel m2 m goal cand lo hi lhs rhs : Nat}
-    {acc : List SageNode} :
+private theorem wheelChildrenK_eq_wheelChildren :
     (wheelChildrenK fuel m2 m goal cand lo hi lhs rhs acc).map (·.map fromSageNode) =
       wheelChildren fuel m2 m goal cand lo hi lhs rhs (acc.map fromSageNode) := by
   induction fuel generalizing lo hi lhs rhs acc with
   | zero => rfl
   | succ n ih => grind [wheelChildren, wheelChildrenK_succ, expChildrenK_eq_expChildren]
 
-private theorem childrenK_eq_children {B goal cand i : Nat} :
+private theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
   grind [childrenK, children, Bool.rec_eq, Nat.ble_eq, wheelChildrenK_eq_wheelChildren]
 
-private theorem stepK_succ_cons {B n goal cand i : Nat} {rest : List SageNode} :
+private theorem stepK_succ_cons :
     stepK B (n + 1) (⟨goal, cand, i⟩ :: rest) =
       if goal ≤ 1 then
         if cand < B then some false else stepK B n rest
@@ -112,13 +113,12 @@ private theorem stepK_succ_cons {B n goal cand i : Nat} {rest : List SageNode} :
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append, ← Nat.not_le, ite_not]
 
 /-- Read a `childrenK = some cs` certificate as `children = some (cs.map fromSageNode)`. -/
-private theorem children_of_childrenK {B goal cand i : Nat} {cs : List SageNode}
-    (hch : childrenK B goal cand i = some cs) :
+private theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
     children B goal cand i = some (cs.map fromSageNode) := by
   simp [← childrenK_eq_children, hch]
 
 /-- The kernel search step agrees with the specification step on nodes read by `fromSageNode`. -/
-public theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
+public theorem stepK_eq_step :
     stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
   induction fuel generalizing xs with
   | zero => rfl
@@ -130,16 +130,14 @@ public theorem stepK_eq_step {B fuel : Nat} {xs : List SageNode} :
       cases hck : childrenK B goal cand i with grind [childrenK_eq_children, fromSageNode]
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
-public theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
-    (hgoal : 2 ≤ goal)
+public theorem W_eq_empty_of_partialK (hgoal : 2 ≤ goal)
     (hch : childrenK B goal cand i = some cs)
     (hcs : ∀ c ∈ cs, W B c.goal c.cand c.i = ∅) :
     W B goal cand i = ∅ :=
   W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode])
 
 /-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
-public theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
-    (hn : 2 ≤ n)
+public theorem highlyAbundantLcm_correct_partialK_W (hn : 2 ≤ n)
     (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
     IsHighlyAbundant (lcmUpto n) :=
