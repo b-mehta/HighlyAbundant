@@ -7,6 +7,7 @@ Authors: Bhavik Mehta
 module
 
 public import HighlyAbundant.IsHA.SageKernel
+public import HighlyAbundant.IsHA.SageKernelBeq
 public import HighlyAbundant.IsHA.SageSpec
 
 import HighlyAbundant.ForLean
@@ -28,7 +29,7 @@ namespace Sage
 variable {fuel : Nat}
 
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
-public def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
+def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 
 @[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
@@ -161,12 +162,44 @@ public theorem W_eq_empty_of_partialK (hgoal : 2 ≤ goal)
   W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode])
 
 /-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
-public theorem highlyAbundantLcm_correct_partialK_W (hn : 2 ≤ n)
+theorem highlyAbundantLcm_correct_partialK_W (hn : 2 ≤ n)
     (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
     (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
     IsHighlyAbundant (lcmUpto n) :=
   highlyAbundantLcm_correct_partial_W hn (children_of_childrenK hch) (by grind [fromSageNode])
 
 end Step
+
+section Chains
+
+variable {n B g : Nat} {x : SageNode} {xs ys cs : List SageNode}
+
+/-- `∀ c ∈ xs, W B c.goal c.cand c.i = ∅`, stated once so a chain of witnesses carries one
+hypothesis per element. -/
+public def WCerts (B : Nat) (xs : List SageNode) : Prop :=
+  ∀ c ∈ xs, W B c.goal c.cand c.i = ∅
+
+public theorem w_certs_nil (B : Nat) : WCerts B [] := fun _ h ↦ nomatch h
+
+public theorem w_certs_cons (h : W B x.goal x.cand x.i = ∅) (hs : WCerts B xs) :
+    WCerts B (x :: xs) := fun c hc ↦
+  match hc with
+  | .head _ => h
+  | .tail _ hc' => hs c hc'
+
+/-- Certificates for two slices of a child list combine, so slices proved in parallel modules
+recombine along `xs ++ ys`. -/
+public theorem w_certs_append (hx : WCerts B xs) (hy : WCerts B ys) : WCerts B (xs ++ ys) :=
+  fun c hc ↦ (List.mem_append.1 hc).elim (hx c) (hy c)
+
+/-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
+literal divisor sum `g`. -/
+public theorem highlyAbundantLcm_of_beqCert (hn : 2 ≤ n) (eB : lcmUpto n = B)
+    (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : WCerts B cs) :
+    IsHighlyAbundant (lcmUpto n) := by
+  subst eB eg
+  exact highlyAbundantLcm_correct_partialK_W hn (childrenKBeqCert_eq_some hch) hcs
+
+end Chains
 
 end Sage
