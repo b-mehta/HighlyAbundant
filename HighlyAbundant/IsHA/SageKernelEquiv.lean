@@ -25,7 +25,7 @@ Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Na
 
 namespace Sage
 
-variable {a b B fuel n m m2 goal cand next i lo hi lhs rhs p pk : Nat}
+variable {B fuel n m m2 goal cand next i lo hi lhs rhs p pk : Nat}
   {xs ys cs rest acc : List SageNode}
 
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
@@ -35,15 +35,15 @@ public def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
 
-@[simp] private theorem ceilDivK_eq_ceilDiv : ceilDivK a b = ceilDiv a b := rfl
+@[simp] private theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
 
 private theorem extendKLoop_succ :
-    extendKLoop (n + 1) m2 hi lhs rhs =
+    extendKLoop (fuel + 1) m2 hi lhs rhs =
       if lhs ≥ rhs then .window hi lhs rhs
       else if hi + 1 < 49 then
         let q := primesRArray.get (hi + 1)
         let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extendKLoop n m2 (hi + 1) lhs' (rhs * (q - 1))
+        if lhs' > m2 then .tooLarge else extendKLoop fuel m2 (hi + 1) lhs' (rhs * (q - 1))
       else .exhaustedTable := by
   simp only [extendKLoop]
   grind [Nat.ble_eq, Bool.rec_eq]
@@ -63,12 +63,12 @@ private theorem extendK_eq_extend : extendK = extend := by
   | succ n => grind [extendK, extend, Bool.rec_eq, Nat.ble_eq]
 
 private theorem expChildrenK_succ :
-    expChildrenK (n + 1) goal cand next m p pk =
+    expChildrenK (fuel + 1) goal cand next m p pk =
       if pk > m then []
       else
         let spk := (pk * p - 1) / (p - 1)
         ⟨ceilDiv goal spk, cand * pk, next⟩ ::
-          (if spk ≥ goal then [] else expChildrenK n goal cand next m p (pk * p)) := by
+          (if spk ≥ goal then [] else expChildrenK fuel goal cand next m p (pk * p)) := by
   rw [← ite_not]
   simp [expChildrenK, Bool.rec_eq, Nat.ble_eq, not_lt, ceilDivK_eq_ceilDiv]
 
@@ -80,14 +80,14 @@ private theorem expChildrenK_eq_expChildren :
   | succ n ih => grind [expChildren, expChildrenK_succ, fromSageNode]
 
 private theorem wheelChildrenK_succ :
-    wheelChildrenK (n + 1) m2 m goal cand lo hi lhs rhs acc =
+    wheelChildrenK (fuel + 1) m2 m goal cand lo hi lhs rhs acc =
       match extend 50 m2 lo hi lhs rhs with
       | .exhaustedTable => none
       | .tooLarge => some acc
       | .window b lhs' rhs' =>
         if lo < 49 then
           let p := primesRArray.get lo
-          wheelChildrenK n m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
+          wheelChildrenK fuel m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
             (expChildrenK (m + 1) goal cand (lo + 1) m p p ++ acc)
         else none := by
   simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff, extendK_eq_extend,
@@ -106,10 +106,10 @@ private theorem childrenK_eq_children :
   grind [childrenK, children, Bool.rec_eq, Nat.ble_eq, wheelChildrenK_eq_wheelChildren]
 
 private theorem stepK_succ_cons :
-    stepK B (n + 1) (⟨goal, cand, i⟩ :: rest) =
+    stepK B (fuel + 1) (⟨goal, cand, i⟩ :: rest) =
       if goal ≤ 1 then
-        if cand < B then some false else stepK B n rest
-      else (childrenK B goal cand i).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
+        if cand < B then some false else stepK B fuel rest
+      else (childrenK B goal cand i).rec none (fun cs ↦ stepK B fuel (cs ++ rest)) := by
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append, ← Nat.not_le, ite_not]
 
 /-- Read a `childrenK = some cs` certificate as `children = some (cs.map fromSageNode)`. -/
