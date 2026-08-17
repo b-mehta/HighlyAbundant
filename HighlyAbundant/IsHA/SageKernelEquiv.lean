@@ -29,7 +29,11 @@ namespace Sage
 variable {fuel : Nat}
 
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
-def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
+def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
+
+/-- The witness set is empty at every node of `cs`. -/
+public def WCerts (B : Nat) (cs : List SageNode) : Prop :=
+  ∀ c ∈ cs, W B c.goal c.cand c.i = ∅
 
 @[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
@@ -117,7 +121,7 @@ end Children
 
 section Step
 
-variable {B n goal cand i : Nat} {cs rest xs : List SageNode}
+variable {B n goal cand i : Nat} {cs rest stack : List SageNode}
 
 theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
@@ -137,11 +141,11 @@ theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
 
 /-- The kernel search step agrees with the specification step on nodes read by `fromSageNode`. -/
 theorem stepK_eq_step :
-    stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
-  induction fuel generalizing xs with
+    stepK B fuel stack = step B fuel (stack.map fromSageNode) := by
+  induction fuel generalizing stack with
   | zero => rfl
   | succ n ih =>
-    match xs with
+    match stack with
     | [] => rfl
     | ⟨goal, cand, i⟩ :: rest =>
       rw [stepK_succ_cons, step.eq_def]
@@ -156,41 +160,35 @@ public theorem W_eq_empty_of_stepK_singleton {c : SageNode} (h : stepK B fuel [c
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
 public theorem W_eq_empty_of_partialK (hgoal : 2 ≤ goal)
-    (hch : childrenK B goal cand i = some cs)
-    (hcs : ∀ c ∈ cs, W B c.goal c.cand c.i = ∅) :
+    (hch : childrenK B goal cand i = some cs) (hcs : WCerts B cs) :
     W B goal cand i = ∅ :=
-  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode])
+  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, WCerts])
 
 /-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
 theorem highlyAbundantLcm_correct_partialK_W (hn : 2 ≤ n)
-    (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
+    (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs) (hcs : WCerts (lcmUpto n) cs) :
     IsHighlyAbundant (lcmUpto n) :=
-  highlyAbundantLcm_correct_partial_W hn (children_of_childrenK hch) (by grind [fromSageNode])
+  highlyAbundantLcm_correct_partial_W hn (children_of_childrenK hch)
+    (by grind [fromSageNode, WCerts])
 
 end Step
 
 section Chains
 
-variable {n B g : Nat} {x : SageNode} {xs ys cs : List SageNode}
-
-/-- `∀ c ∈ xs, W B c.goal c.cand c.i = ∅`, stated once so a chain of witnesses carries one
-hypothesis per element. -/
-public def WCerts (B : Nat) (xs : List SageNode) : Prop :=
-  ∀ c ∈ xs, W B c.goal c.cand c.i = ∅
+variable {n B g : Nat} {c : SageNode} {cs ds : List SageNode}
 
 public theorem w_certs_nil (B : Nat) : WCerts B [] := fun _ h ↦ nomatch h
 
-public theorem w_certs_cons (h : W B x.goal x.cand x.i = ∅) (hs : WCerts B xs) :
-    WCerts B (x :: xs) := fun c hc ↦
-  match hc with
+public theorem w_certs_cons (h : W B c.goal c.cand c.i = ∅) (hs : WCerts B cs) :
+    WCerts B (c :: cs) := fun d hd ↦
+  match hd with
   | .head _ => h
-  | .tail _ hc' => hs c hc'
+  | .tail _ hd' => hs d hd'
 
 /-- Certificates for two slices of a child list combine, so slices proved in parallel modules
-recombine along `xs ++ ys`. -/
-public theorem w_certs_append (hx : WCerts B xs) (hy : WCerts B ys) : WCerts B (xs ++ ys) :=
-  fun c hc ↦ (List.mem_append.1 hc).elim (hx c) (hy c)
+recombine along `cs ++ ds`. -/
+public theorem w_certs_append (hc : WCerts B cs) (hd : WCerts B ds) : WCerts B (cs ++ ds) :=
+  fun e he ↦ (List.mem_append.1 he).elim (hc e) (hd e)
 
 /-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
 literal divisor sum `g`. -/
