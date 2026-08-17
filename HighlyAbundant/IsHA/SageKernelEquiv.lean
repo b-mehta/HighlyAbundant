@@ -158,8 +158,7 @@ theorem stepK_eq_step :
 public theorem W_eq_empty_of_stepK_singleton {c : SageNode} (h : stepK B fuel [c] = some true) :
     W B c.goal c.cand c.i = ∅ := by
   rw [stepK_eq_step] at h
-  simpa [List.map_cons, List.map_nil, fromSageNode]
-    using step_true h (fromSageNode c) List.mem_cons_self
+  simpa [List.map_cons, List.map_nil, fromSageNode] using step_true h _ List.mem_cons_self
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
 public theorem W_eq_empty_of_partialK (hgoal : 2 ≤ goal)
