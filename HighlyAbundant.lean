@@ -11,5 +11,6 @@ import HighlyAbundant.Prime.TrialDivision
 import HighlyAbundant.IsHA.Sage
 import HighlyAbundant.IsHA.SageKernel
 import HighlyAbundant.IsHA.SageKernelBeq
+import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageSpec
 import HighlyAbundant.IsHA.QuickRfl

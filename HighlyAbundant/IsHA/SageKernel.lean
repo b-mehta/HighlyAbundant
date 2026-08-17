@@ -28,9 +28,6 @@ structure SageNode where
   cand : Nat
   i : Nat
 
-/-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
-def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
-
 /-- Append on `List SageNode`, written with `List.rec` so the kernel reduces it directly. -/
 @[expose] noncomputable def appendK (xs ys : List SageNode) : List SageNode :=
   xs.rec ys fun x _ ih ↦ x :: ih
