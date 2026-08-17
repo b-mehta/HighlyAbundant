@@ -28,11 +28,12 @@ namespace Sage
 
 /-- The product `∏ p ^ k` over a factorisation. -/
 @[expose] def prodFactor : List (ℕ × ℕ) → ℕ :=
-  List.rec 1 fun pk _ r ↦ pk.1 ^ pk.2 * r
+  List.rec (nat_lit 1) fun pk _ r ↦ (pk.1.pow pk.2).mul r
 
 /-- The product `∏ (p ^ (k + 1) - 1) / (p - 1)` over a factorisation. -/
 @[expose] def sigmaFactor : List (ℕ × ℕ) → ℕ :=
-  List.rec 1 fun pk _ r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r
+  List.rec (nat_lit 1) fun pk _ r ↦
+    (((pk.1.pow pk.2.succ).sub (nat_lit 1)).div (pk.1.sub (nat_lit 1))).mul r
 
 /-- The primes of a factorisation. -/
 @[expose] def primesFactor : List (ℕ × ℕ) → List ℕ :=
@@ -121,8 +122,9 @@ theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcm
 
 /-! ### `lcmUpto` as a fold -/
 
-/-- `lcm (1..n)` as a fold over `[1, …, n]`, which the kernel evaluates on a literal `n`. -/
-@[expose] def lcmUptoFoldr (n : ℕ) : ℕ := (List.range' 1 n).foldr Nat.lcm 1
+/-- `lcm (1..n)` over the list `[1, …, n]`, which the kernel evaluates on a literal `n`. -/
+@[expose] def lcmUptoFoldr (n : ℕ) : ℕ :=
+  (List.range' 1 n).rec (nat_lit 1) fun a _ r ↦ a.lcm r
 
 /-- The two forms of `lcm (1..n)` agree. -/
 theorem lcmUpto_eq_lcmUptoFoldr (n : ℕ) : lcmUpto n = lcmUptoFoldr n := by
@@ -131,7 +133,9 @@ theorem lcmUpto_eq_lcmUptoFoldr (n : ℕ) : lcmUpto n = lcmUptoFoldr n := by
   simp only [Nat.add_sub_cancel, List.map_id]
   induction List.range' 1 n with
   | nil => rfl
-  | cons a l ih => rw [List.foldr_cons, List.foldr_cons, ih, lcm_eq_nat_lcm]
+  | cons a l ih =>
+    rw [List.foldr_cons, ih, lcm_eq_nat_lcm]
+    rfl
 
 /-- `lcmUpto n = L` from the `Bool` comparison of the fold with `L`. -/
 theorem lcmUpto_aux (n : ℕ) {L : ℕ} (h : (lcmUptoFoldr n).beq L) : lcmUpto n = L := by
