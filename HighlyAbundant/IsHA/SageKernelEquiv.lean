@@ -7,7 +7,6 @@ Authors: Bhavik Mehta
 module
 
 public import HighlyAbundant.IsHA.SageKernel
-public import HighlyAbundant.IsHA.SageKernelBeq
 public import HighlyAbundant.IsHA.SageSpec
 
 import HighlyAbundant.ForLean
@@ -39,6 +38,18 @@ def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
 @[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
+
+/-- Nodes their `Bool` equality accepts are equal. -/
+theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b) : a = b := by
+  grind [cases SageNode, SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
+
+/-- Lists their pointwise `Bool` equality accepts are equal. -/
+theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys → xs = ys
+  | [], [], _ => rfl
+  | x :: xs, y :: ys, h => by
+    have he : sageListBeq (x :: xs) (y :: ys) = (x.beq y).and' (sageListBeq xs ys) := rfl
+    rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
+    rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
 
 /-- The witness set is empty at every node of `cs`. -/
 public def AllWEmptyK (B : Nat) (cs : List SageNode) : Prop :=
@@ -164,6 +175,17 @@ theorem stepK_succ_cons :
         if cand < B then some false else stepK B fuel rest
       else (childrenK B goal cand i).rec none (fun cs ↦ stepK B fuel (cs ++ rest)) := by
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append, ← Nat.not_le, ite_not]
+
+/-- Recover `childrenK … = some kids` from its `Bool` certificate. -/
+public theorem childrenKBeqCert_eq_some {kids : List SageNode}
+    (h : childrenKBeqCert B goal cand i kids) :
+    childrenK B goal cand i = some kids := by
+  cases hc : childrenK B goal cand i with grind [childrenKBeqCert, sageListBeq_sound]
+
+/-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate. -/
+public theorem stepK_singleton_of_beqCert {c : SageNode} (h : stepKSingletonBeqCert B fuel c) :
+    stepK B fuel [c] = some true := by
+  cases hc : stepK B fuel [c] with grind [stepKSingletonBeqCert]
 
 /-- Read a `childrenK = some cs` certificate as `children = some (cs.map fromSageNode)`. -/
 theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
