@@ -12,4 +12,5 @@ import HighlyAbundant.IsHA.Sage
 import HighlyAbundant.IsHA.SageKernel
 import HighlyAbundant.IsHA.SageKernelEquiv
 import HighlyAbundant.IsHA.SageSpec
+import HighlyAbundant.IsHA.SigmaFactor
 import HighlyAbundant.IsHA.QuickRfl
