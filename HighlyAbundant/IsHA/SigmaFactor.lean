@@ -9,7 +9,7 @@ module
 public import HighlyAbundant.Basic
 public import HighlyAbundant.Prime.TrialDivision
 
-public section
+section
 
 /-!
 # The divisor sum of a factorisation
@@ -27,20 +27,20 @@ namespace Sage
 /-! ### Reading a factorisation -/
 
 /-- The product `∏ p ^ k` over a factorisation. -/
-@[expose] def prodFactor : List (ℕ × ℕ) → ℕ :=
+@[expose] public def prodFactor : List (ℕ × ℕ) → ℕ :=
   List.rec (nat_lit 1) fun pk _ r ↦ (pk.1.pow pk.2).mul r
 
 /-- The product `∏ (p ^ (k + 1) - 1) / (p - 1)` over a factorisation. -/
-@[expose] def sigmaFactor : List (ℕ × ℕ) → ℕ :=
+@[expose] public def sigmaFactor : List (ℕ × ℕ) → ℕ :=
   List.rec (nat_lit 1) fun pk _ r ↦
     (((pk.1.pow pk.2.succ).sub (nat_lit 1)).div (pk.1.sub (nat_lit 1))).mul r
 
 /-- The primes of a factorisation. -/
-@[expose] def primesFactor : List (ℕ × ℕ) → List ℕ :=
+@[expose] public def primesFactor : List (ℕ × ℕ) → List ℕ :=
   List.rec [] fun pk _ r ↦ pk.1 :: r
 
 /-- Every prime of a factorisation passes the trial-division check. -/
-@[expose] noncomputable def allCheckPrime : List (ℕ × ℕ) → Bool :=
+@[expose] public noncomputable def allCheckPrime : List (ℕ × ℕ) → Bool :=
   List.rec true fun pk _ r ↦ (checkPrime pk.1).and' r
 
 @[grind =] theorem prodFactor_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
@@ -113,7 +113,7 @@ theorem sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ)) (hp : allCheck
       ih (fun q hq ↦ hpp q (List.mem_cons_of_mem _ hq)) hd2]
 
 /-- `σ₁ (lcmUpto n) = sL` from a factorisation of `lcmUpto n` into distinct primes. -/
-theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcmUpto n = L)
+public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcmUpto n = L)
     (hprod : prodFactor F = L) (hp : allCheckPrime F) (hd : (primesFactor F).Nodup)
     (hsig : sigmaFactor F = sL) :
     σ₁ (lcmUpto n) = sL := by
@@ -123,7 +123,7 @@ theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcm
 /-! ### `lcmUpto` as a fold -/
 
 /-- `lcm (1..n)` over the list `[1, …, n]`, which the kernel evaluates on a literal `n`. -/
-@[expose] def lcmUptoFoldr (n : ℕ) : ℕ :=
+@[expose] public def lcmUptoFoldr (n : ℕ) : ℕ :=
   (List.range' 1 n).rec (nat_lit 1) fun a _ r ↦ a.lcm r
 
 /-- The two forms of `lcm (1..n)` agree. -/
@@ -138,17 +138,17 @@ theorem lcmUpto_eq_lcmUptoFoldr (n : ℕ) : lcmUpto n = lcmUptoFoldr n := by
     rfl
 
 /-- `lcmUpto n = L` from the `Bool` comparison of the fold with `L`. -/
-theorem lcmUpto_aux (n : ℕ) {L : ℕ} (h : (lcmUptoFoldr n).beq L) : lcmUpto n = L := by
+public theorem lcmUpto_aux (n : ℕ) {L : ℕ} (h : (lcmUptoFoldr n).beq L) : lcmUpto n = L := by
   rw [lcmUpto_eq_lcmUptoFoldr]; exact Nat.eq_of_beq_eq_true h
 
 /-! ### Values for a literal `n` -/
 
 /-- The factorisation of `lcm (1..n)`: each prime `p ≤ n` with exponent `Nat.log p n`. -/
-def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
+public def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
   (List.range (n + 1)).filterMap fun p ↦ if p.Prime then some (p, Nat.log p n) else none
 
 /-- The pair `(lcm (1..n), σ₁ (lcm (1..n)))` for a literal `n`, as values. -/
-def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
+public def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
   ((List.range' 1 n).foldr Nat.lcm 1,
     (factorLcmUptoMeta n).foldr (fun pk r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1)
 
