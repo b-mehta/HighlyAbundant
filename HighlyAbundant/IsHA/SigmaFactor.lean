@@ -54,17 +54,20 @@ namespace Sage
 @[grind =] theorem allCheckPrime_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
     allCheckPrime (pk :: t) = (checkPrime pk.1).and' (allCheckPrime t) := rfl
 
+/-- The product of a factorisation, as a product over the mapped list. -/
 theorem prodFactor_eq (F : List (ℕ × ℕ)) : prodFactor F = (F.map fun pk ↦ pk.1 ^ pk.2).prod := by
   induction F with
   | nil => rfl
   | cons pk t ih => rw [prodFactor_cons, ih, List.map_cons, List.prod_cons]
 
+/-- The divisor-sum product of a factorisation, as a product over the mapped list. -/
 theorem sigmaFactor_eq (F : List (ℕ × ℕ)) :
     sigmaFactor F = (F.map fun pk ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1)).prod := by
   induction F with
   | nil => rfl
   | cons pk t ih => rw [sigmaFactor_cons, ih, List.map_cons, List.prod_cons]
 
+/-- The primes of a factorisation are the first components. -/
 theorem primesFactor_eq (F : List (ℕ × ℕ)) : primesFactor F = F.map Prod.fst := by
   induction F with
   | nil => rfl
@@ -121,6 +124,7 @@ theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcm
 /-- `lcm (1..n)` as a fold over `[1, …, n]`, which the kernel evaluates on a literal `n`. -/
 @[expose] def lcmUptoFoldr (n : ℕ) : ℕ := (List.range' 1 n).foldr Nat.lcm 1
 
+/-- The two forms of `lcm (1..n)` agree. -/
 theorem lcmUpto_eq_lcmUptoFoldr (n : ℕ) : lcmUpto n = lcmUptoFoldr n := by
   rw [Nat.lcmUpto, lcmUptoFoldr, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
   change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
