@@ -23,7 +23,7 @@ Search nodes are `SageNode` in `HighlyAbundant.IsHA.SageKernel` and `Nat × Nat 
 `HighlyAbundant.IsHA.Sage`. Each kernel search function equals its specification counterpart, on
 nodes read by `fromSageNode` where the two differ in node type.
 
-`AllWEmpty B cs` says the witness set is empty at every node of `cs`, and the `allWEmpty_*` lemmas
+`AllWEmptyK B cs` says the witness set is empty at every node of `cs`, and the `allWEmptyK_*` lemmas
 build one from a witness per node.
 -/
 
@@ -41,16 +41,16 @@ def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
   induction xs with grind [appendK]
 
 /-- The witness set is empty at every node of `cs`. -/
-public def AllWEmpty (B : Nat) (cs : List SageNode) : Prop :=
+public def AllWEmptyK (B : Nat) (cs : List SageNode) : Prop :=
   ∀ c ∈ cs, W B c.goal c.cand c.i = ∅
 
 /-- The empty child list carries certificates. -/
-public theorem allWEmpty_nil (B : Nat) : AllWEmpty B [] := fun _ h ↦ nomatch h
+public theorem allWEmptyK_nil (B : Nat) : AllWEmptyK B [] := fun _ h ↦ nomatch h
 
 /-- One more node joins a certified child list. -/
-public theorem allWEmpty_cons {B : Nat} {c : SageNode} {cs : List SageNode}
-    (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmpty B cs) :
-    AllWEmpty B (c :: cs) := fun d hd ↦
+public theorem allWEmptyK_cons {B : Nat} {c : SageNode} {cs : List SageNode}
+    (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmptyK B cs) :
+    AllWEmptyK B (c :: cs) := fun d hd ↦
   match hd with
   | .head _ => h
   | .tail _ hd' => hs d hd'
@@ -181,9 +181,9 @@ public theorem W_eq_empty_of_stepK_singleton {c : SageNode} (h : stepK B fuel [c
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
 public theorem W_eq_empty_of_childrenK (hgoal : 2 ≤ goal)
-    (hch : childrenK B goal cand i = some cs) (hcs : AllWEmpty B cs) :
+    (hch : childrenK B goal cand i = some cs) (hcs : AllWEmptyK B cs) :
     W B goal cand i = ∅ :=
-  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, AllWEmpty])
+  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, AllWEmptyK])
 
 end Step
 
@@ -196,11 +196,11 @@ variable {n B g : Nat} {cs : List SageNode}
 /-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
 literal divisor sum `g`. -/
 public theorem highlyAbundantLcm_of_beqCert (hn : 2 ≤ n) (eB : lcmUpto n = B)
-    (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : AllWEmpty B cs) :
+    (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : AllWEmptyK B cs) :
     IsHighlyAbundant (lcmUpto n) := by
   subst eB eg
   exact highlyAbundantLcm_correct_partial_W hn
-    (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, AllWEmpty])
+    (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, AllWEmptyK])
 
 end Root
 
