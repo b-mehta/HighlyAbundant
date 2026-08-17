@@ -124,7 +124,7 @@ end Children
 
 section Step
 
-variable {B n goal cand i : Nat} {cs rest stack : List SageNode}
+variable {B n goal cand i : Nat} {cs rest : List SageNode}
 
 theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
@@ -144,13 +144,13 @@ theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
 
 /-- The kernel search step agrees with the specification step on nodes read by `fromSageNode`. -/
 theorem stepK_eq_step :
-    stepK B fuel stack = step B fuel (stack.map fromSageNode) := by
-  induction fuel generalizing stack with
+    stepK B fuel rest = step B fuel (rest.map fromSageNode) := by
+  induction fuel generalizing rest with
   | zero => rfl
   | succ n ih =>
-    match stack with
+    match rest with
     | [] => rfl
-    | ⟨goal, cand, i⟩ :: rest =>
+    | ⟨goal, cand, i⟩ :: tail =>
       rw [stepK_succ_cons, step.eq_def]
       cases hck : childrenK B goal cand i with grind [childrenK_eq_children, fromSageNode]
 
@@ -166,13 +166,6 @@ public theorem W_eq_empty_of_partialK (hgoal : 2 ≤ goal)
     (hch : childrenK B goal cand i = some cs) (hcs : WCerts B cs) :
     W B goal cand i = ∅ :=
   W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, WCerts])
-
-/-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
-theorem highlyAbundantLcm_correct_partialK_W (hn : 2 ≤ n)
-    (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs) (hcs : WCerts (lcmUpto n) cs) :
-    IsHighlyAbundant (lcmUpto n) :=
-  highlyAbundantLcm_correct_partial_W hn (children_of_childrenK hch)
-    (by grind [fromSageNode, WCerts])
 
 end Step
 
@@ -201,7 +194,8 @@ public theorem highlyAbundantLcm_of_beqCert (hn : 2 ≤ n) (eB : lcmUpto n = B)
     (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : WCerts B cs) :
     IsHighlyAbundant (lcmUpto n) := by
   subst eB eg
-  exact highlyAbundantLcm_correct_partialK_W hn (childrenKBeqCert_eq_some hch) hcs
+  exact highlyAbundantLcm_correct_partial_W hn
+    (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, WCerts])
 
 end Chains
 
