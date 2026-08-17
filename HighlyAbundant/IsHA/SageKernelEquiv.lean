@@ -171,7 +171,7 @@ end Step
 
 section Chains
 
-variable {n B g : Nat} {c : SageNode} {cs ds : List SageNode}
+variable {n B g : Nat} {c : SageNode} {cs : List SageNode}
 
 /-- The empty child list carries certificates. -/
 public theorem w_certs_nil (B : Nat) : WCerts B [] := fun _ h ↦ nomatch h
@@ -182,11 +182,6 @@ public theorem w_certs_cons (h : W B c.goal c.cand c.i = ∅) (hs : WCerts B cs)
   match hd with
   | .head _ => h
   | .tail _ hd' => hs d hd'
-
-/-- Certificates for two slices of a child list combine, so slices proved in parallel modules
-recombine along `cs ++ ds`. -/
-public theorem w_certs_append (hc : WCerts B cs) (hd : WCerts B ds) : WCerts B (cs ++ ds) :=
-  fun e he ↦ (List.mem_append.1 he).elim (hc e) (hd e)
 
 /-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
 literal divisor sum `g`. -/
