@@ -22,6 +22,9 @@ open Nat
 Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Nat` in
 `HighlyAbundant.Sage`. Each kernel definition equals its specification counterpart along
 `fromSageNode`.
+
+`WCerts B cs` says the witness set is empty at every node of `cs`, and the `w_certs_*` lemmas build
+one from a witness per node.
 -/
 
 namespace Sage
@@ -177,8 +180,10 @@ section Chains
 
 variable {n B g : Nat} {c : SageNode} {cs ds : List SageNode}
 
+/-- The empty child list carries certificates. -/
 public theorem w_certs_nil (B : Nat) : WCerts B [] := fun _ h ↦ nomatch h
 
+/-- One more node joins a certified child list. -/
 public theorem w_certs_cons (h : W B c.goal c.cand c.i = ∅) (hs : WCerts B cs) :
     WCerts B (c :: cs) := fun d hd ↦
   match hd with
