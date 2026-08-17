@@ -31,18 +31,31 @@ namespace Sage
 
 variable {fuel : Nat}
 
+/-! ### Nodes and lists of nodes -/
+
 /-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
 def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
-
-/-- The witness set is empty at every node of `cs`. -/
-public def AllWEmpty (B : Nat) (cs : List SageNode) : Prop :=
-  ∀ c ∈ cs, W B c.goal c.cand c.i = ∅
 
 @[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
     appendK xs ys = xs ++ ys := by
   induction xs with grind [appendK]
 
-@[simp] theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
+/-- The witness set is empty at every node of `cs`. -/
+public def AllWEmpty (B : Nat) (cs : List SageNode) : Prop :=
+  ∀ c ∈ cs, W B c.goal c.cand c.i = ∅
+
+/-- The empty child list carries certificates. -/
+public theorem allWEmpty_nil (B : Nat) : AllWEmpty B [] := fun _ h ↦ nomatch h
+
+/-- One more node joins a certified child list. -/
+public theorem allWEmpty_cons {B : Nat} {c : SageNode} {cs : List SageNode}
+    (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmpty B cs) :
+    AllWEmpty B (c :: cs) := fun d hd ↦
+  match hd with
+  | .head _ => h
+  | .tail _ hd' => hs d hd'
+
+/-! ### Growing a prime window -/
 
 section Window
 
@@ -75,9 +88,13 @@ theorem extendK_eq_extend : extendK = extend := by
 
 end Window
 
+/-! ### Children of one node -/
+
 section Children
 
 variable {goal cand next m p pk : Nat}
+
+@[simp] theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
 
 theorem expChildrenK_succ :
     expChildrenK (fuel + 1) goal cand next m p pk =
@@ -121,6 +138,8 @@ theorem wheelChildrenK_eq_wheelChildren :
   | succ n ih => grind [wheelChildren, wheelChildrenK_succ, expChildrenK_eq_expChildren]
 
 end Children
+
+/-! ### One step of the search -/
 
 section Step
 
@@ -168,19 +187,11 @@ public theorem W_eq_empty_of_childrenK (hgoal : 2 ≤ goal)
 
 end Step
 
-section AllWEmpty
+/-! ### The root -/
 
-variable {n B g : Nat} {c : SageNode} {cs : List SageNode}
+section Root
 
-/-- The empty child list carries certificates. -/
-public theorem allWEmpty_nil (B : Nat) : AllWEmpty B [] := fun _ h ↦ nomatch h
-
-/-- One more node joins a certified child list. -/
-public theorem allWEmpty_cons (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmpty B cs) :
-    AllWEmpty B (c :: cs) := fun d hd ↦
-  match hd with
-  | .head _ => h
-  | .tail _ hd' => hs d hd'
+variable {n B g : Nat} {cs : List SageNode}
 
 /-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
 literal divisor sum `g`. -/
@@ -191,6 +202,6 @@ public theorem highlyAbundantLcm_of_beqCert (hn : 2 ≤ n) (eB : lcmUpto n = B)
   exact highlyAbundantLcm_correct_partial_W hn
     (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, AllWEmpty])
 
-end AllWEmpty
+end Root
 
 end Sage
