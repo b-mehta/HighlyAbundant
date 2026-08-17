@@ -23,8 +23,8 @@ Search nodes are `SageNode` in `HighlyAbundant.IsHA.SageKernel` and `Nat × Nat 
 `HighlyAbundant.IsHA.Sage`. Each kernel search function equals its specification counterpart, on
 nodes read by `fromSageNode` where the two differ in node type.
 
-`WCerts B cs` says the witness set is empty at every node of `cs`, and the `w_certs_*` lemmas build
-one from a witness per node.
+`AllWEmpty B cs` says the witness set is empty at every node of `cs`, and the `all_w_empty_*` lemmas
+build one from a witness per node.
 -/
 
 namespace Sage
@@ -35,7 +35,7 @@ variable {fuel : Nat}
 def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
 
 /-- The witness set is empty at every node of `cs`. -/
-public def WCerts (B : Nat) (cs : List SageNode) : Prop :=
+public def AllWEmpty (B : Nat) (cs : List SageNode) : Prop :=
   ∀ c ∈ cs, W B c.goal c.cand c.i = ∅
 
 @[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
@@ -162,22 +162,22 @@ public theorem W_eq_empty_of_stepK_singleton {c : SageNode} (h : stepK B fuel [c
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
 public theorem W_eq_empty_of_childrenK (hgoal : 2 ≤ goal)
-    (hch : childrenK B goal cand i = some cs) (hcs : WCerts B cs) :
+    (hch : childrenK B goal cand i = some cs) (hcs : AllWEmpty B cs) :
     W B goal cand i = ∅ :=
-  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, WCerts])
+  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, AllWEmpty])
 
 end Step
 
-section Chains
+section AllWEmpty
 
 variable {n B g : Nat} {c : SageNode} {cs : List SageNode}
 
 /-- The empty child list carries certificates. -/
-public theorem w_certs_nil (B : Nat) : WCerts B [] := fun _ h ↦ nomatch h
+public theorem all_w_empty_nil (B : Nat) : AllWEmpty B [] := fun _ h ↦ nomatch h
 
 /-- One more node joins a certified child list. -/
-public theorem w_certs_cons (h : W B c.goal c.cand c.i = ∅) (hs : WCerts B cs) :
-    WCerts B (c :: cs) := fun d hd ↦
+public theorem all_w_empty_cons (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmpty B cs) :
+    AllWEmpty B (c :: cs) := fun d hd ↦
   match hd with
   | .head _ => h
   | .tail _ hd' => hs d hd'
@@ -185,12 +185,12 @@ public theorem w_certs_cons (h : W B c.goal c.cand c.i = ∅) (hs : WCerts B cs)
 /-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
 literal divisor sum `g`. -/
 public theorem highlyAbundantLcm_of_beqCert (hn : 2 ≤ n) (eB : lcmUpto n = B)
-    (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : WCerts B cs) :
+    (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : AllWEmpty B cs) :
     IsHighlyAbundant (lcmUpto n) := by
   subst eB eg
   exact highlyAbundantLcm_correct_partial_W hn
-    (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, WCerts])
+    (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, AllWEmpty])
 
-end Chains
+end AllWEmpty
 
 end Sage
