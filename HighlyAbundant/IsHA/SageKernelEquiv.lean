@@ -23,7 +23,7 @@ Search nodes are `SageNode` in `HighlyAbundant.IsHA.SageKernel` and `Nat × Nat 
 `HighlyAbundant.IsHA.Sage`. Each kernel search function equals its specification counterpart, on
 nodes read by `fromSageNode` where the two differ in node type.
 
-`AllWEmpty B cs` says the witness set is empty at every node of `cs`, and the `all_w_empty_*` lemmas
+`AllWEmpty B cs` says the witness set is empty at every node of `cs`, and the `allWEmpty_*` lemmas
 build one from a witness per node.
 -/
 
@@ -173,10 +173,10 @@ section AllWEmpty
 variable {n B g : Nat} {c : SageNode} {cs : List SageNode}
 
 /-- The empty child list carries certificates. -/
-public theorem all_w_empty_nil (B : Nat) : AllWEmpty B [] := fun _ h ↦ nomatch h
+public theorem allWEmpty_nil (B : Nat) : AllWEmpty B [] := fun _ h ↦ nomatch h
 
 /-- One more node joins a certified child list. -/
-public theorem all_w_empty_cons (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmpty B cs) :
+public theorem allWEmpty_cons (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmpty B cs) :
     AllWEmpty B (c :: cs) := fun d hd ↦
   match hd with
   | .head _ => h
