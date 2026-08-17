@@ -133,9 +133,7 @@ theorem lcmUpto_eq_lcmUptoFoldr (n : ℕ) : lcmUpto n = lcmUptoFoldr n := by
   simp only [Nat.add_sub_cancel, List.map_id]
   induction List.range' 1 n with
   | nil => rfl
-  | cons a l ih =>
-    rw [List.foldr_cons, ih, lcm_eq_nat_lcm]
-    rfl
+  | cons a l ih => rw [List.foldr_cons, ih, lcm_eq_nat_lcm]
 
 /-- `lcmUpto n = L` from the `Bool` comparison of the fold with `L`. -/
 public theorem lcmUpto_aux (n : ℕ) {L : ℕ} (h : (lcmUptoFoldr n).beq L) : lcmUpto n = L := by
