@@ -5,21 +5,20 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.IsHA.SageKernelEquiv
-import HighlyAbundant.IsHA.SageKernelBeq
 import HighlyAbundant.IsHA.SigmaFactor
 
 open Nat
 
 /-!
-# `WCerts` and the `ha_lcm_compose` tactic
+# `AllWEmptyK` and the `ha_lcm_compose` tactic
 
-`WCerts B xs := ∀ c ∈ xs, W B c.goal c.cand c.i = ∅`. Built by composing
+`AllWEmptyK B xs := ∀ c ∈ xs, W B c.goal c.cand c.i = ∅`. Built by composing
 leaf-level kernel certificates (`stepK [c] = some true`) with the recursive-split
-lemma `W_eq_empty_of_partialK` for heavy children.
+lemma `W_eq_empty_of_childrenK` for heavy children.
 
 `ha_lcm_compose` takes two forms sharing one code path:
 
-- `ha_lcm_compose <threshold>` closes `WCerts B kids`, for a `kids` list certified
+- `ha_lcm_compose <threshold>` closes `AllWEmptyK B kids`, for a `kids` list certified
   across several modules building in parallel.
 - `ha_lcm_compose <n> <threshold>` closes `IsHighlyAbundant (lcmUpto n)` outright.
 
@@ -31,37 +30,44 @@ open Lean Meta Elab Tactic
 
 namespace Sage
 
-/-- `∀ c ∈ xs, W B c.goal c.cand c.i = ∅`, wrapped opaquely so the kernel
-doesn't descend through the binders during chain construction. -/
-def WCerts (B : Nat) (xs : List SageNode) : Prop :=
-  ∀ c ∈ xs, W B c.goal c.cand c.i = ∅
-
-theorem w_certs_nil (B : Nat) : WCerts B [] :=
-  fun _ h => nomatch h
-
-theorem w_certs_cons {B : Nat} {x : SageNode} {xs : List SageNode}
-    (h : W B x.goal x.cand x.i = ∅) (hs : WCerts B xs) :
-    WCerts B (x :: xs) := fun c hc =>
-  match hc with
-  | .head _ => h
-  | .tail _ hc' => hs c hc'
-
-/-- Combine certificates for two sublists, so a large `WCerts B kids` proof can be
-split across files (each proving `WCerts B` for an in-order slice) and built in
-parallel, then recombined via `kids = xs ++ ys`. -/
-theorem w_certs_append {B : Nat} {xs ys : List SageNode}
-    (hx : WCerts B xs) (hy : WCerts B ys) : WCerts B (xs ++ ys) := fun c hc =>
-  (List.mem_append.1 hc).elim (hx c) (hy c)
-
-/-- Convert a singleton-stack `stepK = some true` to `W = ∅` for the same node.
-The leaf-level cert produced by kernel reduction lands here, then enters the
-`w_certs_cons` chain. -/
-theorem W_eq_empty_of_stepK_singleton {B fuel : ℕ} {c : SageNode}
-    (h : stepK B fuel [c] = some true) :
-    W B c.goal c.cand c.i = ∅ := by
-  rw [stepK_eq_step] at h
-  simpa [List.map_cons, List.map_nil, fromSageNode]
-    using step_true h (fromSageNode c) List.mem_cons_self
+/-- For a literal `n`, the pair `(lcm (1..n), σ₁ (lcm (1..n)))` with proofs that each equals its
+literal. The factorisation is found here; the kernel checks the least common multiple, the product
+of the prime powers, the divisor-sum product, primality by trial division, and distinctness. -/
+def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
+  let nE := mkNatLit n
+  let boolTy := mkConst ``Bool
+  let trueE := mkConst ``Bool.true
+  let boolCert (b : Expr) : MetaM Expr := do
+    return mkConst (← mkAuxLemma [] (mkApp3 (mkConst ``Eq [.succ .zero]) boolTy b trueE)
+      Lean.reflBoolTrue)
+  let Bval := (List.range' 1 n).foldr Nat.lcm 1
+  let BE := mkNatLit Bval
+  let lcmApp := mkApp (mkConst ``Sage.lcmUptoK) nE
+  let hBeq ← boolCert (mkApp2 (mkConst ``Nat.beq) lcmApp BE)
+  let eB := mkApp3 (mkConst ``Sage.lcmUpto_eq_of_beq) nE BE hBeq
+  let factors := Sage.factorLcmUptoMeta n
+  let gval := factors.foldr (fun pk r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1
+  let gE := mkNatLit gval
+  let natTy := mkConst ``Nat
+  let prodTy := mkApp2 (mkConst ``Prod [.zero, .zero]) natTy natTy
+  let mut FExpr := mkApp (mkConst ``List.nil [.zero]) prodTy
+  for (p, k) in factors.reverse do
+    let pairE := mkApp4 (mkConst ``Prod.mk [.zero, .zero]) natTy natTy (mkNatLit p) (mkNatLit k)
+    FExpr := mkApp3 (mkConst ``List.cons [.zero]) prodTy pairE FExpr
+  let factorsE ← mkAuxDefinition (← mkAuxDeclName `factors)
+    (mkApp (mkConst ``List [.zero]) prodTy) FExpr (compile := false)
+  let prodApp := mkApp (mkConst ``Sage.prodFactorK) factorsE
+  let hprod := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) prodApp BE
+    (← boolCert (mkApp2 (mkConst ``Nat.beq) prodApp BE))
+  let hp ← boolCert (mkApp (mkConst ``Sage.allCheckPrimeK) factorsE)
+  let hd ← mkDecideProof (mkApp2 (mkConst ``List.Nodup [.zero]) natTy
+    (mkApp (mkConst ``Sage.primesFactorK) factorsE))
+  let sigApp := mkApp (mkConst ``Sage.sigmaFactorK) factorsE
+  let hsig := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) sigApp gE
+    (← boolCert (mkApp2 (mkConst ``Nat.beq) sigApp gE))
+  let eg := mkAppN (mkConst ``Sage.sigma_lcmUpto_of_factor)
+    #[nE, BE, gE, factorsE, eB, hprod, hp, hd, hsig]
+  return (Bval, gval, eB, eg)
 
 /-- Walk a fully-reduced `List.cons`/`List.nil` chain and return its elements. -/
 private partial def listElemsW (e : Expr) : MetaM (Array Expr) := do
@@ -110,8 +116,8 @@ private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr 
   let certType := mkApp3 (mkConst ``Eq [.succ .zero]) ce.boolTy beqApp ce.trueExpr
   let auxName ← mkAuxLemma [] certType Lean.reflBoolTrue
   let stepKWitness :=
-    mkAppN (mkConst ``Sage.stepK_singleton_of_beqCert) #[B, fuel, c, mkConst auxName]
-  return mkApp4 (mkConst ``Sage.W_eq_empty_of_stepK_singleton) B fuel c stepKWitness
+    mkAppN (mkConst ``Sage.stepK_singleton_of_beqCert) #[fuel, B, c, mkConst auxName]
+  return mkApp4 (mkConst ``Sage.W_eq_empty_of_stepK_singleton) fuel B c stepKWitness
 
 /-! ### Auto-heuristic recursive expansion -/
 
@@ -155,14 +161,14 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     -- Recursively build each grandchild's W = ∅ witness, threading Nats directly.
     let grandchildWitnesses ← (grandchildren.zip grandchildSizes).mapM
       fun ((a, b, d), sz) => buildWWitnessAuto ce B fuel Bval a b d sz threshold
-    -- Chain the grandchild witnesses into `WCerts B grandchildren`.
+    -- Chain the grandchild witnesses into `AllWEmptyK B grandchildren`.
     let mut xsExpr := ce.nilExpr
-    let mut grandchildrenChain := mkApp (mkConst ``Sage.w_certs_nil) B
+    let mut grandchildrenChain := mkApp (mkConst ``Sage.allWEmptyK_nil) B
     for w in grandchildWitnesses.reverse, x in grandchildExprs.reverse do
-      grandchildrenChain := mkAppN (mkConst ``Sage.w_certs_cons)
+      grandchildrenChain := mkAppN (mkConst ``Sage.allWEmptyK_cons)
         #[B, x, xsExpr, w, grandchildrenChain]
       xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
-    -- Apply `W_eq_empty_of_partialK` to combine.
+    -- Apply `W_eq_empty_of_childrenK` to combine.
     let tExpr := mkRawNatLit t
     let nExpr := mkRawNatLit n
     let mExpr := mkRawNatLit m
@@ -174,75 +180,64 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
     let cbcName ← mkAuxLemma [] cbcType Lean.reflBoolTrue
     let hch := mkAppN (mkConst ``Sage.childrenKBeqCert_eq_some)
       #[B, tExpr, nExpr, mExpr, xsExpr, mkConst cbcName]
-    return mkAppN (mkConst ``Sage.W_eq_empty_of_partialK)
+    return mkAppN (mkConst ``Sage.W_eq_empty_of_childrenK)
       #[B, tExpr, nExpr, mExpr, xsExpr, twoLeT, hch, grandchildrenChain]
 
-/-- Build a `WCerts B <kidExprs>` proof via the auto-heuristic: each child's
+/-- Build a `AllWEmptyK B <kidExprs>` proof via the auto-heuristic: each child's
 `W = ∅` witness is built by `buildWWitnessAuto` (expanding as deep as the
-`threshold` requires), then chained with `w_certs_cons`/`w_certs_nil`. The
+`threshold` requires), then chained with `allWEmptyK_cons`/`allWEmptyK_nil`. The
 `kidNats` array is the `(t, n, m)` triples of `kidExprs`, in the same order. -/
-private def buildWCertsAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
+private def buildAllWEmptyKAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
     (kidExprs : Array Expr) (kidNats : Array (Nat × Nat × Nat)) (threshold : Nat) :
     MetaM Expr := do
   let witnesses ← kidNats.mapM
     fun c => buildWWitnessAuto ce B fuel Bval c.1 c.2.1 c.2.2 (subtreeSize Bval sizeFuel c) threshold
-  let mut chain := mkApp (mkConst ``Sage.w_certs_nil) B
+  let mut chain := mkApp (mkConst ``Sage.allWEmptyK_nil) B
   let mut xsExpr := ce.nilExpr
   for w in witnesses.reverse, x in kidExprs.reverse do
-    chain := mkAppN (mkConst ``Sage.w_certs_cons) #[B, x, xsExpr, w, chain]
+    chain := mkAppN (mkConst ``Sage.allWEmptyK_cons) #[B, x, xsExpr, w, chain]
     xsExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy x xsExpr
   return chain
 
-/-- Close a `WCerts B kids` goal using the auto-heuristic: each child is
+/-- Close a `AllWEmptyK B kids` goal using the auto-heuristic: each child is
 expanded as deep as needed for every leaf node's subtree to fit the threshold. -/
-private def closeWCertsGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := do
+private def closeAllWEmptyKGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := do
   let target ← g.getType
   match_expr target with
-  | Sage.WCerts B kidsExpr =>
+  | Sage.AllWEmptyK B kidsExpr =>
     let some Bval := B.nat? | throwError "B not a literal"
     let kids ← listElemsW kidsExpr
     let ce := mkCommonExprs
     let fuel := mkConst ``Sage.searchFuel
     -- Extract Nats from each kid once at the root; recursion threads Nats directly.
     let kidNats ← kids.mapM nodeNats
-    let chain ← buildWCertsAutoChain ce B fuel Bval kids kidNats threshold
+    let chain ← buildAllWEmptyKAutoChain ce B fuel Bval kids kidNats threshold
     g.assign chain
-  | _ => throwError "expected `WCerts B xs`, got: {← Meta.ppExpr target}"
+  | _ => throwError "expected `AllWEmptyK B xs`, got: {← Meta.ppExpr target}"
 
 /-! ### The composition tactic `ha_lcm_compose`
 
-Two forms, one code path. `ha_lcm_compose <threshold>` closes a `WCerts B kids`
+Two forms, one code path. `ha_lcm_compose <threshold>` closes a `AllWEmptyK B kids`
 goal, expanding any child whose subtree exceeds `threshold` nodes one level and
 recursing until every leaf cert fits. `ha_lcm_compose <n> <threshold>` closes
 `IsHighlyAbundant (lcmUpto n)` outright, computing the root children itself,
-emitting them as an aux def, proving `WCerts` over them by the same expansion,
+emitting them as an aux def, proving `AllWEmptyK` over them by the same expansion,
 and combining with the `childrenK` cert.
 -/
 
-/-- Bridges the literal-`B`/`g`-phrased certificates produced by `ha_lcm_compose`
-to the `lcmUpto n`/`σ₁ (lcmUpto n)` form that
-`highlyAbundantLcm_correct_partialK_W` consumes. `subst` hides all motive/binder
-transport, so the tactic only builds a flat application. -/
-theorem ha_lcm_compose_bridge {n B g : ℕ} {cs : List SageNode}
-    (eB : lcmUpto n = B) (eg : σ₁ (lcmUpto n) = g)
-    (hsL : 2 ≤ g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : WCerts B cs) :
-    IsHighlyAbundant (lcmUpto n) := by
-  subst eB eg
-  exact highlyAbundantLcm_correct_partialK_W hsL (childrenKBeqCert_eq_some hch) hcs
-
-/-- `ha_lcm_compose threshold` closes a goal `Sage.WCerts B <kids>`: any child whose
+/-- `ha_lcm_compose threshold` closes a goal `Sage.AllWEmptyK B <kids>`: any child whose
 subtree exceeds `threshold` nodes is expanded one level, recursing until every leaf
 cert fits. This is the slice form, used where one `kids` list is certified across
 several modules building in parallel. -/
 elab "ha_lcm_compose" sz:num : tactic =>
-  liftMetaFinishingTactic fun g => closeWCertsGoalAuto g sz.getNat
+  liftMetaFinishingTactic fun g => closeAllWEmptyKGoalAuto g sz.getNat
 
 /-- `ha_lcm_compose n threshold` closes a goal `IsHighlyAbundant (lcmUpto n)` for a
 literal `n`. The value `B = lcmUpto n` and `g = σ₁ (lcmUpto n)` are computed and
 kernel-certified by `Sage.proveLcmUptoValues` (no standalone literal lemmas needed);
 `threshold` is the subtree-size bound. The root children are computed
 meta-side, emitted as a named auxiliary `def` (`kids`), and three aux lemmas
-(`WCerts B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and combined
+(`AllWEmptyK B kids`, the `childrenK` `Bool` cert, and `2 ≤ g`) are built and combined
 via `ha_lcm_compose_bridge`. No inline `kids` list appears at the call site. -/
 elab "ha_lcm_compose" nStx:num thr:num : tactic => do
   let n := nStx.getNat
@@ -264,10 +259,10 @@ elab "ha_lcm_compose" nStx:num thr:num : tactic => do
       kidsListExpr := mkApp3 (mkConst ``List.cons [.zero]) ce.nodeTy (nodeExpr a b d) kidsListExpr
     let kidsName ← mkAuxDeclName `kids
     let kidsE ← mkAuxDefinition kidsName listTy kidsListExpr (compile := false)
-    -- (4) `hcs : WCerts B kids` via the auto chain.
+    -- (4) `hcs : AllWEmptyK B kids` via the auto chain.
     let kidExprs := rootKids.map fun (a, b, d) => nodeExpr a b d
-    let chain ← buildWCertsAutoChain ce BExpr fuel Bval kidExprs rootKids threshold
-    let wcertsTy := mkApp2 (mkConst ``Sage.WCerts) BExpr kidsE
+    let chain ← buildAllWEmptyKAutoChain ce BExpr fuel Bval kidExprs rootKids threshold
+    let wcertsTy := mkApp2 (mkConst ``Sage.AllWEmptyK) BExpr kidsE
     let hcs := mkConst (← mkAuxLemma [] wcertsTy chain)
     -- (5) `childrenK` `Bool` cert: `childrenKBeqCert B g 1 0 kids = true` by `reflBoolTrue`.
     let boolTy := mkConst ``Bool
@@ -276,11 +271,11 @@ elab "ha_lcm_compose" nStx:num thr:num : tactic => do
       #[BExpr, gExpr, mkNatLit 1, mkNatLit 0, kidsE]
     let cbcTy := mkApp3 (mkConst ``Eq [.succ .zero]) boolTy cbcApp trueExpr
     let hch := mkConst (← mkAuxLemma [] cbcTy Lean.reflBoolTrue)
-    -- (6) `hsL : 2 ≤ g` via `Nat.le_of_ble_eq_true` on an inline `Nat.ble 2 g = true` cert.
-    let hsL := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) gExpr Lean.reflBoolTrue
-    -- (7) assemble via the bridge (transports literal certs to `lcmUpto n` form).
-    g.assign <| mkAppN (mkConst ``Sage.ha_lcm_compose_bridge)
-      #[nExpr, BExpr, gExpr, kidsE, eBexpr, egexpr, hsL, hch, hcs]
+    -- (6) `hn : 2 ≤ n` via `Nat.le_of_ble_eq_true` on an inline `Nat.ble 2 n = true` cert.
+    let hn := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) (mkNatLit 2) nExpr Lean.reflBoolTrue
+    -- (7) assemble, transporting the literal certificates to `lcmUpto n` form.
+    g.assign <| mkAppN (mkConst ``Sage.highlyAbundantLcm_of_beqCert)
+      #[nExpr, BExpr, gExpr, kidsE, hn, eBexpr, egexpr, hch, hcs]
 
 /-- `lcm_upto_facts n` adds two kernel-certified hypotheses for a literal `n`:
 `eB : lcmUpto n = <B>` and `eg : σ₁ (lcmUpto n) = <g>`. Used by the split `n = 169`
@@ -330,7 +325,7 @@ private def kids_test_n8 : List SageNode :=
 /-- Slice form at threshold 50. Any child with subtree > 50 nodes is expanded
 recursively. Exercises the expansion codepath; n=8 children are all small, so it
 recurses only a few levels deep. -/
-private example : WCerts 840 kids_test_n8 := by ha_lcm_compose 50
+private example : AllWEmptyK 840 kids_test_n8 := by ha_lcm_compose 50
 
 /-- The 9 root children of n=8, generated. Carries a docstring, as the n=169 slices do. -/
 gen_root_kids kids_gen_n8 8 0 9
@@ -340,7 +335,7 @@ on every field. -/
 private example : kids_gen_n8 = kids_test_n8 := rfl
 
 /-- The slice form accepts a generated list, which carries raw numerals. -/
-private example : WCerts 840 kids_gen_n8 := by ha_lcm_compose 50
+private example : AllWEmptyK 840 kids_gen_n8 := by ha_lcm_compose 50
 
 /-! Two generated slices concatenated, as the split n=169 proof does. This shape needs the
 generated definitions to carry compiled code. -/

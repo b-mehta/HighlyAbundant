@@ -18,6 +18,9 @@ These mirror the `HighlyAbundant.Sage` definitions using primitives the kernel r
 
 Nodes here use a flat `SageNode` struct, one `SageNode.rec` per node, where the spec side on
 `Nat × Nat × Nat` takes two nested `Prod.rec`.
+
+The `Bool` certificate forms at the end state a search result as an equality `Nat.beq` closes, which
+`Lean.reflBoolTrue` proves in one kernel reduction.
 -/
 
 namespace Sage
@@ -28,9 +31,6 @@ structure SageNode where
   cand : Nat
   i : Nat
 
-/-- Convert a kernel-side `SageNode` back to a spec-side `(Nat × Nat × Nat)`. -/
-def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
-
 /-- Append on `List SageNode`, written with `List.rec` so the kernel reduces it directly. -/
 @[expose] noncomputable def appendK (xs ys : List SageNode) : List SageNode :=
   xs.rec ys fun x _ ih ↦ x :: ih
@@ -38,32 +38,28 @@ def fromSageNode (n : SageNode) : Nat × Nat × Nat := (n.goal, n.cand, n.i)
 /-- Ceiling division `⌈a / b⌉`, equal to `(a + b - 1) / b` when `b ≠ 0`. -/
 @[expose] def ceilDivK (a b : Nat) : Nat := ((a.add b).sub (nat_lit 1)).div b
 
-/-- The window-growing loop, counting down the table entries left from `back`, so running out of
-counter is the same event as running off the table. Returns `.window b lhs' rhs'` at the least
-`b ≥ back` with `lhs ≥ rhs`, and `.tooLarge` if the next prime pushes `lhs > m2`. -/
-@[expose] noncomputable def extendKGas (m2 : Nat) : Nat → Nat → Nat → Nat → Wheel :=
-  fun gas ↦ gas.rec (fun back lhs rhs ↦ (rhs.ble lhs).rec .exhaustedTable (.window back lhs rhs))
-    fun _ r back lhs rhs ↦
-      (rhs.ble lhs).rec
-        (let q := primesRArray.get back.succ
-         let lhs' := lhs.mul q
-         (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
-        (.window back lhs rhs)
-
-/-- The window-growing loop, entered with `back` inside the window so the phase test is settled. -/
-@[expose] noncomputable def extendKLoop (m2 back lhs rhs : Nat) : Wheel :=
-  extendKGas m2 ((nat_lit 48).sub back) back lhs rhs
+/-- The window-growing loop, entered with `back` inside the window so the phase test is settled.
+Returns `.window b lhs' rhs'` at the least `b ≥ back` with `lhs ≥ rhs`, `.tooLarge` if the next
+prime pushes `lhs > m2`, and `.exhaustedTable` if fuel or the table runs out. -/
+@[expose] noncomputable def extendKLoop (fuel m2 : Nat) : Nat → Nat → Nat → Wheel :=
+  fuel.rec (fun _ _ _ ↦ .exhaustedTable) fun _ r back lhs rhs ↦
+    (rhs.ble lhs).rec
+      ((back.ble (nat_lit 47)).rec .exhaustedTable <|
+        let q := primesRArray.get back.succ
+        let lhs' := lhs.mul q
+        (lhs'.ble m2).rec .tooLarge (r back.succ lhs' (rhs.mul (q.sub (nat_lit 1)))))
+      (.window back lhs rhs)
 
 /-- Grow a prime window forward from `back`, where `lhs = m * ∏ primes[i]` and
 `rhs = goal * ∏ (primes[i] - 1)`. Settles the empty-range case once, then runs `extendKLoop`. -/
 @[expose] noncomputable def extendK (fuel m2 front : Nat) : Nat → Nat → Nat → Wheel :=
-  fuel.rec (fun _ _ _ ↦ .exhaustedTable) fun _ _ back lhs rhs ↦
+  fuel.rec (fun _ _ _ ↦ .exhaustedTable) fun n _ back lhs rhs ↦
     (front.ble back).rec
       ((front.ble (nat_lit 48)).rec .exhaustedTable <|
         let q := primesRArray.get front
         let lhs' := lhs.mul q
-        (lhs'.ble m2).rec .tooLarge (extendKLoop m2 front lhs' (rhs.mul (q.sub (nat_lit 1)))))
-      (extendKLoop m2 back lhs rhs)
+        (lhs'.ble m2).rec .tooLarge (extendKLoop n m2 front lhs' (rhs.mul (q.sub (nat_lit 1)))))
+      (extendKLoop n.succ m2 back lhs rhs)
 
 /-- Emit children `⟨⌈goal / σ(p^k)⌉, cand * p^k, next⟩` for `k ≥ 1` with `p^k ≤ m`, up to and
 including the first `k` where `σ(p^k) ≥ goal`. -/
@@ -72,8 +68,7 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
   fuel.rec (fun _ ↦ []) fun _ r pk ↦
     (pk.ble m).rec []
       (let spk := ((pk.mul p).sub (nat_lit 1)).div (p.sub (nat_lit 1))
-       let child : SageNode := ⟨ceilDivK goal spk, cand.mul pk, next⟩
-       (goal.ble spk).rec (child :: r (pk.mul p)) [child])
+       ⟨ceilDivK goal spk, cand.mul pk, next⟩ :: (goal.ble spk).rec (r (pk.mul p)) [])
 
 /-- Iterate `extend` from `front` onward and gather `expChildren` at each `.window` index. Returns
 `none` if it reads an index `≥ 49`. -/
@@ -131,12 +126,12 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
 
 /-- `Bool` form of the leaf certificate `stepK B fuel [c] = some true`. -/
 @[expose] noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
-  (stepK B fuel [c]).rec false fun b ↦ b
+  (stepK B fuel [c]).elim false fun b ↦ b
 
-/-- `Bool` form of the `childrenK` certificate, written with `Option.rec` so the metaprogram builds
+/-- `Bool` form of the `childrenK` certificate, phrased on `Option.elim` so the metaprogram builds
 it from literal arguments. -/
 @[expose] noncomputable def childrenKBeqCert (B goal cand i : Nat) (kids : List SageNode) :
     Bool :=
-  (childrenK B goal cand i).rec false fun cs ↦ sageListBeq cs kids
+  (childrenK B goal cand i).elim false fun cs ↦ sageListBeq cs kids
 
 end Sage
