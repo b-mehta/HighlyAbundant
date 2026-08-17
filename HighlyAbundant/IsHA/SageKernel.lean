@@ -117,4 +117,26 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
 @[expose] noncomputable def highlyAbundantLcmK? (B sL : Nat) : Option Bool :=
   (B.ble (nat_lit 1)).rec (stepK B searchFuel [⟨sL, nat_lit 1, nat_lit 0⟩]) (some true)
 
+/-! ### Certificates as `Bool` -/
+
+/-- Structural `beq` on `SageNode` from `Nat.beq` and `Bool.and'`. -/
+@[expose] noncomputable def SageNode.beq (a b : SageNode) : Bool :=
+  (a.goal.beq b.goal).and' ((a.cand.beq b.cand).and' (a.i.beq b.i))
+
+/-- Pointwise `SageNode.beq` on two lists, written with `List.rec`. -/
+@[expose] noncomputable def sageListBeq : List SageNode → List SageNode → Bool :=
+  fun xs ↦ xs.rec
+    (fun ys ↦ ys.rec true (fun _ _ _ ↦ false))
+    fun x _ ih ys ↦ ys.rec false fun y ys' _ ↦ (x.beq y).and' (ih ys')
+
+/-- `Bool` form of the leaf certificate `stepK B fuel [c] = some true`. -/
+@[expose] noncomputable def stepKSingletonBeqCert (B fuel : Nat) (c : SageNode) : Bool :=
+  (stepK B fuel [c]).rec false fun b ↦ b
+
+/-- `Bool` form of the `childrenK` certificate, written with `Option.rec` so the metaprogram builds
+it from literal arguments. -/
+@[expose] noncomputable def childrenKBeqCert (B goal cand i : Nat) (kids : List SageNode) :
+    Bool :=
+  (childrenK B goal cand i).rec false fun cs ↦ sageListBeq cs kids
+
 end Sage

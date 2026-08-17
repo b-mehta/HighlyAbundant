@@ -46,6 +46,15 @@ lemma sigma_one_apply_prime_pow' {p k : ℕ} (hp : p.Prime) :
     σ₁ (p ^ k) = (p ^ (k + 1) - 1) / (p - 1) := by
   rw [sigma_one_apply_prime_pow hp, Nat.geomSum_eq hp.two_le]
 
+/-- `n ^ k` is one of the terms of `sigma k n`, so it bounds the sum below. -/
+lemma pow_le_sigma {k n : ℕ} (hn : n ≠ 0) : n ^ k ≤ ArithmeticFunction.sigma k n := by
+  rw [sigma_apply]
+  exact Finset.single_le_sum (f := fun d ↦ d ^ k) (fun i _ ↦ Nat.zero_le _)
+    (Nat.mem_divisors_self _ hn)
+
+lemma le_sigma_one {n : ℕ} (hn : n ≠ 0) : n ≤ σ₁ n := by
+  simpa using pow_le_sigma (k := 1) hn
+
 lemma cast_sigma_one_apply_prime_pow_aux' {α : Type*} [Field α] [CharZero α] {p k : ℕ}
     (hp : p.Prime) :
     (σ₁ (p ^ k) : α) = (p ^ (k + 1) - 1 : ℕ) / (p - 1 : ℕ) := by
@@ -75,6 +84,11 @@ attribute [simp, grind .] Nat.lcmUpto_ne_zero Nat.lcmUpto_pos
 lemma dvd_lcmUpto_of_le {p n : ℕ} (hp : p ≠ 0) (hpn : p ≤ n) : p ∣ lcmUpto n := by
   apply Finset.dvd_lcm
   grind
+
+/-- For `2 ≤ n` the divisor sum of `lcm (1..n)` is at least `2`. -/
+lemma two_le_sigma_lcmUpto {n : ℕ} (hn : 2 ≤ n) : 2 ≤ σ₁ (lcmUpto n) :=
+  le_trans (Nat.le_of_dvd (lcmUpto_pos n) (dvd_lcmUpto_of_le two_ne_zero hn))
+    (le_sigma_one (lcmUpto_ne_zero n))
 
 lemma factorization_lcmUpto_le {n p k : ℕ} (h' : n < p ^ (k + 1)) (hp : p.Prime) :
     (lcmUpto n).factorization p ≤ k := by

@@ -4,219 +4,236 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.IsHA.SageKernel
-import HighlyAbundant.IsHA.SageSpec
+module
+
+public import HighlyAbundant.IsHA.SageKernel
+public import HighlyAbundant.IsHA.SageSpec
+
+import HighlyAbundant.ForLean
+
+section
 
 open Nat
 
 /-!
 # Equality of the kernel and specification deciders
 
-Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Nat` in
-`HighlyAbundant.Sage`. Each kernel definition equals its specification counterpart along
-`fromSageNode`.
+Search nodes are `SageNode` in `HighlyAbundant.IsHA.SageKernel` and `Nat × Nat × Nat` in
+`HighlyAbundant.IsHA.Sage`. Each kernel search function equals its specification counterpart, on
+nodes read by `fromSageNode` where the two differ in node type.
+
+`AllWEmptyK B cs` says the witness set is empty at every node of `cs`, and the `allWEmptyK_*` lemmas
+build one from a witness per node.
 -/
 
 namespace Sage
 
-private theorem appendK_eq_append (xs ys : List SageNode) : appendK xs ys = xs ++ ys := by
-  induction xs with
-  | nil => rfl
-  | cons x _ ih => exact congrArg (x :: ·) ih
+variable {fuel : Nat}
 
-private theorem extendKGas_zero (m2 hi lhs rhs : Nat) :
-    extendKGas m2 0 hi lhs rhs = if lhs ≥ rhs then .window hi lhs rhs else .exhaustedTable := by
-  simp only [extendKGas, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
-  rfl
+/-! ### Nodes and lists of nodes -/
 
-private theorem extendKGas_succ (m2 g hi lhs rhs : Nat) :
-    extendKGas m2 (g + 1) hi lhs rhs =
+/-- Read a kernel-side `SageNode` as the specification's `(Nat × Nat × Nat)`. -/
+def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
+
+@[simp, grind =] theorem appendK_eq_append {xs ys : List SageNode} :
+    appendK xs ys = xs ++ ys := by
+  induction xs with grind [appendK]
+
+/-- Nodes their `Bool` equality accepts are equal. -/
+theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b) : a = b := by
+  grind [cases SageNode, SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
+
+/-- Lists their pointwise `Bool` equality accepts are equal. -/
+theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys → xs = ys
+  | [], [], _ => rfl
+  | x :: xs, y :: ys, h => by
+    have he : sageListBeq (x :: xs) (y :: ys) = (x.beq y).and' (sageListBeq xs ys) := rfl
+    rw [he, Bool.and'_eq_and, Bool.and_eq_true] at h
+    rw [SageNode.eq_of_beq h.1, sageListBeq_sound h.2]
+
+/-- The witness set is empty at every node of `cs`. -/
+public def AllWEmptyK (B : Nat) (cs : List SageNode) : Prop :=
+  ∀ c ∈ cs, W B c.goal c.cand c.i = ∅
+
+/-- The empty child list carries certificates. -/
+public theorem allWEmptyK_nil (B : Nat) : AllWEmptyK B [] := fun _ h ↦ nomatch h
+
+/-- One more node joins a certified child list. -/
+public theorem allWEmptyK_cons {B : Nat} {c : SageNode} {cs : List SageNode}
+    (h : W B c.goal c.cand c.i = ∅) (hs : AllWEmptyK B cs) :
+    AllWEmptyK B (c :: cs) := fun d hd ↦
+  match hd with
+  | .head _ => h
+  | .tail _ hd' => hs d hd'
+
+/-! ### Growing a prime window -/
+
+section Window
+
+variable {m2 lo hi lhs rhs : Nat}
+
+/-- One iteration of the window loop, as a test on the two sides and a step to the next prime. -/
+theorem extendKLoop_succ :
+    extendKLoop (fuel + 1) m2 hi lhs rhs =
       if lhs ≥ rhs then .window hi lhs rhs
-      else
+      else if hi + 1 < 49 then
         let q := primesRArray.get (hi + 1)
         let lhs' := lhs * q
-        if lhs' > m2 then .tooLarge else extendKGas m2 g (hi + 1) lhs' (rhs * (q - 1)) := by
-  simp only [extendKGas, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
-  rfl
+        if lhs' > m2 then .tooLarge else extendKLoop fuel m2 (hi + 1) lhs' (rhs * (q - 1))
+      else .exhaustedTable := by
+  simp only [extendKLoop]
+  grind [Nat.ble_eq, Bool.rec_eq]
 
-private theorem extendKGas_eq_extend (m2 lo : Nat) :
-    ∀ gas fuel hi lhs rhs, gas = 48 - hi → lo ≤ hi → gas < fuel →
-      extendKGas m2 gas hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
-  intro gas
-  induction gas with
-  | zero =>
-    intro fuel hi lhs rhs hgas hle hgf
-    obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by lia⟩
-    rw [extendKGas_zero, extend, if_pos hle]
-    by_cases hw : lhs ≥ rhs
-    · simp only [hw, if_pos]
-    · have hb : ¬ (hi + 1 < 49) := by lia
-      simp only [hw, if_false, hb]
-  | succ g ih =>
-    intro fuel hi lhs rhs hgas hle hgf
-    obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by lia⟩
-    rw [extendKGas_succ, extend, if_pos hle]
-    by_cases hw : lhs ≥ rhs
-    · simp only [hw, if_pos]
-    · have hb : hi + 1 < 49 := by lia
-      simp only [hw, if_false, hb, if_true]
-      by_cases ht : lhs * primesRArray.get (hi + 1) > m2
-      · simp only [ht, if_pos]
-      · simp only [ht, if_false]
-        exact ih f (hi + 1) _ _ (by lia) (hle.trans (Nat.le_succ hi)) (by lia)
+/-- The window loop agrees with the specification's search from any start at or below `hi`. -/
+@[grind <=]
+theorem extendKLoop_eq_extend (hle : lo ≤ hi) :
+    extendKLoop fuel m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
+  induction fuel generalizing hi lhs rhs with
+  | zero => rfl
+  | succ n ih => grind [extend, extendKLoop_succ]
 
-private theorem extendKLoop_eq_extend (m2 lo fuel hi lhs rhs : Nat)
-    (hle : lo ≤ hi) (hf : 49 ≤ fuel) :
-    extendKLoop m2 hi lhs rhs = extend fuel m2 lo hi lhs rhs :=
-  extendKGas_eq_extend m2 lo (48 - hi) fuel hi lhs rhs rfl hle (by lia)
+/-- The kernel's window search and the specification's are the same function. -/
+@[simp, grind =]
+theorem extendK_eq_extend : extendK = extend := by
+  funext fuel m2 lo hi lhs rhs
+  cases fuel with
+  | zero => rfl
+  | succ n => grind [extendK, extend, Bool.rec_eq, Nat.ble_eq]
 
-private theorem extendK_eq_extend (fuel m2 lo hi lhs rhs : Nat) (hf : 50 ≤ fuel) :
-    extendK fuel m2 lo hi lhs rhs = extend fuel m2 lo hi lhs rhs := by
-  obtain ⟨n, rfl⟩ : ∃ n, fuel = n + 1 := ⟨fuel - 1, by lia⟩
-  by_cases hle : lo ≤ hi
-  · have h1 : extendK (n + 1) m2 lo hi lhs rhs = extendKLoop m2 hi lhs rhs := by
-      simp only [extendK, Bool.rec_eq, Nat.ble_eq, if_pos hle]
-    rw [h1, extendKLoop_eq_extend m2 lo (n + 1) hi lhs rhs hle (by lia)]
-  · have h1 : extendK (n + 1) m2 lo hi lhs rhs =
-        if lo < 49 then
-          let q := primesRArray.get lo
-          let lhs' := lhs * q
-          if lhs' > m2 then .tooLarge else extendKLoop m2 lo lhs' (rhs * (q - 1))
-        else .exhaustedTable := by
-      simp only [extendK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff, if_neg hle,
-        ← Nat.not_le, ite_not]
-      rfl
-    rw [h1, extend, if_neg hle]
-    by_cases hb : lo < 49
-    · simp only [hb, if_true]
-      by_cases ht : lhs * primesRArray.get lo > m2
-      · simp only [ht, if_pos]
-      · simp only [ht, if_false,
-          extendKLoop_eq_extend m2 lo n lo _ _ (Nat.le_refl lo) (by lia)]
-    · simp only [hb, if_false]
+end Window
 
-private theorem expChildrenK_succ (n goal cand next m p pk : Nat) :
-    expChildrenK (n + 1) goal cand next m p pk =
+/-! ### Children of one node -/
+
+section Children
+
+variable {goal cand next m p pk : Nat}
+
+@[simp] theorem ceilDivK_eq_ceilDiv {a b : Nat} : ceilDivK a b = ceilDiv a b := rfl
+
+/-- One iteration of the prime-power loop, emitting a child and continuing at the next power. -/
+theorem expChildrenK_succ :
+    expChildrenK (fuel + 1) goal cand next m p pk =
       if pk > m then []
       else
         let spk := (pk * p - 1) / (p - 1)
-        let child : SageNode := ⟨ceilDiv goal spk, cand * pk, next⟩
-        if spk ≥ goal then [child]
-        else child :: expChildrenK n goal cand next m p (pk * p) := by
-  simp only [expChildrenK, Bool.rec_eq, Nat.ble_eq, ← Nat.not_le, ite_not]
-  rfl
+        ⟨ceilDiv goal spk, cand * pk, next⟩ ::
+          (if spk ≥ goal then [] else expChildrenK fuel goal cand next m p (pk * p)) := by
+  rw [← ite_not]
+  simp [expChildrenK, Bool.rec_eq, Nat.ble_eq, not_lt, ceilDivK_eq_ceilDiv]
 
-private theorem expChildrenK_eq_expChildren (fuel goal cand next m p pk : Nat) :
+/-- The prime-power children match the specification's, read as triples. -/
+theorem expChildrenK_eq_expChildren :
     (expChildrenK fuel goal cand next m p pk).map fromSageNode =
       expChildren fuel goal cand next m p pk := by
   induction fuel generalizing pk with
   | zero => rfl
-  | succ n ih =>
-    rw [expChildren, expChildrenK_succ]
-    by_cases hm : pk > m
-    · simp [hm]
-    · simp only [hm, if_false]
-      by_cases ht : (pk * p - 1) / (p - 1) ≥ goal
-      · simp [ht, List.map_cons, List.map_nil, fromSageNode]
-      · simp [ht, List.map_cons, fromSageNode, ih]
+  | succ n ih => grind [expChildren, expChildrenK_succ, fromSageNode]
 
-private theorem wheelChildrenK_succ (n m2 m goal cand lo hi lhs rhs : Nat)
-    (acc : List SageNode) :
-    wheelChildrenK (n + 1) m2 m goal cand lo hi lhs rhs acc =
+variable {m2 lo hi lhs rhs : Nat} {acc : List SageNode}
+
+/-- One iteration of the wheel loop, growing the window then collecting one prime's children. -/
+theorem wheelChildrenK_succ :
+    wheelChildrenK (fuel + 1) m2 m goal cand lo hi lhs rhs acc =
       match extend 50 m2 lo hi lhs rhs with
       | .exhaustedTable => none
       | .tooLarge => some acc
       | .window b lhs' rhs' =>
         if lo < 49 then
           let p := primesRArray.get lo
-          wheelChildrenK n m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
+          wheelChildrenK fuel m2 m goal cand (lo + 1) b (lhs' / p) (rhs' / (p - 1))
             (expChildrenK (m + 1) goal cand (lo + 1) m p p ++ acc)
         else none := by
-  simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff,
-    extendK_eq_extend 50 m2 lo hi lhs rhs (Nat.le_refl 50), appendK_eq_append]
+  simp only [wheelChildrenK, Bool.rec_eq, Nat.ble_eq, Nat.lt_succ_iff, extendK_eq_extend,
+    appendK_eq_append]
   cases extend 50 m2 lo hi lhs rhs <;> rfl
 
-private theorem wheelChildrenK_eq_wheelChildren (fuel m2 m goal cand lo hi lhs rhs : Nat)
-    (acc : List SageNode) :
+/-- The wheel loop's children match the specification's, read as triples. -/
+theorem wheelChildrenK_eq_wheelChildren :
     (wheelChildrenK fuel m2 m goal cand lo hi lhs rhs acc).map (·.map fromSageNode) =
       wheelChildren fuel m2 m goal cand lo hi lhs rhs (acc.map fromSageNode) := by
   induction fuel generalizing lo hi lhs rhs acc with
   | zero => rfl
-  | succ n ih =>
-    rw [wheelChildren, wheelChildrenK_succ]
-    cases extend 50 m2 lo hi lhs rhs with
-    | exhaustedTable | tooLarge => rfl
-    | window b lhs' rhs' =>
-      by_cases h : lo < 49
-      · simp only [h, if_true, ih, List.map_append, expChildrenK_eq_expChildren]
-      · simp only [h, if_false, Option.map]
+  | succ n ih => grind [wheelChildren, wheelChildrenK_succ, expChildrenK_eq_expChildren]
 
-private theorem childrenK_eq_children (B goal cand i : Nat) :
+end Children
+
+/-! ### One step of the search -/
+
+section Step
+
+variable {B goal cand i : Nat} {cs rest : List SageNode}
+
+/-- A node's children match the specification's, read as triples. -/
+theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
-  simp only [childrenK, children, Bool.rec_eq, Nat.ble_eq, ← Nat.lt_succ_iff]
-  by_cases h : i < 49
-  · simp only [h, ↓reduceIte]
-    exact wheelChildrenK_eq_wheelChildren 50 ((B / cand) * (B / cand)) (B / cand) goal cand
-      i i (primesRArray.get i * (B / cand)) (goal * (primesRArray.get i - 1)) []
-  · simp only [h, ↓reduceIte, Option.map_none]
+  grind [childrenK, children, Bool.rec_eq, Nat.ble_eq, wheelChildrenK_eq_wheelChildren]
 
-private theorem stepK_succ_cons (B n goal cand i : Nat) (rest : List SageNode) :
-    stepK B (n + 1) (⟨goal, cand, i⟩ :: rest) =
+/-- One step on a nonempty worklist: accept the head, or replace it by its children. -/
+theorem stepK_succ_cons :
+    stepK B (fuel + 1) (⟨goal, cand, i⟩ :: rest) =
       if goal ≤ 1 then
-        if cand < B then some false else stepK B n rest
-      else (childrenK B goal cand i).rec none (fun cs ↦ stepK B n (cs ++ rest)) := by
-  simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append,
-    ← Nat.not_le, ite_not]
+        if cand < B then some false else stepK B fuel rest
+      else (childrenK B goal cand i).rec none (fun cs ↦ stepK B fuel (cs ++ rest)) := by
+  simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append, ← Nat.not_le, ite_not]
+
+/-- Recover `childrenK … = some kids` from its `Bool` certificate. -/
+public theorem childrenKBeqCert_eq_some {kids : List SageNode}
+    (h : childrenKBeqCert B goal cand i kids) :
+    childrenK B goal cand i = some kids := by
+  cases hc : childrenK B goal cand i with grind [childrenKBeqCert, sageListBeq_sound]
+
+/-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate. -/
+public theorem stepK_singleton_of_beqCert {c : SageNode} (h : stepKSingletonBeqCert B fuel c) :
+    stepK B fuel [c] = some true := by
+  cases hc : stepK B fuel [c] with grind [stepKSingletonBeqCert]
 
 /-- Read a `childrenK = some cs` certificate as `children = some (cs.map fromSageNode)`. -/
-private theorem children_of_childrenK {B goal cand i : Nat} {cs : List SageNode}
-    (hch : childrenK B goal cand i = some cs) :
+theorem children_of_childrenK (hch : childrenK B goal cand i = some cs) :
     children B goal cand i = some (cs.map fromSageNode) := by
-  simpa [hch] using (childrenK_eq_children B goal cand i).symm
+  simp [← childrenK_eq_children, hch]
 
-/-- Read a `childrenK = none` certificate as `children = none`. -/
-private theorem children_of_childrenK_none {B goal cand i : Nat}
-    (hch : childrenK B goal cand i = none) : children B goal cand i = none := by
-  simpa [hch] using (childrenK_eq_children B goal cand i).symm
-
-theorem stepK_eq_step (B fuel : Nat) (xs : List SageNode) :
-    stepK B fuel xs = step B fuel (xs.map fromSageNode) := by
-  induction fuel generalizing xs with
+/-- The kernel search step agrees with the specification step on nodes read by `fromSageNode`. -/
+theorem stepK_eq_step :
+    stepK B fuel rest = step B fuel (rest.map fromSageNode) := by
+  induction fuel generalizing rest with
   | zero => rfl
   | succ n ih =>
-    match xs with
+    match rest with
     | [] => rfl
-    | ⟨goal, cand, i⟩ :: rest =>
+    | ⟨goal, cand, i⟩ :: tail =>
       rw [stepK_succ_cons, step.eq_def]
-      simp only [List.map_cons, fromSageNode]
-      split
-      · split <;> simp [ih]
-      · cases hck : childrenK B goal cand i with
-        | none => rw [children_of_childrenK_none hck]
-        | some cs => simp [children_of_childrenK hck, ih, List.map_append]
+      cases hck : childrenK B goal cand i with grind [childrenK_eq_children, fromSageNode]
+
+/-- `W` is empty at a node whose one-element stack the kernel search accepts. -/
+public theorem W_eq_empty_of_stepK_singleton {c : SageNode} (h : stepK B fuel [c] = some true) :
+    W B c.goal c.cand c.i = ∅ := by
+  rw [stepK_eq_step] at h
+  simpa [List.map_cons, List.map_nil, fromSageNode]
+    using allWEmpty_iff.mp (step_true h) _ List.mem_cons_self
 
 /-- `W` is empty at a node once it is empty at every child given by `childrenK`. -/
-theorem W_eq_empty_of_partialK {B goal cand i : ℕ} {cs : List SageNode}
-    (hgoal : 2 ≤ goal)
-    (hch : childrenK B goal cand i = some cs)
-    (hcs : ∀ c ∈ cs, W B c.goal c.cand c.i = ∅) :
-    W B goal cand i = ∅ := by
-  refine W_eq_empty_of_partial (cs := cs.map fromSageNode) hgoal
-    (children_of_childrenK hch) ?_
-  intro c' hc'
-  obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
-  simpa [fromSageNode] using hcs c hc
+public theorem W_eq_empty_of_childrenK (hgoal : 2 ≤ goal)
+    (hch : childrenK B goal cand i = some cs) (hcs : AllWEmptyK B cs) :
+    W B goal cand i = ∅ :=
+  W_eq_empty_of_partial hgoal (children_of_childrenK hch) (by grind [fromSageNode, AllWEmptyK])
 
-/-- `lcmUpto n` is highly abundant once `W` is empty at every root child given by `childrenK`. -/
-theorem highlyAbundantLcm_correct_partialK_W {n : ℕ} {cs : List SageNode}
-    (hsL : 2 ≤ σ₁ (lcmUpto n))
-    (hch : childrenK (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, W (lcmUpto n) c.goal c.cand c.i = ∅) :
+end Step
+
+/-! ### The root -/
+
+section Root
+
+variable {n B g : Nat} {cs : List SageNode}
+
+/-- `lcmUpto n` is highly abundant given certificates phrased on the literal bound `B` and the
+literal divisor sum `g`. -/
+public theorem highlyAbundantLcm_of_beqCert (hn : 2 ≤ n) (eB : lcmUpto n = B)
+    (eg : σ₁ (lcmUpto n) = g) (hch : childrenKBeqCert B g 1 0 cs = true) (hcs : AllWEmptyK B cs) :
     IsHighlyAbundant (lcmUpto n) := by
-  refine highlyAbundantLcm_correct_partial_W (cs := cs.map fromSageNode) hsL
-    (children_of_childrenK hch) ?_
-  intro c' hc'
-  obtain ⟨c, hc, rfl⟩ := List.mem_map.mp hc'
-  simpa [fromSageNode] using hcs c hc
+  subst eB eg
+  exact highlyAbundantLcm_correct_partial_W hn
+    (children_of_childrenK (childrenKBeqCert_eq_some hch)) (by grind [fromSageNode, AllWEmptyK])
+
+end Root
 
 end Sage
