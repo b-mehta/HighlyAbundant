@@ -95,6 +95,14 @@ def W (B goal cand i : ℕ) : Set ℕ :=
     t ∈ W B goal cand i ↔ t ∈ P i ∧ cand * t < B ∧ goal ≤ σ₁ t :=
   Iff.rfl
 
+/-- The witness set is empty at every node of `cs`. -/
+def AllWEmpty (B : ℕ) (cs : List (ℕ × ℕ × ℕ)) : Prop :=
+  ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅
+
+@[simp, grind =] lemma allWEmpty_iff {B : ℕ} {cs : List (ℕ × ℕ × ℕ)} :
+    AllWEmpty B cs ↔ ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅ :=
+  Iff.rfl
+
 /-! ### Membership in `P` -/
 
 /-- If `x ≠ 0` and every prime factor of `x` exceeds the `lo`-th prime, then
@@ -537,8 +545,7 @@ theorem children_spec {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
 /-- A node with `2 ≤ goal` has an empty witness set once all its children do. -/
 theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × ℕ)}
     (hgoal : 2 ≤ goal)
-    (hch : children B goal cand i = some cs)
-    (hcs : ∀ c ∈ cs, W B c.1 c.2.1 c.2.2 = ∅) :
+    (hch : children B goal cand i = some cs) (hcs : AllWEmpty B cs) :
     W B goal cand i = ∅ := by
   rw [Set.eq_empty_iff_forall_notMem]
   intro t ht
@@ -549,8 +556,7 @@ theorem W_eq_empty_of_partial {B goal cand i : ℕ} {cs : List (ℕ × ℕ × �
 
 /-- `step = some true` gives an empty witness set for every node on the stack. -/
 theorem step_true {B fuel : ℕ} {stack : List (ℕ × ℕ × ℕ)}
-    (h : step B fuel stack = some true) :
-    ∀ node ∈ stack, W B node.1 node.2.1 node.2.2 = ∅ := by
+    (h : step B fuel stack = some true) : AllWEmpty B stack := by
   fun_induction step with
   | case1 | case2 | case3 | case5 => grind
   | case4 _ goal cand i _ _ _ ih =>
@@ -575,7 +581,7 @@ theorem isHighlyAbundant_of_root_W_eq_empty {n : ℕ}
 theorem highlyAbundantLcm_correct_partial_W {n : ℕ} {cs : List (ℕ × ℕ × ℕ)}
     (hn : 2 ≤ n)
     (hch : children (lcmUpto n) (σ₁ (lcmUpto n)) 1 0 = some cs)
-    (hcs : ∀ c ∈ cs, W (lcmUpto n) c.1 c.2.1 c.2.2 = ∅) :
+    (hcs : AllWEmpty (lcmUpto n) cs) :
     IsHighlyAbundant (lcmUpto n) :=
   isHighlyAbundant_of_root_W_eq_empty
     (W_eq_empty_of_partial (two_le_sigma_lcmUpto hn) hch hcs)
