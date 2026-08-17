@@ -19,9 +19,9 @@ open Nat
 /-!
 # Equality of the kernel and specification deciders
 
-Search nodes are `SageNode` in `HighlyAbundant.SageKernel` and `Nat × Nat × Nat` in
-`HighlyAbundant.Sage`. Each kernel definition equals its specification counterpart along
-`fromSageNode`.
+Search nodes are `SageNode` in `HighlyAbundant.IsHA.SageKernel` and `Nat × Nat × Nat` in
+`HighlyAbundant.IsHA.Sage`. Each kernel search function equals its specification counterpart, on
+nodes read by `fromSageNode` where the two differ in node type.
 
 `WCerts B cs` says the witness set is empty at every node of `cs`, and the `w_certs_*` lemmas build
 one from a witness per node.
@@ -124,7 +124,7 @@ end Children
 
 section Step
 
-variable {B n goal cand i : Nat} {cs rest : List SageNode}
+variable {B goal cand i : Nat} {cs rest : List SageNode}
 
 theorem childrenK_eq_children :
     (childrenK B goal cand i).map (·.map fromSageNode) = children B goal cand i := by
