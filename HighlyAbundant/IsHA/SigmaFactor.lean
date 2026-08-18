@@ -39,6 +39,11 @@ namespace Sage
 @[expose] public def primesFactorK : List (ℕ × ℕ) → List ℕ :=
   List.rec [] fun pk _ r ↦ pk.1 :: r
 
+/-- The primes of a factorisation increase along the list. -/
+public def FactorChain (F : List (ℕ × ℕ)) : Prop := F.IsChain (·.1 < ·.1)
+
+instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) := inferInstanceAs (Decidable (F.IsChain _))
+
 /-- Every prime of a factorisation passes the trial-division check. -/
 @[expose] public noncomputable def allCheckPrimeK : List (ℕ × ℕ) → Bool :=
   List.rec true fun pk _ r ↦ (checkPrime pk.1).and' r
@@ -87,12 +92,15 @@ theorem forall_prime_of_checkPrime :
 
 /-! ### The divisor sum -/
 
-/-- `σ₁ (∏ p ^ k) = ∏ (p ^ (k + 1) - 1) / (p - 1)` for a factorisation into distinct primes. -/
+/-- `σ₁ (∏ p ^ k) = ∏ (p ^ (k + 1) - 1) / (p - 1)` for a factorisation in increasing order. -/
 theorem sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ)) (hp : allCheckPrimeK F)
-    (hd : (primesFactorK F).Nodup) (hsig : sigmaFactorK F = sL) :
+    (hc : FactorChain F) (hsig : sigmaFactorK F = sL) :
     σ₁ (prodFactorK F) = sL := by
+  have hd : (primesFactorK F).Nodup := by
+    rw [primesFactorK_eq]
+    exact (hc.pairwise.imp fun h ↦ Nat.ne_of_lt h).map _ (fun _ _ ↦ id)
   have hpp := forall_prime_of_checkPrime hp
-  clear hp
+  clear hp hc
   subst hsig
   simp only [prodFactorK_eq, sigmaFactorK_eq, primesFactorK_eq] at hd ⊢
   induction F with
@@ -114,11 +122,11 @@ theorem sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ)) (hp : allCheck
 
 /-- `σ₁ (lcmUpto n) = sL` from a factorisation of `lcmUpto n` into distinct primes. -/
 public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcmUpto n = L)
-    (hprod : prodFactorK F = L) (hp : allCheckPrimeK F) (hd : (primesFactorK F).Nodup)
+    (hprod : prodFactorK F = L) (hp : allCheckPrimeK F) (hc : FactorChain F)
     (hsig : sigmaFactorK F = sL) :
     σ₁ (lcmUpto n) = sL := by
   rw [hL, ← hprod]
-  exact sigma_of_factorization F hp hd hsig
+  exact sigma_of_factorization F hp hc hsig
 
 /-! ### `lcmUpto` from its factorisation -/
 
@@ -160,24 +168,27 @@ private theorem sum_map_ite_of_mem {F : List (ℕ × ℕ)} (hd : (F.map Prod.fst
 /-- `lcmUpto n` is the product of the prime powers in `F`, when `F` lists each prime `p ≤ n` once
 with an exponent `k` pinned by `p ^ k ≤ n < p ^ (k + 1)`. -/
 theorem lcmUpto_eq_prodFactorK {n : ℕ} (F : List (ℕ × ℕ)) (hp : allCheckPrimeK F)
-    (hd : (primesFactorK F).Nodup)
+    (hc : FactorChain F)
     (hbound : ∀ pk ∈ F, pk.1 ^ pk.2 ≤ n ∧ n < pk.1 ^ (pk.2 + 1))
     (hcover : ∀ p, p.Prime → p ≤ n → p ∈ primesFactorK F) :
     lcmUpto n = prodFactorK F := by
-  rw [primesFactorK_eq] at hd hcover
+  have hd : (F.map Prod.fst).Nodup :=
+    (hc.pairwise.imp fun h ↦ Nat.ne_of_lt h).map _ (fun _ _ ↦ id)
+  rw [primesFactorK_eq] at hcover
   have hne : prodFactorK F ≠ 0 := by
     rw [prodFactorK_eq]
     exact List.prod_ne_zero fun h ↦ by
       obtain ⟨qk, hqk, hz⟩ := List.mem_map.1 h
       exact absurd hz (pow_ne_zero _ (forall_prime_of_checkPrime hp qk hqk).pos.ne')
+  have hexp := factorization_lcmUpto_of_bounds (L := F) Prod.fst Prod.snd
+    (forall_prime_of_checkPrime hp) hbound
   refine Nat.eq_of_factorization_eq (lcmUpto_ne_zero n) hne fun q ↦ ?_
   by_cases hq : q.Prime
-  · rw [Nat.factorization_lcmUpto n hq, factorization_prodFactorK hp]
+  · rw [factorization_prodFactorK hp]
     rcases le_or_gt q n with hqn | hqn
     · obtain ⟨⟨q', k⟩, hmem, rfl⟩ := List.mem_map.1 (hcover q hq hqn)
-      obtain ⟨h1, h2⟩ := hbound _ hmem
-      rw [sum_map_ite_of_mem hd hmem, Nat.log_eq_of_pow_le_of_lt_pow h1 h2]
-    · rw [Nat.log_of_lt hqn]
+      rw [sum_map_ite_of_mem hd hmem, hexp _ hmem]
+    · rw [Nat.factorization_lcmUpto n hq, Nat.log_of_lt hqn]
       refine (List.sum_eq_zero fun x hx ↦ ?_).symm
       obtain ⟨⟨p, k⟩, hmem, rfl⟩ := List.mem_map.1 hx
       by_cases hpq : p = q

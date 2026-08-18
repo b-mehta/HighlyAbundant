@@ -100,6 +100,14 @@ lemma factorization_lcmUpto_eq {n p k : ℕ} (h : p ^ k ≤ n) (h' : n < p ^ (k 
     (lcmUpto n).factorization p = k := by
   rw [Nat.factorization_lcmUpto n hp, Nat.log_eq_of_pow_le_of_lt_pow h h']
 
+/-- Read the exponents of `lcmUpto n` off a list, given a prime and an exponent for each entry
+with `p ^ k ≤ n < p ^ (k + 1)`. -/
+lemma factorization_lcmUpto_of_bounds {α : Type*} {L : List α} {n : ℕ} (prime exp : α → ℕ)
+    (hp : ∀ a ∈ L, (prime a).Prime)
+    (hb : ∀ a ∈ L, prime a ^ exp a ≤ n ∧ n < prime a ^ (exp a + 1)) :
+    ∀ a ∈ L, (lcmUpto n).factorization (prime a) = exp a :=
+  fun a ha ↦ factorization_lcmUpto_eq (hb a ha).1 (hb a ha).2 (hp a ha)
+
 lemma factorization_lcmUpto_le_one {p n : ℕ} (hp : p.Prime) (hnp : n < p ^ 2) :
     (lcmUpto n).factorization p ≤ 1 :=
   factorization_lcmUpto_le hnp hp

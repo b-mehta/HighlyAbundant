@@ -60,8 +60,7 @@ def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
   let hprod := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) prodApp BE
     (← boolCert (mkApp2 (mkConst ``Nat.beq) prodApp BE))
   let hp ← boolCert (mkApp (mkConst ``Sage.allCheckPrimeK) factorsE)
-  let hd ← mkDecideProof (mkApp2 (mkConst ``List.Nodup [.zero]) natTy
-    (mkApp (mkConst ``Sage.primesFactorK) factorsE))
+  let hd ← mkDecideProof (mkApp (mkConst ``Sage.FactorChain) factorsE)
   let sigApp := mkApp (mkConst ``Sage.sigmaFactorK) factorsE
   let hsig := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) sigApp gE
     (← boolCert (mkApp2 (mkConst ``Nat.beq) sigApp gE))

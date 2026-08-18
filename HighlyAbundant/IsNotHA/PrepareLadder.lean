@@ -1,5 +1,5 @@
 /-
-Copyright (c) 2026 Bhavik Mehta. All rights reserved.
+Copyright (c) 2025 Bhavik Mehta. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
@@ -67,9 +67,8 @@ lemma h_disjoint : ∀ pki ∈ d.muls, pki.1 ∉ d.divs := d.h_disjoint'
 def mul : ℕ := (d.muls.map (fun pk ↦ pk.1 ^ pk.2.1)).prod
 def div : ℕ := d.divs.prod
 
-lemma h_muls_hi' : ∀ pki ∈ d.muls, (lcmUpto d.hi).factorization pki.1 = pki.2.2 := by
-  intro pki hpki
-  exact factorization_lcmUpto_eq (d.h_muls_hi _ hpki).1 (d.h_muls_hi _ hpki).2 (d.h_muls _ hpki)
+lemma h_muls_hi' : ∀ pki ∈ d.muls, (lcmUpto d.hi).factorization pki.1 = pki.2.2 :=
+  factorization_lcmUpto_of_bounds _ _ d.h_muls d.h_muls_hi
 
 lemma h_muls_i {i : ℕ} (hi : i ∈ Finset.Icc d.lo d.hi) :
     ∀ pki ∈ d.muls, (lcmUpto i).factorization pki.1 ≤ pki.2.2 := by
