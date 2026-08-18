@@ -32,7 +32,8 @@ namespace Sage
 
 /-- For a literal `n`, the pair `(lcm (1..n), σ₁ (lcm (1..n)))` with proofs that each equals its
 literal. The factorisation is found here; the kernel checks the least common multiple, the product
-of the prime powers, the divisor-sum product, primality by trial division, and distinctness. -/
+of the prime powers, the divisor-sum product, primality by trial division, and the ordering of the
+primes. -/
 def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
   let nE := mkNatLit n
   let boolTy := mkConst ``Bool
@@ -102,6 +103,7 @@ private structure CommonExprs where
   boolTy : Expr
   trueExpr : Expr
 
+/-- The cached expressions, built once per tactic run. -/
 private def mkCommonExprs : CommonExprs :=
   let nodeTy := mkConst ``Sage.SageNode
   let nilExpr := mkApp (mkConst ``List.nil [.zero]) nodeTy
@@ -277,8 +279,8 @@ elab "ha_lcm_compose" nStx:num thr:num : tactic => do
       #[nExpr, BExpr, gExpr, kidsE, hn, eBexpr, egexpr, hch, hcs]
 
 /-- `lcm_upto_facts n` adds two kernel-certified hypotheses for a literal `n`:
-`eB : lcmUpto n = <B>` and `eg : σ₁ (lcmUpto n) = <g>`. Used by the split `n = 169`
-proof, which composes its two halves manually rather than through `ha_lcm_compose`. -/
+`eB : lcmUpto n = <B>` and `eg : σ₁ (lcmUpto n) = <g>`, for proofs that compose their halves by
+hand. -/
 elab "lcm_upto_facts" nStx:num : tactic => do
   let n := nStx.getNat
   liftMetaTactic fun g => do
@@ -342,6 +344,7 @@ generated definitions to carry compiled code. -/
 gen_root_kids kids_gen_n8_lo 8 0 4
 gen_root_kids kids_gen_n8_hi 8 4 9
 
+/-- The two generated slices, joined. -/
 private def kids_gen_n8_all : List SageNode := kids_gen_n8_lo ++ kids_gen_n8_hi
 
 private example : kids_gen_n8_all = kids_test_n8 := rfl

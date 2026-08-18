@@ -13,8 +13,7 @@ set_option maxRecDepth 100000
 /-!
 # Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, `n = 127` and `n = 131`
 
-Each theorem is a single `ha_lcm_compose` invocation. Together they stay under the build's
-critical path, so they share one module.
+Each theorem is a single `ha_lcm_compose` invocation, and this module holds both.
 -/
 
 namespace Sage

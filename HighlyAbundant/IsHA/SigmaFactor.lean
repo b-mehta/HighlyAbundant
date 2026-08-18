@@ -42,7 +42,9 @@ namespace Sage
 /-- The primes of a factorisation increase along the list. -/
 public def FactorChain (F : List (ℕ × ℕ)) : Prop := F.IsChain (·.1 < ·.1)
 
-instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) := inferInstanceAs (Decidable (F.IsChain _))
+/-- The ordering is decidable, so a literal list settles it. -/
+instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) :=
+  inferInstanceAs (Decidable (F.IsChain _))
 
 /-- Every prime of a factorisation passes the trial-division check. -/
 @[expose] public noncomputable def allCheckPrimeK : List (ℕ × ℕ) → Bool :=

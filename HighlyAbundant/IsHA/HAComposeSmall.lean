@@ -13,9 +13,8 @@ set_option maxRecDepth 100000
 /-!
 # Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, prime powers `n ≤ 89`
 
-Each theorem is a single `ha_lcm_compose` invocation. These cases together take a few minutes,
-well under the build's critical path, so they share one module; the heavier `n ≥ 125` proofs
-stay in their own files to keep CI module-parallelism.
+Each theorem is a single `ha_lcm_compose` invocation. This module holds the cases up to `n = 89`;
+each case from `n = 125` upward has a module of its own.
 -/
 
 namespace Sage
