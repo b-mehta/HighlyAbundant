@@ -7,6 +7,10 @@ set -u
 PROBE=HighlyAbundant/SigmaRoutes.lean
 N="${1:-169}"
 
+lake build HighlyAbundant.SigmaRoutes > /tmp/deps.log 2>&1 || {
+  echo "dependencies failed to build"; tail -5 /tmp/deps.log; exit 1
+}
+
 set_route () {
   python3 - "$1" "$N" <<'PY'
 import pathlib, re, sys
