@@ -200,24 +200,77 @@ theorem lcmUpto_eq_prodFactorK {n : ℕ} (F : List (ℕ × ℕ)) (hp : allCheckP
       · simp [hpq]
   · simp [Nat.factorization_eq_zero_of_not_prime _ hq]
 
-/-! ### `lcmUpto` for the kernel -/
+/-! ### Exponents pinned by two comparisons -/
 
-/-- `lcm (1..n)` over the list `[1, …, n]`, which the kernel evaluates on a literal `n`. -/
-@[expose] public def lcmUptoK (n : ℕ) : ℕ :=
-  (List.range' 1 n).rec (nat_lit 1) fun a _ r ↦ a.lcm r
+/-- Each entry `(p, k)` satisfies `p ^ k ≤ n < p ^ (k + 1)`, as a `Bool`. -/
+@[expose] public noncomputable def boundsK (n : ℕ) : List (ℕ × ℕ) → Bool :=
+  List.rec true fun pk _ r ↦
+    (((pk.1.pow pk.2).ble n).and' ((n.blt (pk.1.pow pk.2.succ)).and' r))
 
-/-- The two forms of `lcm (1..n)` agree. -/
-theorem lcmUpto_eq_lcmUptoK (n : ℕ) : lcmUpto n = lcmUptoK n := by
-  rw [Nat.lcmUpto, lcmUptoK, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
-  change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
-  simp only [Nat.add_sub_cancel, List.map_id]
-  induction List.range' 1 n with
-  | nil => rfl
-  | cons a l ih => rw [List.foldr_cons, ih, lcm_eq_nat_lcm]
+theorem boundsK_sound {n : ℕ} :
+    ∀ {F : List (ℕ × ℕ)}, boundsK n F → ∀ pk ∈ F, pk.1 ^ pk.2 ≤ n ∧ n < pk.1 ^ (pk.2 + 1)
+  | [], _, _, hm => by simp at hm
+  | pk :: t, h, qk, hm => by
+    have he : boundsK n (pk :: t) =
+        ((pk.1.pow pk.2).ble n).and' ((n.blt (pk.1.pow pk.2.succ)).and' (boundsK n t)) := rfl
+    rw [he, Bool.and'_eq_and, Bool.and_eq_true, Bool.and'_eq_and, Bool.and_eq_true] at h
+    rcases List.mem_cons.1 hm with rfl | hmt
+    · exact ⟨by simpa using h.1, by simpa using h.2.1⟩
+    · exact boundsK_sound h.2.2 qk hmt
 
-/-- `lcmUpto n = L` from the `Bool` comparison of `lcmUptoK n` with `L`. -/
-public theorem lcmUpto_eq_of_beq (n : ℕ) {L : ℕ} (h : (lcmUptoK n).beq L) : lcmUpto n = L := by
-  rw [lcmUpto_eq_lcmUptoK]; exact Nat.eq_of_beq_eq_true h
+/-! ### Completeness of the list of primes -/
+
+/-- Membership in a list of naturals, as a `Bool`. -/
+@[expose] public noncomputable def memK (a : ℕ) : List ℕ → Bool :=
+  List.rec false fun x _ r ↦ (a.beq x).or' r
+
+theorem memK_sound {a : ℕ} : ∀ {L : List ℕ}, memK a L → a ∈ L
+  | [], h => by simp [memK] at h
+  | x :: t, h => by
+    have he : memK a (x :: t) = (a.beq x).or' (memK a t) := rfl
+    rw [he, Bool.or'_eq_or, Bool.or_eq_true] at h
+    rcases h with h | h
+    · exact Nat.eq_of_beq_eq_true h ▸ List.mem_cons_self
+    · exact List.mem_cons_of_mem _ (memK_sound h)
+
+/-- Every element of `L` is either listed in `ps` or rejected by the primality check. -/
+@[expose] public noncomputable def coversK (ps : List ℕ) : List ℕ → Bool :=
+  List.rec true fun m _ r ↦ ((memK m ps).or' (checkPrime m).not).and' r
+
+theorem coversK_sound {ps : List ℕ} :
+    ∀ {L : List ℕ}, coversK ps L → ∀ m ∈ L, memK m ps ∨ checkPrime m = false
+  | [], _, _, hm => by simp at hm
+  | x :: t, h, m, hm => by
+    have he : coversK ps (x :: t) = ((memK x ps).or' (checkPrime x).not).and' (coversK ps t) := rfl
+    rw [he, Bool.and'_eq_and, Bool.and_eq_true, Bool.or'_eq_or, Bool.or_eq_true] at h
+    rcases List.mem_cons.1 hm with rfl | hmt
+    · simpa using h.1
+    · exact coversK_sound h.2 m hmt
+
+/-- The primes of `F` include every prime `p ≤ n`, given the check covers `1` to `n`. -/
+theorem mem_primesFactorK_of_prime {n : ℕ} {F : List (ℕ × ℕ)} (hn : n ≤ 528)
+    (h : coversK (primesFactorK F) (List.range' 1 n)) {p : ℕ} (hp : p.Prime) (hpn : p ≤ n) :
+    p ∈ primesFactorK F := by
+  have hmem : p ∈ List.range' 1 n := by
+    rw [List.mem_range'_1]
+    exact ⟨hp.one_lt.le, by lia⟩
+  rcases coversK_sound h p hmem with hin | hout
+  · exact memK_sound hin
+  · exact absurd hp (not_prime_of_checkPrime_false hp.two_le (hpn.trans hn) hout)
+
+/-! ### The two values from one factorisation -/
+
+/-- For `n ≤ 528`, a factorisation `F` passing all four checks gives both `lcmUpto n = L` and
+`σ₁ (lcmUpto n) = sL`. -/
+public theorem lcmUpto_and_sigma_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hn : n ≤ 528)
+    (hp : allCheckPrimeK F) (hc : FactorChain F) (hb : boundsK n F)
+    (hcov : coversK (primesFactorK F) (List.range' 1 n))
+    (hprod : prodFactorK F = L) (hsig : sigmaFactorK F = sL) :
+    lcmUpto n = L ∧ σ₁ (lcmUpto n) = sL := by
+  have hL : lcmUpto n = L := by
+    rw [lcmUpto_eq_prodFactorK F hp hc (boundsK_sound hb)
+      fun p hp' hpn ↦ mem_primesFactorK_of_prime hn hcov hp' hpn, hprod]
+  exact ⟨hL, sigma_lcmUpto_of_factor F hL hprod hp hc hsig⟩
 
 /-! ### Values for a literal `n` -/
 

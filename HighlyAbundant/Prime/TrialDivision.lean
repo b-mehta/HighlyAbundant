@@ -82,3 +82,18 @@ theorem checkPrime_true {p : ℕ} (h : checkPrime p) : p.Prime := by
   simp only [checkPrime, Bool.and'_eq_and, Bool.and_eq_true, Nat.ble_eq] at h
   obtain ⟨h2, hle, hpass⟩ := h
   exact Nat.prime_of_passes p h2 (by omega) hpass
+
+/-- A number in range that the check rejects is composite: some prime below `23` divides it. -/
+theorem not_prime_of_checkPrime_false {p : ℕ} (h2 : 2 ≤ p) (hle : p ≤ 528)
+    (h : checkPrime p = false) : ¬ p.Prime := by
+  have hb2 : Nat.ble 2 p = true := by simpa using h2
+  have hb528 : Nat.ble p 528 = true := by simpa using hle
+  simp only [checkPrime, Bool.and'_eq_and, Bool.and_eq_false_iff, hb2, hb528] at h
+  have hpass : passes p [2, 3, 5, 7, 11, 13, 17, 19] = false := by grind
+  rw [← Bool.not_eq_true, passes_true_iff] at hpass
+  push Not at hpass
+  obtain ⟨i, hmem, hmod, hlt⟩ := hpass
+  have hi2 : 2 ≤ i := by
+    simp only [List.mem_cons, List.not_mem_nil, or_false] at hmem
+    rcases hmem with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> norm_num
+  exact fun hp ↦ absurd (hp.eq_one_or_self_of_dvd i (Nat.dvd_of_mod_eq_zero hmod)) (by grind)
