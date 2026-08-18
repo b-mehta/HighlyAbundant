@@ -42,6 +42,9 @@ def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
       Lean.reflBoolTrue)
   let Bval := (List.range' 1 n).foldr Nat.lcm 1
   let BE := mkNatLit Bval
+  let lcmApp := mkApp (mkConst ``Sage.lcmUptoK) nE
+  let hBeq ← boolCert (mkApp2 (mkConst ``Nat.beq) lcmApp BE)
+  let eB := mkApp3 (mkConst ``Sage.lcmUpto_eq_of_beq) nE BE hBeq
   let factors := Sage.factorLcmUptoMeta n
   let gval := factors.foldr (fun pk r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1
   let gE := mkNatLit gval
@@ -57,19 +60,12 @@ def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
   let hprod := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) prodApp BE
     (← boolCert (mkApp2 (mkConst ``Nat.beq) prodApp BE))
   let hp ← boolCert (mkApp (mkConst ``Sage.allCheckPrimeK) factorsE)
-  let hc ← mkDecideProof (mkApp (mkConst ``Sage.FactorChain) factorsE)
-  let hb ← boolCert (mkApp2 (mkConst ``Sage.boundsK) nE factorsE)
-  let rangeE := mkApp2 (mkConst ``List.range') (mkNatLit 1) nE
-  let hcov ← boolCert (mkApp2 (mkConst ``Sage.coversK)
-    (mkApp (mkConst ``Sage.primesFactorK) factorsE) rangeE)
-  let hn := mkApp3 (mkConst ``Nat.le_of_ble_eq_true) nE (mkNatLit 528) Lean.reflBoolTrue
+  let hd ← mkDecideProof (mkApp (mkConst ``Sage.FactorChain) factorsE)
   let sigApp := mkApp (mkConst ``Sage.sigmaFactorK) factorsE
   let hsig := mkApp3 (mkConst ``Nat.eq_of_beq_eq_true) sigApp gE
     (← boolCert (mkApp2 (mkConst ``Nat.beq) sigApp gE))
-  let both := mkAppN (mkConst ``Sage.lcmUpto_and_sigma_of_factor)
-    #[nE, BE, gE, factorsE, hn, hp, hc, hb, hcov, hprod, hsig]
-  let eB := mkProj ``And 0 both
-  let eg := mkProj ``And 1 both
+  let eg := mkAppN (mkConst ``Sage.sigma_lcmUpto_of_factor)
+    #[nE, BE, gE, factorsE, eB, hprod, hp, hd, hsig]
   return (Bval, gval, eB, eg)
 
 /-- Walk a fully-reduced `List.cons`/`List.nil` chain and return its elements. -/
