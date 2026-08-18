@@ -132,7 +132,7 @@ and `rhs = goal * ∏ (primes[i] - 1)`. Returns `.window b lhs' rhs'` at the lea
 
 /-- Upper bound on nodes visited by `step`. Experimentally minimal for
 `highlyAbundantLcm? B sL ≠ none` on `lcm (1..n)` for `n ≤ 172`. -/
-def searchFuel : Nat := 6400000
+@[expose] def searchFuel : Nat := 6400000
 
 /-- Stack-machine witness search. `some true`: no node on `stack` has a witness.
 `some false`: some node has a witness. `none`: fuel exhausted or `children` read

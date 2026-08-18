@@ -4,8 +4,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Bhavik Mehta
 -/
 
-import HighlyAbundant.IsHA.SageKernelEquiv
-import HighlyAbundant.IsHA.SigmaFactor
+module
+
+public import HighlyAbundant.IsHA.SageKernelEquiv
+public import HighlyAbundant.IsHA.SigmaFactor
+public meta import HighlyAbundant.IsHA.Sage
+public meta import Mathlib.Data.Nat.Log
+public meta import Mathlib.Data.Nat.Prime.Defs
 
 open Nat
 
@@ -31,11 +36,11 @@ open Lean Meta Elab Tactic
 namespace Sage
 
 /-- The factorisation of `lcm (1..n)`: each prime `p ≤ n` with exponent `Nat.log p n`. -/
-def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
+meta def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
   (List.range (n + 1)).filterMap fun p ↦ if p.Prime then some (p, Nat.log p n) else none
 
 /-- The pair `(lcm (1..n), σ₁ (lcm (1..n)))` for a literal `n`, as values. -/
-def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
+meta def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
   ((List.range' 1 n).foldr Nat.lcm 1,
     (factorLcmUptoMeta n).foldr (fun pk r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1)
 
@@ -43,7 +48,7 @@ def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
 literal. The factorisation is found here; the kernel checks the least common multiple, the product
 of the prime powers, the divisor-sum product, primality by trial division, and the ordering of the
 primes. -/
-def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
+meta def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
   let nE := mkNatLit n
   let boolTy := mkConst ``Bool
   let trueE := mkConst ``Bool.true
@@ -79,7 +84,7 @@ def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
   return (Bval, gval, eB, eg)
 
 /-- Walk a fully-reduced `List.cons`/`List.nil` chain and return its elements. -/
-private partial def listElemsW (e : Expr) : MetaM (Array Expr) := do
+meta partial def listElemsW (e : Expr) : MetaM (Array Expr) := do
   let e ← whnf e
   match_expr e with
   | List.cons _ head tail =>
@@ -89,7 +94,7 @@ private partial def listElemsW (e : Expr) : MetaM (Array Expr) := do
   | _ => throwError "expected concrete `List` literal, got: {← Meta.ppExpr e}"
 
 /-- Extract the three `Nat` values from a `SageNode` literal Expr. -/
-private def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
+meta def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
   let c ← whnf c
   match_expr c with
   | Sage.SageNode.mk tExpr nExpr mExpr =>
@@ -102,18 +107,18 @@ private def nodeNats (c : Expr) : MetaM (Nat × Nat × Nat) := do
   | _ => throwError "child not a `SageNode.mk`"
 
 /-- Build a `SageNode` Expr from three `Nat`s, as raw literals for the kernel to read directly. -/
-private def nodeExpr (t n m : Nat) : Expr :=
+meta def nodeExpr (t n m : Nat) : Expr :=
   mkApp3 (mkConst ``Sage.SageNode.mk) (mkRawNatLit t) (mkRawNatLit n) (mkRawNatLit m)
 
 /-- Common Exprs cached for chain construction. -/
-private structure CommonExprs where
+structure CommonExprs where
   nodeTy : Expr
   nilExpr : Expr
   boolTy : Expr
   trueExpr : Expr
 
 /-- The cached expressions, built once per tactic run. -/
-private def mkCommonExprs : CommonExprs :=
+meta def mkCommonExprs : CommonExprs :=
   let nodeTy := mkConst ``Sage.SageNode
   let nilExpr := mkApp (mkConst ``List.nil [.zero]) nodeTy
   { nodeTy, nilExpr, boolTy := mkConst ``Bool, trueExpr := mkConst ``Bool.true }
@@ -121,7 +126,7 @@ private def mkCommonExprs : CommonExprs :=
 /-- Build a leaf `W B c.goal c.cand c.i = ∅` witness for child `c`: a `Bool`
 cert `stepKSingletonBeqCert B searchFuel c = true` discharged by `Lean.reflBoolTrue`,
 converted to `stepK B searchFuel [c] = some true`, then `W_eq_empty_of_stepK_singleton`. -/
-private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
+meta def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr := do
   let beqApp := mkAppN (mkConst ``Sage.stepKSingletonBeqCert) #[B, fuel, c]
   let certType := mkApp3 (mkConst ``Eq [.succ .zero]) ce.boolTy beqApp ce.trueExpr
   let auxName ← mkAuxLemma [] certType Lean.reflBoolTrue
@@ -132,12 +137,12 @@ private def buildLeafWWitness (ce : CommonExprs) (B fuel c : Expr) : MetaM Expr 
 /-! ### Auto-heuristic recursive expansion -/
 
 /-- Fuel for the meta-side subtree walk, above any subtree size the search reaches. -/
-private def sizeFuel : Nat := 200_000_000
+meta def sizeFuel : Nat := 200_000_000
 
 /-- Count nodes visited by `step` to assess subtree size; bounded by `fuel`.
 Operates on `(goal, cand, i)` Nat triples since this is a metaprogram-side
 compiled helper with no kernel involvement. -/
-private def subtreeSize (B : Nat) (fuel : Nat) (c : Nat × Nat × Nat) : Nat :=
+meta def subtreeSize (B : Nat) (fuel : Nat) (c : Nat × Nat × Nat) : Nat :=
   go fuel [c] 0
 where
   go : Nat → List (Nat × Nat × Nat) → Nat → Nat
@@ -156,7 +161,7 @@ one level via `Sage.children` and recurse on each grandchild. The Nat triple
 is threaded directly so the recursion never calls `whnf` to re-extract Nats
 from an Expr we built from those same Nats one level up. `size` is the node's
 own subtree size, measured by the caller during its own walk. -/
-private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
+meta partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
     (t n m : Nat) (size : Nat) (threshold : Nat) : MetaM Expr := do
   if size ≤ threshold then
     buildLeafWWitness ce B fuel (nodeExpr t n m)
@@ -197,7 +202,7 @@ private partial def buildWWitnessAuto (ce : CommonExprs) (B fuel : Expr) (Bval :
 `W = ∅` witness is built by `buildWWitnessAuto` (expanding as deep as the
 `threshold` requires), then chained with `allWEmptyK_cons`/`allWEmptyK_nil`. The
 `kidNats` array is the `(t, n, m)` triples of `kidExprs`, in the same order. -/
-private def buildAllWEmptyKAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
+meta def buildAllWEmptyKAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : Nat)
     (kidExprs : Array Expr) (kidNats : Array (Nat × Nat × Nat)) (threshold : Nat) :
     MetaM Expr := do
   let witnesses ← kidNats.mapM
@@ -211,7 +216,7 @@ private def buildAllWEmptyKAutoChain (ce : CommonExprs) (B fuel : Expr) (Bval : 
 
 /-- Close a `AllWEmptyK B kids` goal using the auto-heuristic: each child is
 expanded as deep as needed for every leaf node's subtree to fit the threshold. -/
-private def closeAllWEmptyKGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := do
+meta def closeAllWEmptyKGoalAuto (g : MVarId) (threshold : Nat) : MetaM Unit := do
   let target ← g.getType
   match_expr target with
   | Sage.AllWEmptyK B kidsExpr =>
