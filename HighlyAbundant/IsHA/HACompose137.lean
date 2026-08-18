@@ -5,7 +5,6 @@ Authors: Bhavik Mehta
 -/
 
 import HighlyAbundant.IsHA.WCertsTactic
-import HighlyAbundant.IsHA.SageKernelBeq
 
 open Nat
 
