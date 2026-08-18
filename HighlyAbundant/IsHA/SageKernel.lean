@@ -130,8 +130,8 @@ including the first `k` where `σ(p^k) ≥ goal`. -/
 
 /-- `Bool` form of the `childrenK` certificate, phrased on `Option.elim` so the metaprogram builds
 it from literal arguments. -/
-@[expose] noncomputable def childrenKBeqCert (B goal cand i : Nat) (kids : List SageNode) :
+@[expose] noncomputable def childrenKBeqCert (B goal cand i : Nat) (cs : List SageNode) :
     Bool :=
-  (childrenK B goal cand i).elim false fun cs ↦ sageListBeq cs kids
+  (childrenK B goal cand i).elim false fun cs' ↦ sageListBeq cs' cs
 
 end Sage
