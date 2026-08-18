@@ -36,11 +36,11 @@ open Lean Meta Elab Tactic
 namespace Sage
 
 /-- The factorisation of `lcm (1..n)`: each prime `p ≤ n` with exponent `Nat.log p n`. -/
-meta def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
+public meta def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
   (List.range (n + 1)).filterMap fun p ↦ if p.Prime then some (p, Nat.log p n) else none
 
 /-- The pair `(lcm (1..n), σ₁ (lcm (1..n)))` for a literal `n`, as values. -/
-meta def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
+public meta def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
   ((List.range' 1 n).foldr Nat.lcm 1,
     (factorLcmUptoMeta n).foldr (fun pk r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1)
 
@@ -48,7 +48,7 @@ meta def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
 literal. The factorisation is found here; the kernel checks the least common multiple, the product
 of the prime powers, the divisor-sum product, primality by trial division, and the ordering of the
 primes. -/
-meta def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
+public meta def proveLcmUptoValues (n : ℕ) : MetaM (ℕ × ℕ × Expr × Expr) := do
   let nE := mkNatLit n
   let boolTy := mkConst ``Bool
   let trueE := mkConst ``Bool.true

@@ -1,0 +1,29 @@
+name: Divisor sum route A/B
+
+on:
+  push:
+    branches:
+      - 'bench/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ab:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Lean
+        uses: leanprover/lean-action@v1
+        with:
+          build: false
+      - name: Interleaved A/B on the two divisor-sum routes
+        shell: bash
+        env:
+          LEAN_NUM_THREADS: "3"
+        run: |
+          lake exe cache get || true
+          lake build HighlyAbundant.SigmaRoutes
+          bash scripts/sigma_ab.sh 169
