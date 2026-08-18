@@ -24,7 +24,7 @@ Empirically the heaviest root-children have subtree sizes of 200k to 870k nodes.
 namespace Sage
 
 set_option maxHeartbeats 51200000 in
-theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
+public theorem isHighlyAbundant_lcmUpto_169 : IsHighlyAbundant (lcmUpto 169) := by
   ha_lcm_compose 169 40000
 
 end Sage

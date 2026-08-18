@@ -20,10 +20,10 @@ Each theorem is a single `ha_lcm_compose` invocation, and this module holds both
 
 namespace Sage
 
-theorem isHighlyAbundant_lcmUpto_125 : IsHighlyAbundant (lcmUpto 125) := by
+public theorem isHighlyAbundant_lcmUpto_125 : IsHighlyAbundant (lcmUpto 125) := by
   ha_lcm_compose 125 40000
 
-theorem isHighlyAbundant_lcmUpto_128 : IsHighlyAbundant (lcmUpto 128) := by
+public theorem isHighlyAbundant_lcmUpto_128 : IsHighlyAbundant (lcmUpto 128) := by
   ha_lcm_compose 128 40000
 
 end Sage

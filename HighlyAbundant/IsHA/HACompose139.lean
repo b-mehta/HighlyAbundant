@@ -20,7 +20,7 @@ Proof that `lcmUpto 139` is highly abundant, closed by the `ha_lcm_compose` tact
 
 namespace Sage
 
-theorem isHighlyAbundant_lcmUpto_139 : IsHighlyAbundant (lcmUpto 139) := by
+public theorem isHighlyAbundant_lcmUpto_139 : IsHighlyAbundant (lcmUpto 139) := by
   ha_lcm_compose 139 40000
 
 end Sage
