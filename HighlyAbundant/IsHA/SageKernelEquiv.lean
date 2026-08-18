@@ -176,10 +176,9 @@ theorem stepK_succ_cons :
       else (childrenK B goal cand i).rec none (fun cs ↦ stepK B fuel (cs ++ rest)) := by
   simp only [stepK, Bool.rec_eq, Nat.ble_eq, appendK_eq_append, ← Nat.not_le, ite_not]
 
-/-- Recover `childrenK … = some kids` from its `Bool` certificate. -/
-public theorem childrenKBeqCert_eq_some {kids : List SageNode}
-    (h : childrenKBeqCert B goal cand i kids) :
-    childrenK B goal cand i = some kids := by
+/-- Recover `childrenK … = some cs` from its `Bool` certificate. -/
+public theorem childrenKBeqCert_eq_some (h : childrenKBeqCert B goal cand i cs) :
+    childrenK B goal cand i = some cs := by
   cases hc : childrenK B goal cand i with grind [childrenKBeqCert, sageListBeq_sound]
 
 /-- Recover `stepK B fuel [c] = some true` from its `Bool` leaf certificate. -/
