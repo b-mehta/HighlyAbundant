@@ -139,15 +139,4 @@ theorem lcmUpto_eq_lcmUptoK (n : ℕ) : lcmUpto n = lcmUptoK n := by
 public theorem lcmUpto_eq_of_beq (n : ℕ) {L : ℕ} (h : (lcmUptoK n).beq L) : lcmUpto n = L := by
   rw [lcmUpto_eq_lcmUptoK]; exact Nat.eq_of_beq_eq_true h
 
-/-! ### Values for a literal `n` -/
-
-/-- The factorisation of `lcm (1..n)`: each prime `p ≤ n` with exponent `Nat.log p n`. -/
-public def factorLcmUptoMeta (n : ℕ) : List (ℕ × ℕ) :=
-  (List.range (n + 1)).filterMap fun p ↦ if p.Prime then some (p, Nat.log p n) else none
-
-/-- The pair `(lcm (1..n), σ₁ (lcm (1..n)))` for a literal `n`, as values. -/
-public def lcmUptoValues (n : ℕ) : ℕ × ℕ :=
-  ((List.range' 1 n).foldr Nat.lcm 1,
-    (factorLcmUptoMeta n).foldr (fun pk r ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * r) 1)
-
 end Sage
