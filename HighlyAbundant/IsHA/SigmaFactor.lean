@@ -106,7 +106,7 @@ theorem sigma_of_factorization {sL : ℕ} {F : List (ℕ × ℕ)} (hp : allCheck
       rw [Nat.coprime_primes hpk (hpp qk (List.mem_cons_of_mem _ hqk))]
       exact fun h ↦ absurd (List.mem_map_of_mem hqk) (h ▸ hd1)
     rw [isMultiplicative_sigma.map_mul_of_coprime hcop, sigma_one_apply_prime_pow' hpk,
-      ih (fun q hq ↦ hpp q (List.mem_cons_of_mem _ hq)) hd2]
+      ih hd2 fun q hq ↦ hpp q (List.mem_cons_of_mem _ hq)]
 
 /-- `σ₁ (lcmUpto n) = sL` from a factorisation of `lcmUpto n` into increasing primes. -/
 public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcmUpto n = L)
