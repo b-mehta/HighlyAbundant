@@ -14,9 +14,9 @@ section
 /-!
 # The divisor sum of a factorisation
 
-A factorisation is a list of pairs `(p, k)`, read as the product of `p ^ k`. For distinct primes
-`p`, the divisor sum of that product is the product of `(p ^ (k + 1) - 1) / (p - 1)`, which is
-`sigma_of_factorization`. Each function here is written with `List.rec`, so the kernel evaluates it
+A factorisation is a list of pairs `(p, k)`, read as the product of `p ^ k`. For primes `p`
+increasing along the list, the divisor sum of that product is the product of
+`(p ^ (k + 1) - 1) / (p - 1)`, which is `sigma_of_factorization`. Each function here is written with `List.rec`, so the kernel evaluates it
 on a literal list.
 -/
 
@@ -38,6 +38,13 @@ namespace Sage
 /-- The primes of a factorisation. -/
 @[expose] public def primesFactorK : List (ℕ × ℕ) → List ℕ :=
   List.rec [] fun pk _ r ↦ pk.1 :: r
+
+/-- The primes of a factorisation increase along the list. -/
+public def FactorChain (F : List (ℕ × ℕ)) : Prop := F.IsChain (·.1 < ·.1)
+
+/-- The ordering is decidable, so a literal list settles it. -/
+public instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) :=
+  inferInstanceAs (Decidable (F.IsChain (·.1 < ·.1)))
 
 /-- Every prime of a factorisation passes the trial-division check. -/
 @[expose] public noncomputable def allCheckPrimeK : List (ℕ × ℕ) → Bool :=
@@ -87,12 +94,15 @@ theorem forall_prime_of_checkPrime :
 
 /-! ### The divisor sum -/
 
-/-- `σ₁ (∏ p ^ k) = ∏ (p ^ (k + 1) - 1) / (p - 1)` for a factorisation into distinct primes. -/
+/-- `σ₁ (∏ p ^ k) = ∏ (p ^ (k + 1) - 1) / (p - 1)` for a factorisation in increasing order. -/
 theorem sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ)) (hp : allCheckPrimeK F)
-    (hd : (primesFactorK F).Nodup) (hsig : sigmaFactorK F = sL) :
+    (hc : FactorChain F) (hsig : sigmaFactorK F = sL) :
     σ₁ (prodFactorK F) = sL := by
+  have hd : (primesFactorK F).Nodup := by
+    rw [primesFactorK_eq]
+    exact (hc.pairwise.imp Nat.ne_of_lt).map _ fun _ _ ↦ id
   have hpp := forall_prime_of_checkPrime hp
-  clear hp
+  clear hp hc
   subst hsig
   simp only [prodFactorK_eq, sigmaFactorK_eq, primesFactorK_eq] at hd ⊢
   induction F with
@@ -112,13 +122,13 @@ theorem sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ)) (hp : allCheck
     rw [isMultiplicative_sigma.map_mul_of_coprime hcop, sigma_one_apply_prime_pow' hpk,
       ih (fun q hq ↦ hpp q (List.mem_cons_of_mem _ hq)) hd2]
 
-/-- `σ₁ (lcmUpto n) = sL` from a factorisation of `lcmUpto n` into distinct primes. -/
+/-- `σ₁ (lcmUpto n) = sL` from a factorisation of `lcmUpto n` into increasing primes. -/
 public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcmUpto n = L)
-    (hprod : prodFactorK F = L) (hp : allCheckPrimeK F) (hd : (primesFactorK F).Nodup)
+    (hprod : prodFactorK F = L) (hp : allCheckPrimeK F) (hc : FactorChain F)
     (hsig : sigmaFactorK F = sL) :
     σ₁ (lcmUpto n) = sL := by
   rw [hL, ← hprod]
-  exact sigma_of_factorization F hp hd hsig
+  exact sigma_of_factorization F hp hc hsig
 
 /-! ### `lcmUpto` for the kernel -/
 
