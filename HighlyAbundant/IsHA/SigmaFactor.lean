@@ -16,8 +16,8 @@ section
 
 A factorisation is a list of pairs `(p, k)`, read as the product of `p ^ k`. For primes `p`
 increasing along the list, the divisor sum of that product is the product of
-`(p ^ (k + 1) - 1) / (p - 1)`, which is `sigma_of_factorization`. Each function here is written with `List.rec`, so the kernel evaluates it
-on a literal list.
+`(p ^ (k + 1) - 1) / (p - 1)`, which is `sigma_of_factorization`. Each function here is written
+with `List.rec`, so the kernel evaluates it on a literal list.
 -/
 
 open Nat ArithmeticFunction
@@ -50,47 +50,37 @@ public instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) :=
 @[expose] public noncomputable def allCheckPrimeK : List (ℕ × ℕ) → Bool :=
   List.rec true fun pk _ r ↦ (checkPrime pk.1).and' r
 
-@[grind =] theorem prodFactorK_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+variable {pk : ℕ × ℕ} {t F : List (ℕ × ℕ)}
+
+@[grind =] theorem prodFactorK_cons :
     prodFactorK (pk :: t) = pk.1 ^ pk.2 * prodFactorK t := rfl
 
-@[grind =] theorem sigmaFactorK_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+@[grind =] theorem sigmaFactorK_cons :
     sigmaFactorK (pk :: t) = (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * sigmaFactorK t := rfl
 
-@[grind =] theorem primesFactorK_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+@[grind =] theorem primesFactorK_cons :
     primesFactorK (pk :: t) = pk.1 :: primesFactorK t := rfl
 
-@[grind =] theorem allCheckPrimeK_cons (pk : ℕ × ℕ) (t : List (ℕ × ℕ)) :
+@[grind =] theorem allCheckPrimeK_cons :
     allCheckPrimeK (pk :: t) = (checkPrime pk.1).and' (allCheckPrimeK t) := rfl
 
 /-- The product of a factorisation, as a product over the mapped list. -/
-theorem prodFactorK_eq (F : List (ℕ × ℕ)) : prodFactorK F = (F.map fun pk ↦ pk.1 ^ pk.2).prod := by
-  induction F with
-  | nil => rfl
-  | cons pk t ih => rw [prodFactorK_cons, ih, List.map_cons, List.prod_cons]
+theorem prodFactorK_eq : prodFactorK F = (F.map fun pk ↦ pk.1 ^ pk.2).prod := by
+  induction F with grind
 
 /-- The divisor-sum product of a factorisation, as a product over the mapped list. -/
-theorem sigmaFactorK_eq (F : List (ℕ × ℕ)) :
+theorem sigmaFactorK_eq :
     sigmaFactorK F = (F.map fun pk ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1)).prod := by
-  induction F with
-  | nil => rfl
-  | cons pk t ih => rw [sigmaFactorK_cons, ih, List.map_cons, List.prod_cons]
+  induction F with grind
 
 /-- The primes of a factorisation are the first components. -/
-theorem primesFactorK_eq (F : List (ℕ × ℕ)) : primesFactorK F = F.map Prod.fst := by
-  induction F with
-  | nil => rfl
-  | cons pk t ih => rw [primesFactorK_cons, ih, List.map_cons]
+theorem primesFactorK_eq : primesFactorK F = F.map Prod.fst := by
+  induction F with grind
 
 /-- The pairs of a factorisation the check accepts have prime first components. -/
-theorem forall_prime_of_checkPrime :
-    ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK F → ∀ pk ∈ F, pk.1.Prime
+theorem forall_prime_of_checkPrime : ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK F → ∀ pk ∈ F, pk.1.Prime
   | [], _ => by simp
-  | pk :: t, h => by
-    rw [allCheckPrimeK_cons, Bool.and'_eq_and, Bool.and_eq_true] at h
-    intro qk hqk
-    rcases List.mem_cons.1 hqk with rfl | hmem
-    · exact checkPrime_true h.1
-    · exact forall_prime_of_checkPrime h.2 qk hmem
+  | _ :: _, h => by grind [checkPrime_true, forall_prime_of_checkPrime]
 
 /-! ### The divisor sum -/
 
@@ -137,7 +127,7 @@ public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (h
   (List.range' 1 n).rec (nat_lit 1) fun a _ r ↦ a.lcm r
 
 /-- The two forms of `lcm (1..n)` agree. -/
-theorem lcmUpto_eq_lcmUptoK (n : ℕ) : lcmUpto n = lcmUptoK n := by
+theorem lcmUpto_eq_lcmUptoK {n : ℕ} : lcmUpto n = lcmUptoK n := by
   rw [Nat.lcmUpto, lcmUptoK, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
   change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
   simp only [Nat.add_sub_cancel, List.map_id]
@@ -146,7 +136,7 @@ theorem lcmUpto_eq_lcmUptoK (n : ℕ) : lcmUpto n = lcmUptoK n := by
   | cons a l ih => rw [List.foldr_cons, ih, lcm_eq_nat_lcm]
 
 /-- `lcmUpto n = L` from the `Bool` comparison of `lcmUptoK n` with `L`. -/
-public theorem lcmUpto_eq_of_beq (n : ℕ) {L : ℕ} (h : (lcmUptoK n).beq L) : lcmUpto n = L := by
-  rw [lcmUpto_eq_lcmUptoK]; exact Nat.eq_of_beq_eq_true h
+public theorem lcmUpto_eq_of_beq (n : ℕ) {L : ℕ} (h : (lcmUptoK n).beq L) : lcmUpto n = L :=
+  lcmUpto_eq_lcmUptoK.trans (Nat.eq_of_beq_eq_true h)
 
 end Sage
