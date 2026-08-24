@@ -35,10 +35,6 @@ namespace Sage
   List.rec (nat_lit 1) fun pk _ r ↦
     (((pk.1.pow pk.2.succ).sub (nat_lit 1)).div (pk.1.sub (nat_lit 1))).mul r
 
-/-- The primes of a factorisation. -/
-@[expose] public def primesFactorK : List (ℕ × ℕ) → List ℕ :=
-  List.rec [] fun pk _ r ↦ pk.1 :: r
-
 /-- The primes of a factorisation increase along the list. -/
 public def FactorChain (F : List (ℕ × ℕ)) : Prop := F.IsChain (·.1 < ·.1)
 
@@ -56,18 +52,11 @@ variable {pk : ℕ × ℕ} {t F : List (ℕ × ℕ)}
 
 @[grind =] theorem sigmaFactorK_nil : sigmaFactorK [] = 1 := rfl
 
-@[grind =] theorem primesFactorK_nil : primesFactorK [] = [] := rfl
-
-@[grind =] theorem allCheckPrimeK_nil : allCheckPrimeK [] = true := rfl
-
 @[grind =] theorem prodFactorK_cons :
     prodFactorK (pk :: t) = pk.1 ^ pk.2 * prodFactorK t := rfl
 
 @[grind =] theorem sigmaFactorK_cons :
     sigmaFactorK (pk :: t) = (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1) * sigmaFactorK t := rfl
-
-@[grind =] theorem primesFactorK_cons :
-    primesFactorK (pk :: t) = pk.1 :: primesFactorK t := rfl
 
 @[grind =] theorem allCheckPrimeK_cons :
     allCheckPrimeK (pk :: t) = (checkPrime pk.1).and' (allCheckPrimeK t) := rfl
@@ -79,10 +68,6 @@ theorem prodFactorK_eq : prodFactorK F = (F.map fun pk ↦ pk.1 ^ pk.2).prod := 
 /-- The divisor-sum product of a factorisation, as a product over the mapped list. -/
 theorem sigmaFactorK_eq :
     sigmaFactorK F = (F.map fun pk ↦ (pk.1 ^ (pk.2 + 1) - 1) / (pk.1 - 1)).prod := by
-  induction F with grind
-
-/-- The primes of a factorisation are the first components. -/
-theorem primesFactorK_eq : primesFactorK F = F.map Prod.fst := by
   induction F with grind
 
 /-- The pairs of a factorisation the check accepts have prime first components. -/
@@ -98,16 +83,14 @@ theorem forall_prime_of_checkPrime : ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK
 /-! ### The divisor sum -/
 
 /-- `σ₁ (∏ p ^ k) = ∏ (p ^ (k + 1) - 1) / (p - 1)` for a factorisation in increasing order. -/
-theorem sigma_of_factorization {sL : ℕ} (F : List (ℕ × ℕ)) (hp : allCheckPrimeK F)
+theorem sigma_of_factorization {sL : ℕ} {F : List (ℕ × ℕ)} (hp : allCheckPrimeK F)
     (hc : FactorChain F) (hsig : sigmaFactorK F = sL) :
     σ₁ (prodFactorK F) = sL := by
-  have hd : (primesFactorK F).Nodup := by
-    rw [primesFactorK_eq]
-    exact (hc.pairwise.imp Nat.ne_of_lt).map _ fun _ _ ↦ id
+  have hd : (F.map Prod.fst).Nodup := (hc.pairwise.imp Nat.ne_of_lt).map _ fun _ _ ↦ id
   have hpp := forall_prime_of_checkPrime hp
   clear hp hc
   subst hsig
-  simp only [prodFactorK_eq, sigmaFactorK_eq, primesFactorK_eq] at hd ⊢
+  simp only [prodFactorK_eq, sigmaFactorK_eq]
   induction F with
   | nil => simp
   | cons pk t ih =>
@@ -131,7 +114,7 @@ public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (h
     (hsig : sigmaFactorK F = sL) :
     σ₁ (lcmUpto n) = sL := by
   rw [hL, ← hprod]
-  exact sigma_of_factorization F hp hc hsig
+  exact sigma_of_factorization hp hc hsig
 
 /-! ### `lcmUpto` for the kernel -/
 
