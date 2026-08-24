@@ -96,7 +96,7 @@ theorem sigma_of_factorization {sL : ℕ} {F : List (ℕ × ℕ)} (hp : allCheck
   | cons pk t ih =>
     simp only [List.map_cons, List.prod_cons, List.nodup_cons] at hd ⊢
     obtain ⟨hd1, hd2⟩ := hd
-    have hpk : pk.1.Prime := hpp pk (by simp)
+    have hpk : pk.1.Prime := hpp pk List.mem_cons_self
     have hcop : (pk.1 ^ pk.2).Coprime (t.map fun pk ↦ pk.1 ^ pk.2).prod := by
       apply Nat.Coprime.pow_left
       rw [Nat.coprime_list_prod_right_iff]
