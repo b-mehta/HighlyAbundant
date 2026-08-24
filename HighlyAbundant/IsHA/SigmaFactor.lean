@@ -88,7 +88,7 @@ theorem primesFactorK_eq : primesFactorK F = F.map Prod.fst := by
 /-- The pairs of a factorisation the check accepts have prime first components. -/
 theorem forall_prime_of_checkPrime : ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK F → ∀ pk ∈ F, pk.1.Prime
   | [], _ => by simp
-  | _ :: _, h => by grind [checkPrime_true, forall_prime_of_checkPrime]
+  | _ :: _, h => by grind [checkPrime_true]
 
 /-! ### The divisor sum -/
 
