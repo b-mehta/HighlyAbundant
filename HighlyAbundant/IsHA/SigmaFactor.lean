@@ -52,6 +52,14 @@ public instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) :=
 
 variable {pk : ℕ × ℕ} {t F : List (ℕ × ℕ)}
 
+@[grind =] theorem prodFactorK_nil : prodFactorK [] = 1 := rfl
+
+@[grind =] theorem sigmaFactorK_nil : sigmaFactorK [] = 1 := rfl
+
+@[grind =] theorem primesFactorK_nil : primesFactorK [] = [] := rfl
+
+@[grind =] theorem allCheckPrimeK_nil : allCheckPrimeK [] = true := rfl
+
 @[grind =] theorem prodFactorK_cons :
     prodFactorK (pk :: t) = pk.1 ^ pk.2 * prodFactorK t := rfl
 
