@@ -120,9 +120,7 @@ theorem lcmUpto_eq_lcmUptoK {n : ℕ} : lcmUpto n = lcmUptoK n := by
   rw [Nat.lcmUpto, lcmUptoK, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
   change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
   simp only [Nat.add_sub_cancel, List.map_id]
-  induction List.range' 1 n with
-  | nil => rfl
-  | cons a l ih => rw [List.foldr_cons, ih, lcm_eq_nat_lcm]
+  induction List.range' 1 n with grind [lcm_eq_nat_lcm]
 
 /-- `lcmUpto n = L` from the `Bool` comparison of `lcmUptoK n` with `L`. -/
 public theorem lcmUpto_eq_of_beq (n : ℕ) {L : ℕ} (h : (lcmUptoK n).beq L) : lcmUpto n = L :=
