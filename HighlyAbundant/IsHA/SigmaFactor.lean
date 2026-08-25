@@ -93,8 +93,8 @@ theorem sigma_of_factorization {sL : ℕ} {F : List (ℕ × ℕ)} (hp : allCheck
       fun a b ↦ Nat.Coprime (a.1 ^ a.2) (b.1 ^ b.2) := by
     intro a ha b hb hab
     simp only [List.coe_toFinset, Set.mem_ofPred_eq] at ha hb
-    exact Nat.Coprime.pow _ _ ((Nat.coprime_primes (hpp a ha) (hpp b hb)).2
-      fun he ↦ hab (List.inj_on_of_nodup_map hfst ha hb he))
+    exact Nat.coprime_pow_primes _ _ (hpp a ha) (hpp b hb)
+      fun he ↦ hab (List.inj_on_of_nodup_map hfst ha hb he)
   subst hsig
   rw [prodFactorK_eq, sigmaFactorK_eq, ← List.prod_toFinset _ hnd, ← List.prod_toFinset _ hnd,
     isMultiplicative_sigma.map_prod _ _ hcop]
