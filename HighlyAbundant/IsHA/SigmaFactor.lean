@@ -86,27 +86,20 @@ theorem forall_prime_of_checkPrime : ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK
 theorem sigma_of_factorization {sL : ℕ} {F : List (ℕ × ℕ)} (hp : allCheckPrimeK F)
     (hc : FactorChain F) (hsig : sigmaFactorK F = sL) :
     σ₁ (prodFactorK F) = sL := by
-  have hd : (F.map Prod.fst).Nodup := (hc.pairwise.imp Nat.ne_of_lt).map _ fun _ _ ↦ id
   have hpp := forall_prime_of_checkPrime hp
-  clear hp hc
+  have hd : (F.map Prod.fst).Nodup := (hc.pairwise.imp Nat.ne_of_lt).map _ fun _ _ ↦ id
+  have hnd : F.Nodup := hd.of_map
+  have hcop : (F.toFinset : Set (ℕ × ℕ)).Pairwise
+      fun a b ↦ Nat.Coprime (a.1 ^ a.2) (b.1 ^ b.2) := by
+    intro a ha b hb hab
+    simp only [List.coe_toFinset, Set.mem_ofPred_eq] at ha hb
+    exact Nat.Coprime.pow _ _ ((Nat.coprime_primes (hpp a ha) (hpp b hb)).2
+      fun he ↦ hab (List.inj_on_of_nodup_map hd ha hb he))
   subst hsig
-  simp only [prodFactorK_eq, sigmaFactorK_eq]
-  induction F with
-  | nil => simp
-  | cons pk t ih =>
-    simp only [List.map_cons, List.prod_cons, List.nodup_cons] at hd ⊢
-    obtain ⟨hd1, hd2⟩ := hd
-    have hpk : pk.1.Prime := hpp pk List.mem_cons_self
-    have hcop : (pk.1 ^ pk.2).Coprime (t.map fun pk ↦ pk.1 ^ pk.2).prod := by
-      apply Nat.Coprime.pow_left
-      rw [Nat.coprime_list_prod_right_iff]
-      intro q hq
-      obtain ⟨qk, hqk, rfl⟩ := List.mem_map.1 hq
-      apply Nat.Coprime.pow_right
-      rw [Nat.coprime_primes hpk (hpp qk (List.mem_cons_of_mem _ hqk))]
-      exact fun h ↦ absurd (List.mem_map_of_mem hqk) (h ▸ hd1)
-    rw [isMultiplicative_sigma.map_mul_of_coprime hcop, sigma_one_apply_prime_pow' hpk,
-      ih hd2 fun q hq ↦ hpp q (List.mem_cons_of_mem _ hq)]
+  rw [prodFactorK_eq, sigmaFactorK_eq, ← List.prod_toFinset _ hnd, ← List.prod_toFinset _ hnd,
+    isMultiplicative_sigma.map_prod _ _ hcop]
+  exact Finset.prod_congr rfl fun pk hpk ↦
+    sigma_one_apply_prime_pow' (hpp pk (List.mem_toFinset.1 hpk))
 
 /-- `σ₁ (lcmUpto n) = sL` from a factorisation of `lcmUpto n` into increasing primes. -/
 public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (hL : lcmUpto n = L)
