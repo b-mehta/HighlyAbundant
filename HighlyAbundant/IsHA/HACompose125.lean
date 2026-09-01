@@ -1,0 +1,29 @@
+/-
+Copyright (c) 2026 Bhavik Mehta. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Bhavik Mehta
+-/
+
+module
+
+public import HighlyAbundant.IsHA.WCertsTactic
+
+open Nat
+
+set_option maxRecDepth 100000
+
+/-!
+# Kernel certificates for `IsHighlyAbundant (lcmUpto n)`, `n = 125` and `n = 128`
+
+Each theorem is a single `ha_lcm_compose` invocation, and this module holds both.
+-/
+
+namespace Sage
+
+public theorem isHighlyAbundant_lcmUpto_125 : IsHighlyAbundant (lcmUpto 125) := by
+  ha_lcm_compose 125 40000
+
+public theorem isHighlyAbundant_lcmUpto_128 : IsHighlyAbundant (lcmUpto 128) := by
+  ha_lcm_compose 128 40000
+
+end Sage

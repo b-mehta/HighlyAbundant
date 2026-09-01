@@ -2,6 +2,9 @@ name: Lean Action CI
 
 on:
   push:
+    paths-ignore:
+      - 'scripts/ha169_benchmark.sage'
+      - '.github/workflows/sage_benchmark.yml'
   pull_request:
   workflow_dispatch:
 
@@ -17,4 +20,15 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: leanprover/lean-action@v1
+      - name: Install Lean
+        uses: leanprover/lean-action@v1
+        with:
+          build: false
+      - name: Build
+        shell: bash
+        env:
+          # 3 modules in parallel (with the HACompose169 split); more risks OOM.
+          LEAN_NUM_THREADS: "3"
+        run: |
+          lake exe cache get || true
+          lake build

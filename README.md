@@ -10,7 +10,7 @@ In fact, it is now known that `L_n` is highly abundant if and only if `n` lies i
 intervals `{1, ..., 70}, {81, ..., 96}, {125, ..., 148}, {169, ..., 172}`.
 
 Currently, we formally verify:
-- `L_n` is not highly abundant for `71 ≤ n ≤ 80`, `97 ≤ n ≤ 124`, `149 ≤ n ≤ 168` and `173 ≤ n ≤ 10^40`. These results can be found in `HighlyAbundant/ClimbLadder.lean`.
+- `L_n` is not highly abundant for `71 ≤ n ≤ 80`, `97 ≤ n ≤ 124`, `149 ≤ n ≤ 168` and `173 ≤ n ≤ 10^40`. These results can be found in `HighlyAbundant/IsNotHA/ClimbLadder.lean`.
 
 Work in progress are formal verifications of the following:
 - `L_n` is highly abundant for `n` in these intervals `{1, ..., 70}, {81, ..., 96}, {125, ..., 148}, {169, ..., 172}`.
