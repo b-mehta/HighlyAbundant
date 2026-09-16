@@ -9,8 +9,6 @@ module
 public import HighlyAbundant.Basic
 public import HighlyAbundant.Prime.TrialDivision
 
-section
-
 /-!
 # The divisor sum of a factorisation
 
@@ -38,11 +36,11 @@ namespace Sage
 /-- The primes of a factorisation increase along the list. -/
 public def FactorChain (F : List (ℕ × ℕ)) : Prop := F.IsChain (·.1 < ·.1)
 
-/-- The ordering is decidable, so a literal list settles it. -/
 public instance {F : List (ℕ × ℕ)} : Decidable (FactorChain F) :=
   inferInstanceAs (Decidable (F.IsChain (·.1 < ·.1)))
 
-/-- Every prime of a factorisation passes the trial-division check. -/
+/-- Whether every first component of a factorisation passes the trial-division check, so lies
+between `2` and `528`. -/
 @[expose] public noncomputable def allCheckPrimeK : List (ℕ × ℕ) → Bool :=
   List.rec true fun pk _ r ↦ (checkPrime pk.1).and' r
 
@@ -71,29 +69,29 @@ theorem sigmaFactorK_eq :
   induction F with grind
 
 /-- The pairs of a factorisation the check accepts have prime first components. -/
-theorem forall_prime_of_checkPrime : ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK F → ∀ pk ∈ F, pk.1.Prime
+theorem prime_of_allCheckPrimeK : ∀ {F : List (ℕ × ℕ)}, allCheckPrimeK F → ∀ pk ∈ F, pk.1.Prime
   | [], _ => by simp
   | pk :: t, h => by
     rw [allCheckPrimeK_cons, Bool.and'_eq_and, Bool.and_eq_true] at h
     intro qk hqk
     rcases List.mem_cons.1 hqk with rfl | hmem
     · exact checkPrime_true h.1
-    · exact forall_prime_of_checkPrime h.2 qk hmem
+    · exact prime_of_allCheckPrimeK h.2 qk hmem
 
 /-! ### The divisor sum -/
 
 /-- `σ₁ (∏ p ^ k) = ∏ (p ^ (k + 1) - 1) / (p - 1)` for a factorisation in increasing order. -/
-theorem sigma_of_factorization {sL : ℕ} {F : List (ℕ × ℕ)} (hp : allCheckPrimeK F)
+theorem sigma_of_factorization {sL : ℕ} (hp : allCheckPrimeK F)
     (hc : FactorChain F) (hsig : sigmaFactorK F = sL) :
     σ₁ (prodFactorK F) = sL := by
-  have hpp := forall_prime_of_checkPrime hp
-  have hfst : (F.map Prod.fst).Nodup := (hc.pairwise.imp Nat.ne_of_lt).map _ fun _ _ ↦ id
+  have hpp := prime_of_allCheckPrimeK hp
+  have hfst : (F.map Prod.fst).Nodup := (hc.pairwise.imp ne_of_lt).map _ fun _ _ ↦ id
   have hnd : F.Nodup := hfst.of_map
   have hcop : (F.toFinset : Set (ℕ × ℕ)).Pairwise
-      fun a b ↦ Nat.Coprime (a.1 ^ a.2) (b.1 ^ b.2) := by
+      fun a b ↦ Coprime (a.1 ^ a.2) (b.1 ^ b.2) := by
     intro a ha b hb hab
     simp only [List.coe_toFinset, Set.mem_ofPred_eq] at ha hb
-    exact Nat.coprime_pow_primes _ _ (hpp a ha) (hpp b hb)
+    exact coprime_pow_primes _ _ (hpp a ha) (hpp b hb)
       fun he ↦ hab (List.inj_on_of_nodup_map hfst ha hb he)
   subst hsig
   rw [prodFactorK_eq, sigmaFactorK_eq, ← List.prod_toFinset _ hnd, ← List.prod_toFinset _ hnd,
@@ -117,13 +115,13 @@ public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (h
 
 /-- The two forms of `lcm (1..n)` agree. -/
 theorem lcmUpto_eq_lcmUptoK {n : ℕ} : lcmUpto n = lcmUptoK n := by
-  rw [Nat.lcmUpto, lcmUptoK, Finset.lcm, Finset.fold, Nat.Icc_eq_range']
+  rw [lcmUpto, lcmUptoK, Finset.lcm, Finset.fold, Icc_eq_range']
   change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
-  simp only [Nat.add_sub_cancel, List.map_id]
+  simp only [add_sub_cancel, List.map_id]
   induction List.range' 1 n with grind [lcm_eq_nat_lcm]
 
 /-- `lcmUpto n = L` from the `Bool` comparison of `lcmUptoK n` with `L`. -/
 public theorem lcmUpto_eq_of_beq (n : ℕ) {L : ℕ} (h : (lcmUptoK n).beq L) : lcmUpto n = L :=
-  lcmUpto_eq_lcmUptoK.trans (Nat.eq_of_beq_eq_true h)
+  lcmUpto_eq_lcmUptoK.trans (eq_of_beq_eq_true h)
 
 end Sage
