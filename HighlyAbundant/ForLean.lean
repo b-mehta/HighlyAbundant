@@ -11,9 +11,10 @@ public import Init.Prelude
 public section
 
 /-!
-# Lemmas belonging upstream
+# Facts about core definitions
 
-General facts about core definitions, stated here until they live in Lean itself.
+General facts about core definitions, stated here until they live in Lean itself, together with
+`grind` registrations for core lemmas the kernel-facing proofs rely on.
 -/
 
 @[simp, grind =] theorem Nat.div_eq_div {a b : Nat} : a.div b = a / b := rfl
