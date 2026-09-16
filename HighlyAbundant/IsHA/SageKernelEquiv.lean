@@ -41,7 +41,7 @@ def fromSageNode (c : SageNode) : Nat × Nat × Nat := (c.goal, c.cand, c.i)
 
 /-- Nodes their `Bool` equality accepts are equal. -/
 theorem SageNode.eq_of_beq {a b : SageNode} (h : SageNode.beq a b) : a = b := by
-  grind [cases SageNode, SageNode.beq, Bool.and'_eq_and, Nat.beq_eq]
+  grind [cases SageNode, SageNode.beq, Nat.beq_eq]
 
 /-- Lists their pointwise `Bool` equality accepts are equal. -/
 theorem sageListBeq_sound : ∀ {xs ys : List SageNode}, sageListBeq xs ys → xs = ys
