@@ -116,8 +116,7 @@ public theorem sigma_lcmUpto_of_factor {n L sL : ℕ} (F : List (ℕ × ℕ)) (h
 /-- The two forms of `lcm (1..n)` agree. -/
 theorem lcmUpto_eq_lcmUptoK {n : ℕ} : lcmUpto n = lcmUptoK n := by
   rw [lcmUpto, lcmUptoK, Finset.lcm, Finset.fold, Icc_eq_range']
-  change ((List.range' 1 (n + 1 - 1)).map id).foldr GCDMonoid.lcm 1 = _
-  simp only [Nat.add_sub_cancel, List.map_id]
+  simp only [Nat.add_sub_cancel, Multiset.map_coe, Multiset.coe_fold_r, id_eq]
   induction List.range' 1 n with grind [lcm_eq_nat_lcm]
 
 /-- `lcmUpto n = L` from the `Bool` comparison of `lcmUptoK n` with `L`. -/
